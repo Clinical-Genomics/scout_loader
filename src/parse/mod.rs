@@ -1,1 +1,2 @@
-pub mod vcf_parser;
+pub mod vcf;
+pub mod coordinates;

@@ -1,16 +1,23 @@
 mod parse;
-use parse::vcf_parser::process_vcf;
-use std::env;
+mod models;
+use parse::vcf::process_vcf;
+
+use clap::Parser;
+
+#[derive(Parser)]
+struct Args {
+    #[arg(long)]
+    vcf: String,
+
+    #[arg(long)]
+    category: String,
+}
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args = Args::parse();
 
-    if args.len() < 2 {
-        eprintln!("Usage: {} <vcf_file>", args[0]);
-        std::process::exit(1);
-    }
+    println!("VCF: {}", args.vcf);
+    println!("Category: {}", args.category);
 
-    let vcf_path = &args[1];
-
-    process_vcf(vcf_path);
+    process_vcf(&args.vcf, &args.category);
 }
