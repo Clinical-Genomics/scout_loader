@@ -1,5 +1,4 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-
 pub enum VariantCategory {
     Snv,
     Sv,
