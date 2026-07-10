@@ -13,6 +13,15 @@ struct Args {
     category: String,
 }
 
+/// Reads variants from a VCF file and converts each record into a Variant.
+///
+/// The parser behavior depends on the provided variant category
+/// (e.g. "snv", "sv", "str").
+///
+/// # Arguments
+///
+/// * `path` - Path to the input VCF file.
+/// * `category` - Variant category used to select the appropriate parser.
 fn main() {
     let args = Args::parse();
 

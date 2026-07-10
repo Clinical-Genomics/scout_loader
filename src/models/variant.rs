@@ -1,5 +1,6 @@
 #[derive(Debug)]
 
+/// Represents a genomic variant (snv).
 pub struct Variant {
     pub chromosome: String,
     pub position: u64,
