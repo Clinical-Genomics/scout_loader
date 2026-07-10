@@ -1,6 +1,19 @@
 use rust_htslib::bcf::header::HeaderView;
 use rust_htslib::bcf::Record;
 
+/// Extracts chromosome, position, and end coordinates from a VCF record.
+///
+/// # Arguments
+///
+/// * `record` - A VCF record containing variant information.
+/// * `header` - The VCF header used to resolve chromosome identifiers.
+///
+/// # Returns
+///
+/// A tuple containing:
+/// * chromosome name
+/// * 1-based variant position
+/// * variant end coordinate
 pub fn parse_coordinates(
     record: &Record,
     header: &HeaderView,
