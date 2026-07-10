@@ -1,5 +1,6 @@
 mod parse;
 mod models;
+use crate::models::variant::VariantCategory;
 use parse::vcf::process_vcf;
 
 use clap::Parser;
@@ -25,8 +26,8 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    println!("VCF: {}", args.vcf);
-    println!("Category: {}", args.category);
+    let category = VariantCategory::from_str(&args.category)
+        .expect("Invalid category");
 
-    process_vcf(&args.vcf, &args.category);
+    process_vcf(&args.vcf, category);
 }
