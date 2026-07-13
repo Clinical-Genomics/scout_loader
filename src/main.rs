@@ -16,6 +16,9 @@ struct Args {
 
     #[arg(long)]
     variant_type: String,
+
+    #[arg(long)]
+    case_id: String,
 }
 
 /// Reads variants from a VCF file and converts each record into a Variant.
@@ -28,6 +31,7 @@ struct Args {
 /// * `path` - Path to the input VCF file.
 /// * `category` - Variant category used to select the appropriate parser.
 /// * `variant_type` - Variant type (clinical or research).
+/// * `case_id` - Case _id to be saved in the documents
 fn main() {
     let args = Args::parse();
 
@@ -36,5 +40,5 @@ fn main() {
     let variant_type = VariantType::from_str(&args.variant_type)
         .expect("Invalid variant type");
 
-    process_vcf(&args.vcf, category, variant_type);
+    process_vcf(&args.vcf, category, variant_type, &args.case_id);
 }

@@ -46,6 +46,7 @@ impl VariantCategory {
 /// Represents a genomic variant (snv).
 #[derive(Debug)]
 pub struct Variant {
+    pub case_id: String,
     pub r#type: String,
     pub chromosome: String,
     pub position: u64,
