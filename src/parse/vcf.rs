@@ -17,11 +17,12 @@ use crate::models::variant::VariantType;
 /// * `path` - Path to the input VCF file.
 /// * `category` - Variant category used to select the appropriate parser.
 /// * `variant_type` - Variant type (clinical or research).
+/// * `case_id` - _id of a case.
 ///
 /// # Panics
 ///
 /// Panics if the VCF file cannot be opened or if a record cannot be read.
-pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantType) {
+pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantType, case_id: &str) {
 
     let mut vcf = Reader::from_path(path)
         .expect("couldn't open input vcf");
@@ -34,6 +35,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let (reference, alternative) = parse_alleles(&record, category);
 
         let variant = Variant {
+            case_id: case_id.to_string(),
             r#type: variant_type.to_string(),
             chromosome: chromosome,
             position: position,
