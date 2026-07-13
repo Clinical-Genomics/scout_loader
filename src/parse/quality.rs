@@ -14,7 +14,7 @@ use rust_htslib::bcf::header::HeaderView;
 ///
 /// # Returns
 ///
-/// A vector of filter names associated with the variant.
+/// A vector of filter events associated with the variant.
 pub fn parse_filters(
     record: &Record,
     header: &HeaderView,
