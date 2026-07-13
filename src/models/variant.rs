@@ -52,5 +52,6 @@ pub struct Variant {
     pub position: u64,
     pub end: u64,
     pub reference: String,
-    pub alternative: String
+    pub alternative: String,
+    pub filters: Vec<String>
 }
