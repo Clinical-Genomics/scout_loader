@@ -1,7 +1,7 @@
 use rust_htslib::bcf::{Read, Reader};
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::alleles::parse_alleles;
-use crate::parse::quality::parse_filters;
+use crate::parse::filters::parse_filters;
 use crate::models::variant::Variant;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
@@ -44,7 +44,8 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             end: end,
             reference: reference,
             alternative: alternative,
-            filters: filters
+            filters: filters,
+            quality: record.qual()
         };
         println!("{:#?}", variant);
             
