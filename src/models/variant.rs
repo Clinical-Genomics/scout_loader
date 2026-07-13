@@ -53,5 +53,6 @@ pub struct Variant {
     pub end: u64,
     pub reference: String,
     pub alternative: String,
-    pub filters: Vec<String>
+    pub filters: Vec<String>,
+    pub quality: f32
 }
