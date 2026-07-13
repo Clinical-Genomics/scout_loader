@@ -43,6 +43,13 @@ impl VariantCategory {
     }
 }
 
+#[derive(Debug)]
+pub struct Compound {
+    pub display_name: String,
+    pub variant: String,
+    pub score: f64,
+}
+
 /// Represents a genomic variant (snv).
 #[derive(Debug)]
 pub struct Variant {
@@ -54,5 +61,6 @@ pub struct Variant {
     pub reference: String,
     pub alternative: String,
     pub filters: Vec<String>,
-    pub quality: f32
+    pub quality: f32,
+    pub compounds: Vec<Compound>,
 }

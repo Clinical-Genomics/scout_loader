@@ -1,5 +1,6 @@
 mod parse;
 mod models;
+mod utils;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use parse::vcf::process_vcf;
