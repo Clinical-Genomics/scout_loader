@@ -5,6 +5,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
 ## [unreleased]
+### Fixed
+- Normalize chromosome names by stripping the chr prefix (#4)
 ### Added
-- Use the `rust-htslib` for reading VCF files
-- First Variant model and parsing modules
+- Use the `rust-htslib` for reading VCF files (#1)
+- First Variant model and parsing modules (#2)
+- Parse alleles and missing docstrings (#3)
