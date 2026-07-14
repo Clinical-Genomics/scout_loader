@@ -3,6 +3,7 @@ use crate::parse::coordinates::parse_coordinates;
 use crate::parse::alleles::parse_alleles;
 use crate::parse::filters::parse_filters;
 use crate::parse::compounds::parse_compounds;
+use crate::parse::ids::parse_ids;
 use crate::models::variant::Variant;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
@@ -37,6 +38,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let record = result.unwrap();
         let (chromosome, position, end) = parse_coordinates(&record, &header);
         let (reference, alternative) = parse_alleles(&record, category);
+        let ids = parse_ids(&chromosome, &position, &reference, &alternative, &case_id, &variant_type,);
         let filters = parse_filters(&record, &header);
         let compound_info = record
             .info(b"Compounds")
@@ -49,6 +51,10 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let compounds = parse_compounds(compound_info, &case_id, &variant_type);
 
         let variant = Variant {
+            simple_id: ids.simple_id,
+            variant_id: ids.variant_id,
+            display_name: ids.display_name,
+            document_id: ids.document_id,
             case_id: case_id,
             r#type: variant_type,
             chromosome: chromosome,
