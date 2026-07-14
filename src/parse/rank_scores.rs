@@ -1,12 +1,13 @@
 use rust_htslib::bcf::Record;
 
-/// Parses the rank score and normalized rank score for a variant.
+/// Parses the rank score annotations for a variant from a VCF record.
 ///
 /// This function extracts the `RankScore` and `RankScoreNormalized` INFO
-/// annotations from the VCF record and uses `parse_rank_score` to retrieve
-/// the values corresponding to the provided case ID.
+/// annotations from the VCF record and retrieves the values corresponding
+/// to the provided case ID.
 ///
-/// Missing or invalid scores are returned as `None`.
+/// Missing or invalid scores are replaced with default values:
+/// `0` for the integer rank score and `0.0` for the normalized rank score.
 ///
 /// # Arguments
 ///
@@ -17,12 +18,12 @@ use rust_htslib::bcf::Record;
 ///
 /// A tuple containing:
 ///
-/// * `rank_score` - The primary rank score for the case, if available.
-/// * `norm_rank_score` - The normalized rank score for the case, if available.
+/// * `rank_score` - The integer rank score for the case (`i32`).
+/// * `norm_rank_score` - The normalized rank score for the case (`f64`).
 pub fn parse_rank_scores(
     record: &Record,
     case_id: &str,
-) -> (Option<i32>, Option<i32>) {
+) -> (i32, f64) {
     let rank_score_entry = record
         .info(b"RankScore")
         .string()
@@ -45,51 +46,57 @@ pub fn parse_rank_scores(
             })
         });
 
-    let rank_score = parse_rank_score(
+    let rank_score = parse_score_entry(
         rank_score_entry.as_deref(),
         case_id,
-    );
+    )
+    .and_then(|score| score.parse::<i32>().ok())
+    .unwrap_or(0);
 
-    let norm_rank_score = parse_rank_score(
+    let norm_rank_score = parse_score_entry(
         norm_rank_score_entry.as_deref(),
         case_id,
-    );
+    )
+    .and_then(|score| score.parse::<f64>().ok())
+    .unwrap_or(0.0);
 
     (rank_score, norm_rank_score)
 }
 
-/// Parses a rank score for a specific case from a raw rank score entry.
+/// Extracts a score value for a specific case from a raw VCF annotation.
 ///
-/// The rank score entry contains scores for multiple cases, separated by
-/// commas. Each entry is expected to follow the format `<case_id>:<score>`.
-/// The function extracts the score corresponding to the provided case ID.
+/// The annotation contains scores for multiple cases, separated by commas.
+/// Each entry follows the format `<case_id>:<score>`.
 ///
 /// # Arguments
 ///
-/// * `rank_score_entry` - Optional raw rank score annotation string.
+/// * `score_entry` - Optional raw score annotation string.
 /// * `case_id` - Case identifier used to select the corresponding score.
 ///
 /// # Returns
 ///
-/// The parsed score as `Some(i32)` if the case ID is found and the score can
-/// be converted successfully, otherwise `None`.
-pub fn parse_rank_score(
-    rank_score_entry: Option<&str>,
+/// The score value as a string slice if the case ID is found, otherwise `None`.
+pub fn parse_score_entry<'a>(
+    score_entry: Option<&'a str>,
     case_id: &str,
-) -> Option<i32> {
-    let Some(rank_score_entry) = rank_score_entry else {
+) -> Option<&'a str> {
+    let Some(score_entry) = score_entry else {
         return None;
     };
 
-    for family_info in rank_score_entry.split(',') {
-        let split_info: Vec<&str> = family_info.split(':').collect();
+    for family_info in score_entry.split(',') {
+        let mut split_info = family_info.split(':');
 
-        if split_info.len() < 2 {
+        let Some(entry_case_id) = split_info.next() else {
             continue;
-        }
+        };
 
-        if split_info[0] == case_id {
-            return split_info[1].parse::<i32>().ok();
+        let Some(score) = split_info.next() else {
+            continue;
+        };
+
+        if entry_case_id == case_id {
+            return Some(score);
         }
     }
 
