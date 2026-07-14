@@ -43,6 +43,14 @@ impl VariantCategory {
     }
 }
 
+/// Represents the identifiers associated with a variant.
+pub struct VariantIds {
+    pub simple_id: String,
+    pub variant_id: String,
+    pub display_name: String,
+    pub document_id: String,
+}
+
 #[derive(Debug)]
 pub struct Compound {
     pub display_name: String,
@@ -53,6 +61,10 @@ pub struct Compound {
 /// Represents a genomic variant (snv).
 #[derive(Debug)]
 pub struct Variant {
+    pub simple_id: String,
+    pub variant_id: String,
+    pub display_name: String,
+    pub document_id: String,
     pub case_id: String,
     pub r#type: String,
     pub chromosome: String,
