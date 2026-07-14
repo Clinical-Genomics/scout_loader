@@ -66,6 +66,8 @@ pub struct Variant {
     pub display_name: String,
     pub document_id: String,
     pub case_id: String,
+    pub rank_score: Option<i32>,
+    pub norm_rank_score: Option<i32>,
     pub r#type: String,
     pub chromosome: String,
     pub position: u64,

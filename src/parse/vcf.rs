@@ -4,6 +4,7 @@ use crate::parse::alleles::parse_alleles;
 use crate::parse::filters::parse_filters;
 use crate::parse::compounds::parse_compounds;
 use crate::parse::ids::parse_ids;
+use crate::parse::rank_scores::parse_rank_scores;
 use crate::models::variant::Variant;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
@@ -49,6 +50,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
                 String::from_utf8_lossy(value).to_string()
             }));
         let compounds = parse_compounds(compound_info, &case_id, &variant_type);
+        let (rank_score, norm_rank_score) = parse_rank_scores(&record, &case_id);
 
         let variant = Variant {
             simple_id: ids.simple_id,
@@ -57,6 +59,8 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             document_id: ids.document_id,
             case_id: case_id,
             r#type: variant_type,
+            rank_score: rank_score,
+            norm_rank_score: norm_rank_score,
             chromosome: chromosome,
             position: position,
             end: end,
@@ -64,7 +68,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             alternative: alternative,
             filters: filters,
             quality: record.qual(),
-            compounds: compounds
+            compounds: compounds,
         };
         println!("{:#?}", variant);
             
