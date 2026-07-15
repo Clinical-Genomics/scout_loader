@@ -1,4 +1,5 @@
 use rust_htslib::bcf::{Read, Reader};
+use std::collections::HashMap;
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::alleles::parse_alleles;
 use crate::parse::filters::parse_filters;
@@ -8,6 +9,7 @@ use crate::parse::rank_scores::parse_rank_scores;
 use crate::models::variant::Variant;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
+use crate::models::cytoband::Cytoband;
 
 
 /// Processes a VCF file and parses each record according to the variant category.
@@ -26,7 +28,7 @@ use crate::models::variant::VariantType;
 /// # Panics
 ///
 /// Panics if the VCF file cannot be opened or if a record cannot be read.
-pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantType, case_id: &str, genome_build: &str) {
+pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantType, case_id: &str, genome_build: &str, cytobands: &HashMap<String, Vec<Cytoband>>) {
 
     let mut vcf = Reader::from_path(path)
         .expect("couldn't open input vcf");
@@ -37,7 +39,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let case_id = case_id.to_string();
         let variant_type = variant_type.to_string();
         let record = result.unwrap();
-        let coordinates = parse_coordinates(&record, &header);
+        let coordinates = parse_coordinates(&record, &header, cytobands);
         let (reference, alternative) = parse_alleles(&record, category);
         let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type,);
         let filters = parse_filters(&record, &header);

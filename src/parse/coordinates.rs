@@ -1,6 +1,37 @@
 use rust_htslib::bcf::header::HeaderView;
 use rust_htslib::bcf::Record;
+use std::collections::HashMap;
 use crate::models::variant::Coordinates;
+use crate::models::build::GenomeBuild;
+use crate::models::cytoband::Cytoband;
+
+
+/// Finds the cytoband overlapping a genomic coordinate.
+///
+/// # Arguments
+///
+/// * `cytobands` - Cytoband annotations indexed by chromosome.
+/// * `chrom` - Normalized chromosome name.
+/// * `pos` - Genomic position (1-based).
+///
+/// # Returns
+///
+/// The cytoband name if the position overlaps an interval, otherwise an empty
+/// string.
+pub fn get_cytoband_coordinates(
+    cytobands: &HashMap<String, Vec<Cytoband>>,
+    chrom: &str,
+    pos: u64,
+) -> Option<String> {
+    cytobands
+        .get(chrom)
+        .and_then(|bands| {
+            bands.iter().find(|band| {
+                pos >= band.start && pos < band.end
+            })
+        })
+        .map(|band| band.name.clone())
+}
 
 
 /// Normalizes a chromosome name by removing an optional "chr" prefix.
@@ -26,6 +57,7 @@ fn normalize_chromosome(chromosome: &str) -> String {
 ///
 /// * `record` - A VCF record containing variant information.
 /// * `header` - The VCF header used to resolve chromosome identifiers.
+/// * `cytobands` - The VCF header used to resolve chromosome identifiers.
 ///
 /// # Returns
 ///
@@ -43,6 +75,7 @@ fn normalize_chromosome(chromosome: &str) -> String {
 pub fn parse_coordinates(
     record: &Record,
     header: &HeaderView,
+    cytobands: &HashMap<String, Vec<Cytoband>>
 ) -> Coordinates {
     let rid = record.rid().expect("missing chromosome");
 
@@ -78,15 +111,29 @@ pub fn parse_coordinates(
         alt_len as i64
     };
 
+    let mut end_chrom = chrom.clone();
+
+    let cytoband_start = get_cytoband_coordinates(
+        cytobands,
+        &chrom,
+        position,
+    );
+
+    let cytoband_end = get_cytoband_coordinates(
+        cytobands,
+        &end_chrom,
+        end,
+    );
+
     Coordinates {
         chromosome: chrom.clone(),
         position,
         end,
-        end_chrom: chrom,
+        end_chrom,
         length,
         sub_category,
         mate_id: None,
-        cytoband_start: None,
-        cytoband_end: None,
+        cytoband_start,
+        cytoband_end
     }
 }

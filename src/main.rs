@@ -5,6 +5,7 @@ use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::build::GenomeBuild;
 use parse::vcf::process_vcf;
+use parse::cytobands::set_cytobands;
 
 use clap::Parser;
 
@@ -47,5 +48,13 @@ fn main() {
     let genome_build = GenomeBuild::from_str(&args.genome_build)
         .expect("Invalid genome build");
 
-    process_vcf(&args.vcf, category, variant_type, &args.case_id, genome_build.as_str());
+    let cytobands = match set_cytobands(genome_build.cytoband_path()) {
+        Ok(value) => value,
+        Err(error) => {
+            eprintln!("Could not load cytobands: {}", error);
+            return;
+        }
+    };
+
+    process_vcf(&args.vcf, category, variant_type, &args.case_id, genome_build.as_str(), &cytobands);
 }
