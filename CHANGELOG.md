@@ -5,8 +5,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
 ## [unreleased]
-### Fixed
-- Normalize chromosome names by stripping the chr prefix (#4)
 ### Added
 - Use the `rust-htslib` for reading VCF files (#1)
 - First Variant model and parsing modules (#2)
@@ -21,3 +19,5 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse `rank_score` and `norm_rank_score`from VCF (#16)
 - Infer complete coordinate data (#17)
 - Parse cytobands and collect cytoband start and end for each variant (#18)
+### Fixed
+- Normalize chromosome names by stripping the chr prefix (#4)

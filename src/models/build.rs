@@ -22,8 +22,8 @@ impl GenomeBuild {
 
     pub fn cytoband_path(&self) -> &'static str {
         match self {
-            GenomeBuild::Grch37 => "resources/cytobands_grch37.tsv.gz",
-            GenomeBuild::Grch38 => "resources/cytobands_grch38.tsv.gz",
+            GenomeBuild::Grch37 => "resources/cytoBand_hg19.txt.gz",
+            GenomeBuild::Grch38 => "resources/cytoBand_hg38.txt.gz",
         }
     }
 }
