@@ -3,6 +3,7 @@ mod models;
 mod utils;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
+use crate::models::build::GenomeBuild;
 use parse::vcf::process_vcf;
 
 use clap::Parser;
@@ -20,6 +21,9 @@ struct Args {
 
     #[arg(long)]
     case_id: String,
+
+    #[arg(long)]
+    genome_build: String,
 }
 
 /// Reads variants from a VCF file and converts each record into a Variant.
@@ -40,6 +44,8 @@ fn main() {
         .expect("Invalid category");
     let variant_type = VariantType::from_str(&args.variant_type)
         .expect("Invalid variant type");
+    let genome_build = GenomeBuild::from_str(&args.genome_build)
+        .expect("Invalid genome build");
 
-    process_vcf(&args.vcf, category, variant_type, &args.case_id);
+    process_vcf(&args.vcf, category, variant_type, &args.case_id, genome_build.as_str());
 }
