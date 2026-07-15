@@ -1,6 +1,5 @@
 use rust_htslib::bcf::header::HeaderView;
 use rust_htslib::bcf::Record;
-use crate::models::variant::Coordinates;
 
 
 /// Normalizes a chromosome name by removing an optional "chr" prefix.
@@ -16,11 +15,7 @@ fn normalize_chromosome(chromosome: &str) -> String {
 }
 
 
-/// Extracts variant coordinates and basic variant information from a VCF record.
-///
-/// The chromosome name is normalized by removing a possible `chr` prefix.
-/// Positions are converted from the VCF 0-based representation to 1-based
-/// coordinates.
+/// Extracts chromosome, position, and end coordinates from a VCF record.
 ///
 /// # Arguments
 ///
@@ -29,62 +24,25 @@ fn normalize_chromosome(chromosome: &str) -> String {
 ///
 /// # Returns
 ///
-/// A [`Coordinates`] object containing:
-///
+/// A tuple containing:
 /// * chromosome name
-/// * position
-/// * end coordinate
-/// * reference and alternative alleles
-/// * variant length
-/// * variant sub-category
-/// * mate ID when present
+/// * 1-based variant position
+/// * variant end coordinate
 pub fn parse_coordinates(
     record: &Record,
     header: &HeaderView,
-) -> Coordinates {
+) -> (String, u64, u64) {
     let rid = record.rid().expect("missing chromosome");
 
-    let chrom = String::from_utf8_lossy(
+    let chromosome = String::from_utf8_lossy(
         header.rid2name(rid).expect("unknown chromosome")
     )
     .to_string();
-
-    let chrom = normalize_chromosome(&chrom);
+    let chromosome = normalize_chromosome(&chromosome);
 
     let position = (record.pos() + 1) as u64;
 
-    let reference = String::from_utf8_lossy(record.alleles()[0])
-        .to_string();
+    let end = position;
 
-    let alternative = record
-        .alleles()
-        .get(1)
-        .map(|allele| String::from_utf8_lossy(allele).to_string())
-        .unwrap_or_else(|| ".".to_string());
-
-    let ref_len = reference.len();
-    let alt_len = alternative.len();
-
-    let mut sub_category = "snv".to_string();
-
-    let end = record.end() as u64;
-
-    let length = if ref_len != alt_len {
-        sub_category = "indel".to_string();
-        (ref_len as i64 - alt_len as i64).abs()
-    } else {
-        alt_len as i64
-    };
-
-    Coordinates {
-        chromosome: chrom.clone(),
-        position,
-        end,
-        end_chrom: chrom,
-        length,
-        sub_category,
-        mate_id: None,
-        cytoband_start: None,
-        cytoband_end: None,
-    }
+    (chromosome, position, end)
 }

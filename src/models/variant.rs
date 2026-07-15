@@ -1,19 +1,5 @@
 use std::fmt;
 
-#[derive(Debug)]
-pub struct Coordinates {
-    pub chromosome: String,
-    pub position: u64,
-    pub end: u64,
-    pub end_chrom: String,
-    pub length: i64,
-    pub sub_category: String,
-    pub mate_id: Option<String>,
-    pub cytoband_start: Option<String>,
-    pub cytoband_end: Option<String>
-
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VariantType {
     Clinical,
@@ -42,11 +28,7 @@ impl fmt::Display for VariantType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VariantCategory {
     Snv,
-    Cancer,
     Sv,
-    CancerSv,
-    Fusion,
-    Mei,
     Str,
 }
 
@@ -54,32 +36,10 @@ impl VariantCategory {
     pub fn from_str(s: &str) -> Result<Self, String> {
         match s {
             "snv" => Ok(VariantCategory::Snv),
-            "cancer" => Ok(VariantCategory::Cancer),
             "sv" => Ok(VariantCategory::Sv),
-            "cancer_sv" => Ok(VariantCategory::CancerSv),
-            "fusion" => Ok(VariantCategory::Fusion),
-            "mei" => Ok(VariantCategory::Mei),
             "str" => Ok(VariantCategory::Str),
             _ => Err(format!("Unknown variant category: {}", s)),
         }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            VariantCategory::Snv => "snv",
-            VariantCategory::Cancer => "cancer",
-            VariantCategory::Sv => "sv",
-            VariantCategory::CancerSv => "cancer_sv",
-            VariantCategory::Fusion => "fusion",
-            VariantCategory::Mei => "mei",
-            VariantCategory::Str => "str",
-        }
-    }
-}
-
-impl fmt::Display for VariantCategory {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
     }
 }
 
@@ -110,17 +70,10 @@ pub struct Variant {
     pub norm_rank_score: f64,
     pub r#type: String,
     pub chromosome: String,
-    pub end_chrom: String,
     pub position: u64,
     pub end: u64,
-    pub length: i64,
-    pub category: String,
-    pub sub_category: String,
     pub reference: String,
     pub alternative: String,
-    pub mate_id: Option<String>,
-    pub cytoband_start: Option<String>,
-    pub cytoband_end: Option<String>,
     pub filters: Vec<String>,
     pub quality: f32,
     pub compounds: Vec<Compound>,
