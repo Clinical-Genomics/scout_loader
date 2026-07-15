@@ -26,7 +26,7 @@ use crate::models::variant::VariantType;
 /// # Panics
 ///
 /// Panics if the VCF file cannot be opened or if a record cannot be read.
-pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantType, case_id: &str) {
+pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantType, case_id: &str, genome_build: &str) {
 
     let mut vcf = Reader::from_path(path)
         .expect("couldn't open input vcf");
@@ -37,9 +37,9 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let case_id = case_id.to_string();
         let variant_type = variant_type.to_string();
         let record = result.unwrap();
-        let (chromosome, position, end) = parse_coordinates(&record, &header);
+        let coordinates = parse_coordinates(&record, &header);
         let (reference, alternative) = parse_alleles(&record, category);
-        let ids = parse_ids(&chromosome, &position, &reference, &alternative, &case_id, &variant_type,);
+        let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type,);
         let filters = parse_filters(&record, &header);
         let compound_info = record
             .info(b"Compounds")
@@ -58,14 +58,21 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             display_name: ids.display_name,
             document_id: ids.document_id,
             case_id: case_id,
-            r#type: variant_type,
             rank_score: rank_score,
             norm_rank_score: norm_rank_score,
-            chromosome: chromosome,
-            position: position,
-            end: end,
+            r#type: variant_type,
+            chromosome: coordinates.chromosome,
+            end_chrom: coordinates.end_chrom,
+            position: coordinates.position,
+            end: coordinates.end,
+            length: coordinates.length,
+            category: category.to_string(),
+            sub_category: coordinates.sub_category,
             reference: reference,
             alternative: alternative,
+            mate_id: coordinates.mate_id,
+            cytoband_start: coordinates.cytoband_start,
+            cytoband_end: coordinates.cytoband_end,
             filters: filters,
             quality: record.qual(),
             compounds: compounds,
