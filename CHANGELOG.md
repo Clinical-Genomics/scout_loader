@@ -19,5 +19,6 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse `rank_score` and `norm_rank_score`from VCF (#16)
 - Infer complete coordinate data (#17)
 - Parse cytobands and collect cytoband start and end for each variant (#18)
+- Parse genmod genetic models (#19)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)

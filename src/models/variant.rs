@@ -124,4 +124,5 @@ pub struct Variant {
     pub filters: Vec<String>,
     pub quality: f32,
     pub compounds: Vec<Compound>,
+    pub genetic_models: Vec<String>,
 }

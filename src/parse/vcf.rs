@@ -6,6 +6,7 @@ use crate::parse::filters::parse_filters;
 use crate::parse::compounds::parse_compounds;
 use crate::parse::ids::parse_ids;
 use crate::parse::rank_scores::parse_rank_scores;
+use crate::parse::genetic_models::parse_genetic_models;
 use crate::models::variant::Variant;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
@@ -53,6 +54,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             }));
         let compounds = parse_compounds(compound_info, &case_id, &variant_type);
         let (rank_score, norm_rank_score) = parse_rank_scores(&record, &case_id);
+        let genetic_models = parse_genetic_models(&record, &case_id);
 
         let variant = Variant {
             simple_id: ids.simple_id,
@@ -78,6 +80,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             filters: filters,
             quality: record.qual(),
             compounds: compounds,
+            genetic_models: genetic_models
         };
         println!("{:#?}", variant);
             
