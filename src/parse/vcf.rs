@@ -1,4 +1,5 @@
 use rust_htslib::bcf::{Read, Reader};
+use mongodb::bson::{doc, self, Document, Bson};
 use std::collections::HashMap;
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::alleles::parse_alleles;
@@ -7,7 +8,8 @@ use crate::parse::compounds::parse_compounds;
 use crate::parse::ids::parse_ids;
 use crate::parse::rank_scores::parse_rank_scores;
 use crate::parse::genetic_models::parse_genetic_models;
-use crate::models::variant::Variant;
+use crate::parse::info::parse_info;
+use crate::models::variant::VariantDocument;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
@@ -56,32 +58,108 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let (rank_score, norm_rank_score) = parse_rank_scores(&record, &case_id);
         let genetic_models = parse_genetic_models(&record, &case_id);
 
-        let variant = Variant {
-            simple_id: ids.simple_id,
-            variant_id: ids.variant_id,
-            display_name: ids.display_name,
-            document_id: ids.document_id,
-            case_id: case_id,
-            rank_score: rank_score,
-            norm_rank_score: norm_rank_score,
-            r#type: variant_type,
-            chromosome: coordinates.chromosome,
-            end_chrom: coordinates.end_chrom,
-            position: coordinates.position,
-            end: coordinates.end,
-            length: coordinates.length,
-            category: category.to_string(),
-            sub_category: coordinates.sub_category,
-            reference: reference,
-            alternative: alternative,
-            mate_id: coordinates.mate_id,
-            cytoband_start: coordinates.cytoband_start,
-            cytoband_end: coordinates.cytoband_end,
-            filters: filters,
-            quality: record.qual(),
-            compounds: compounds,
-            genetic_models: genetic_models
+        // define variant category - specific key/values
+        let mut annotations = HashMap::new();
+        match category {
+            VariantCategory::Str => {
+                if let Some(value) = parse_info::<f64>(&record, b"SweGenMean") {
+                    annotations.insert(
+                        "str_swegen_mean".to_string(),
+                        bson::Bson::Double(value),
+                    );
+                }
+
+                if let Some(value) = parse_info::<f64>(&record, b"SweGenStd") {
+                    annotations.insert(
+                        "str_swegen_std".to_string(),
+                        bson::Bson::Double(value),
+                    );
+                }
+            }
+
+            VariantCategory::Cancer | VariantCategory::CancerSv => {
+                if let Some(value) = parse_info::<i32>(&record, b"SOMATICSCORE") {
+                    annotations.insert(
+                        "somatic_score".to_string(),
+                        bson::Bson::Int32(value),
+                    );
+                }
+            }
+
+            VariantCategory::Sv | VariantCategory::CancerSv | VariantCategory::Fusion => {
+            }
+
+            _ => {}
+        }
+
+
+        let mut variant = doc! {
+            "simple_id": ids.simple_id,
+            "variant_id": ids.variant_id,
+            "display_name": ids.display_name,
+            "document_id": ids.document_id,
+            "case_id": case_id,
+
+            "rank_score": rank_score,
+            "norm_rank_score": norm_rank_score,
+
+            "type": variant_type,
+
+            "chromosome": coordinates.chromosome,
+            "end_chrom": coordinates.end_chrom,
+            "position": coordinates.position as i64,
+            "end": coordinates.end as i64,
+            "length": coordinates.length,
+
+            "category": category.to_string(),
+            "sub_category": coordinates.sub_category,
+
+            "reference": reference,
+            "alternative": alternative,
+
+            "mate_id": coordinates.mate_id,
+            "cytoband_start": coordinates.cytoband_start,
+            "cytoband_end": coordinates.cytoband_end,
+
+            "filters": filters,
+            "quality": record.qual(),
+
+            "genetic_models": genetic_models,
         };
+
+        match category {
+            VariantCategory::Str => {
+                if let Some(value) = parse_info::<f64>(&record, b"SweGenMean") {
+                    variant.insert(
+                        "str_swegen_mean",
+                        Bson::Double(value),
+                    );
+                }
+
+                if let Some(value) = parse_info::<f64>(&record, b"SweGenStd") {
+                    variant.insert(
+                        "str_swegen_std",
+                        Bson::Double(value),
+                    );
+                }
+            }
+
+            VariantCategory::Cancer | VariantCategory::CancerSv => {
+                if let Some(value) = parse_info::<i32>(&record, b"SOMATICSCORE") {
+                    variant.insert(
+                        "somatic_score",
+                        Bson::Int32(value),
+                    );
+                }
+            }
+
+            VariantCategory::Sv | VariantCategory::CancerSv | VariantCategory::Fusion => {
+                }
+            }
+
+            _ => {}
+        }
+
         println!("{:#?}", variant);
             
     }

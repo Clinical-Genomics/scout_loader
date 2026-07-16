@@ -7,3 +7,4 @@ pub mod ids;
 pub mod rank_scores;
 pub mod cytobands;
 pub mod genetic_models;
+pub mod info;
