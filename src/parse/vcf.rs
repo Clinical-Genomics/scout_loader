@@ -8,7 +8,7 @@ use crate::parse::compounds::parse_compounds;
 use crate::parse::ids::parse_ids;
 use crate::parse::rank_scores::parse_rank_scores;
 use crate::parse::genetic_models::parse_genetic_models;
-use crate::parse::info::parse_info_int;
+use crate::parse::info::{parse_info_int, parse_info_string, parse_custom_data};
 use crate::parse::strs::set_str_info;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
@@ -95,6 +95,10 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
             "genetic_models": genetic_models,
         };
+
+        if let Some(custom) = parse_custom_data(parse_info_string(&record, b"SCOUT_CUSTOM")) {
+                variant.insert("custom", custom);
+            }
 
         match category {
             VariantCategory::Str => {
