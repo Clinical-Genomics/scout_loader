@@ -60,6 +60,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let (rank_score, norm_rank_score) = parse_rank_scores(&record, &case_id);
         let genetic_models = parse_genetic_models(&record, &case_id);
 
+        // This structure contains fields common to all variants categories
         let mut variant = doc! {
             "simple_id": ids.simple_id,
             "variant_id": ids.variant_id,

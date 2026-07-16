@@ -26,5 +26,6 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parsing specific variant fields: `str_swegen_mean` and `str_swegen_std` (STRs) and `somatic_score` (cancer and cancer_sv variants) (#20)
 - Parse a number of STR-related fields (#21)
 - Parse SCOUT_CUSTOM INFO field (#22)
+- Parse strs source fields (`SourceDisplay`, `Source`, `SourceId`) (#23)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
