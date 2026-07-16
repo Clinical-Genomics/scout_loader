@@ -27,6 +27,8 @@ use crate::models::cytoband::Cytoband;
 /// * `category` - Variant category used to select the appropriate parser.
 /// * `variant_type` - Variant type (clinical or research).
 /// * `case_id` - _id of a case.
+/// * `genome_build` - 37 or 38
+/// * `cytobands` - A list of parsed cytobands, reflecting the case genome build
 ///
 /// # Panics
 ///
