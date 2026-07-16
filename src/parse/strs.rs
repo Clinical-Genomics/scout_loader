@@ -17,10 +17,10 @@ pub fn set_str_info(record: &Record, variant: &mut Document) {
     insert_info_float(record, variant, b"SweGenStd", "str_swegen_std");
 
     insert_info_string(record, variant, b"REPID", "str_repid");
-    insert_info_string(record, variant, b"TRID", "str_trid");
-    insert_info_string(record, variant, b"STRUC", "str_struc");
-    insert_info_string(record, variant, b"MOTIFS", "str_motifs");
-    insert_info_string(record, variant, b"PathologicStruc", "str_pathologic_struc");
+    insert_info_string(record, variant, b"TRID", "str_trid"); // Doesn't seem to be used downstream
+    insert_info_string(record, variant, b"STRUC", "str_struc"); // Doesn't seem to be used downstream
+    insert_info_string(record, variant, b"MOTIFS", "str_motifs"); // Doesn't seem to be used downstream
+    insert_info_string(record, variant, b"PathologicStruc", "str_pathologic_struc"); // Doesn't seem to be used downstream
 
     insert_info_string(record, variant, b"RU", "str_ru");
     insert_info_string(record, variant, b"DisplayRU", "str_display_ru");
