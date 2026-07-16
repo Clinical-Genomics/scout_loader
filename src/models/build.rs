@@ -13,13 +13,6 @@ impl GenomeBuild {
         }
     }
 
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            GenomeBuild::Grch37 => "37",
-            GenomeBuild::Grch38 => "38",
-        }
-    }
-
     pub fn cytoband_path(&self) -> &'static str {
         match self {
             GenomeBuild::Grch37 => "resources/cytoBand_hg19.txt.gz",

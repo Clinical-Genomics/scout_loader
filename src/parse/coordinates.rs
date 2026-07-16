@@ -2,7 +2,6 @@ use rust_htslib::bcf::header::HeaderView;
 use rust_htslib::bcf::Record;
 use std::collections::HashMap;
 use crate::models::variant::Coordinates;
-use crate::models::build::GenomeBuild;
 use crate::models::cytoband::Cytoband;
 
 

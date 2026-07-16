@@ -56,5 +56,5 @@ fn main() {
         }
     };
 
-    process_vcf(&args.vcf, category, variant_type, &args.case_id, genome_build.as_str(), &cytobands);
+    process_vcf(&args.vcf, category, variant_type, &args.case_id, &cytobands);
 }

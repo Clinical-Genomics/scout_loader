@@ -1,5 +1,6 @@
 use mongodb::bson::{self, Document};
 use rust_htslib::bcf::Record;
+use mongodb::bson::Bson;
 
 /// Parse a Float INFO field from a VCF record.
 ///
@@ -93,4 +94,32 @@ pub fn insert_info_string(
             bson::Bson::String(value),
         );
     }
+}
+
+
+/// Parse the SCOUT_CUSTOM INFO field.
+///
+/// Input format:
+/// "key1|val1,key2|val2"
+///
+/// Returns:
+/// [["key1", "val1"], ["key2", "val2"]]
+///
+/// Missing or malformed values return None.
+pub fn parse_custom_data(custom_str: Option<String>) -> Option<Bson> {
+    let custom_str = custom_str?;
+
+    let pairs: Vec<Bson> = custom_str
+        .split(',')
+        .map(|pair| {
+            let values: Vec<Bson> = pair
+                .split('|')
+                .map(|value| Bson::String(value.to_string()))
+                .collect();
+
+            Bson::Array(values)
+        })
+        .collect();
+
+    Some(Bson::Array(pairs))
 }
