@@ -61,13 +61,6 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         // define variant category - specific key/values
         let mut annotations: HashMap<String, Bson> = HashMap::new();
 
-        match record.info(b"SweGenMean").float() {
-            Ok(Some(values)) => println!("SweGenMean values: {:?}", values),
-            Ok(None) => println!("SweGenMean missing"),
-            Err(e) => println!("SweGenMean error: {:?}", e),
-        }
-
-
         let mut variant = doc! {
             "simple_id": ids.simple_id,
             "variant_id": ids.variant_id,
