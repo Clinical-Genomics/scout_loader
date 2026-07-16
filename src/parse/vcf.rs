@@ -9,6 +9,7 @@ use crate::parse::ids::parse_ids;
 use crate::parse::rank_scores::parse_rank_scores;
 use crate::parse::genetic_models::parse_genetic_models;
 use crate::parse::info::{parse_info_float, parse_info_int, parse_info_string};
+use crate::parse::strs::set_str_info;
 use crate::models::variant::VariantDocument;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
@@ -99,19 +100,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
         match category {
             VariantCategory::Str => {
-                if let Some(value) = parse_info_float(&record, b"SweGenMean") {
-                    variant.insert(
-                        "str_swegen_mean",
-                        bson::Bson::Double(value),
-                    );
-                }
-
-                if let Some(value) = parse_info_float(&record, b"SweGenStd") {
-                    variant.insert(
-                        "str_swegen_std",
-                        bson::Bson::Double(value),
-                    );
-                }
+                set_str_info(&record, &mut variant);
             }
 
             VariantCategory::Cancer | VariantCategory::CancerSv => {
