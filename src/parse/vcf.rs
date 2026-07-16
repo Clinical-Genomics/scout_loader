@@ -1,5 +1,5 @@
 use rust_htslib::bcf::{Read, Reader};
-use mongodb::bson::{doc, self, Document, Bson};
+use mongodb::bson::{doc, self};
 use std::collections::HashMap;
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::alleles::parse_alleles;
@@ -8,9 +8,8 @@ use crate::parse::compounds::parse_compounds;
 use crate::parse::ids::parse_ids;
 use crate::parse::rank_scores::parse_rank_scores;
 use crate::parse::genetic_models::parse_genetic_models;
-use crate::parse::info::{parse_info_float, parse_info_int, parse_info_string};
+use crate::parse::info::parse_info_int;
 use crate::parse::strs::set_str_info;
-use crate::models::variant::VariantDocument;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
@@ -28,13 +27,12 @@ use crate::models::cytoband::Cytoband;
 /// * `category` - Variant category used to select the appropriate parser.
 /// * `variant_type` - Variant type (clinical or research).
 /// * `case_id` - _id of a case.
-/// * `genome_build` - 37 or 38
 /// * `cytobands` - A list of parsed cytobands, reflecting the case genome build
 ///
 /// # Panics
 ///
 /// Panics if the VCF file cannot be opened or if a record cannot be read.
-pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantType, case_id: &str, genome_build: &str, cytobands: &HashMap<String, Vec<Cytoband>>) {
+pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantType, case_id: &str, cytobands: &HashMap<String, Vec<Cytoband>>) {
 
     let mut vcf = Reader::from_path(path)
         .expect("couldn't open input vcf");
@@ -58,11 +56,9 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
                 String::from_utf8_lossy(value).to_string()
             }));
         let compounds = parse_compounds(compound_info, &case_id, &variant_type);
+        let compounds_bson = bson::to_bson(&compounds).expect("Failed to convert compounds to BSON");
         let (rank_score, norm_rank_score) = parse_rank_scores(&record, &case_id);
         let genetic_models = parse_genetic_models(&record, &case_id);
-
-        // define variant category - specific key/values
-        let mut annotations: HashMap<String, Bson> = HashMap::new();
 
         let mut variant = doc! {
             "simple_id": ids.simple_id,
@@ -70,6 +66,8 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             "display_name": ids.display_name,
             "document_id": ids.document_id,
             "case_id": case_id,
+
+            "compounds": compounds_bson,
 
             "rank_score": rank_score,
             "norm_rank_score": norm_rank_score,

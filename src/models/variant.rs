@@ -1,6 +1,4 @@
 use std::fmt;
-use mongodb::bson;
-use std::collections::HashMap;
 use serde::Serialize;
 
 #[derive(Debug)]
@@ -99,44 +97,4 @@ pub struct Compound {
     pub display_name: String,
     pub variant: String,
     pub score: f64,
-}
-
-#[derive(Debug, Serialize)]
-pub struct VariantDocument {
-    pub simple_id: String,
-    pub variant_id: String,
-    pub display_name: String,
-    pub document_id: String,
-    pub case_id: String,
-
-    pub rank_score: i32,
-    pub norm_rank_score: f64,
-
-    pub r#type: String,
-
-    pub chromosome: String,
-    pub end_chrom: String,
-    pub position: u64,
-    pub end: u64,
-    pub length: i64,
-
-    pub category: String,
-    pub sub_category: String,
-
-    pub reference: String,
-    pub alternative: String,
-
-    pub mate_id: Option<String>,
-
-    pub cytoband_start: Option<String>,
-    pub cytoband_end: Option<String>,
-
-    pub filters: Vec<String>,
-    pub quality: f32,
-
-    pub compounds: Vec<Compound>,
-    pub genetic_models: Vec<String>,
-
-    // category-specific fields
-    pub annotations: HashMap<String, bson::Bson>,
 }
