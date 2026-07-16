@@ -8,7 +8,7 @@ use crate::parse::compounds::parse_compounds;
 use crate::parse::ids::parse_ids;
 use crate::parse::rank_scores::parse_rank_scores;
 use crate::parse::genetic_models::parse_genetic_models;
-use crate::parse::info::parse_info;
+use crate::parse::info::{parse_info_float, parse_info_int, parse_info_string};
 use crate::models::variant::VariantDocument;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
@@ -59,37 +59,12 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let genetic_models = parse_genetic_models(&record, &case_id);
 
         // define variant category - specific key/values
-        let mut annotations = HashMap::new();
-        match category {
-            VariantCategory::Str => {
-                if let Some(value) = parse_info::<f64>(&record, b"SweGenMean") {
-                    annotations.insert(
-                        "str_swegen_mean".to_string(),
-                        bson::Bson::Double(value),
-                    );
-                }
+        let mut annotations: HashMap<String, Bson> = HashMap::new();
 
-                if let Some(value) = parse_info::<f64>(&record, b"SweGenStd") {
-                    annotations.insert(
-                        "str_swegen_std".to_string(),
-                        bson::Bson::Double(value),
-                    );
-                }
-            }
-
-            VariantCategory::Cancer | VariantCategory::CancerSv => {
-                if let Some(value) = parse_info::<i32>(&record, b"SOMATICSCORE") {
-                    annotations.insert(
-                        "somatic_score".to_string(),
-                        bson::Bson::Int32(value),
-                    );
-                }
-            }
-
-            VariantCategory::Sv | VariantCategory::CancerSv | VariantCategory::Fusion => {
-            }
-
-            _ => {}
+        match record.info(b"SweGenMean").float() {
+            Ok(Some(values)) => println!("SweGenMean values: {:?}", values),
+            Ok(None) => println!("SweGenMean missing"),
+            Err(e) => println!("SweGenMean error: {:?}", e),
         }
 
 
@@ -129,31 +104,27 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
         match category {
             VariantCategory::Str => {
-                if let Some(value) = parse_info::<f64>(&record, b"SweGenMean") {
+                if let Some(value) = parse_info_float(&record, b"SweGenMean") {
                     variant.insert(
                         "str_swegen_mean",
-                        Bson::Double(value),
+                        bson::Bson::Double(value),
                     );
                 }
 
-                if let Some(value) = parse_info::<f64>(&record, b"SweGenStd") {
+                if let Some(value) = parse_info_float(&record, b"SweGenStd") {
                     variant.insert(
                         "str_swegen_std",
-                        Bson::Double(value),
+                        bson::Bson::Double(value),
                     );
                 }
             }
 
             VariantCategory::Cancer | VariantCategory::CancerSv => {
-                if let Some(value) = parse_info::<i32>(&record, b"SOMATICSCORE") {
+                if let Some(value) = parse_info_int(&record, b"SOMATICSCORE") {
                     variant.insert(
                         "somatic_score",
-                        Bson::Int32(value),
+                        bson::Bson::Int32(value),
                     );
-                }
-            }
-
-            VariantCategory::Sv | VariantCategory::CancerSv | VariantCategory::Fusion => {
                 }
             }
 

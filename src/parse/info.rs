@@ -1,39 +1,40 @@
 use rust_htslib::bcf::Record;
-use std::str::FromStr;
 
-/// Parses a VCF INFO field into the requested type.
+/// Parse a Float INFO field from a VCF record.
 ///
-/// Returns `None` if the INFO field is missing or if the value cannot be
-/// converted to the requested type.
-///
-/// # Arguments
-///
-/// * `record` - VCF record containing the INFO annotation.
-/// * `tag` - INFO field name.
-///
-/// # Type Parameters
-///
-/// * `T` - Target type implementing `FromStr`.
-///
-/// # Returns
-///
-/// The parsed value wrapped in `Some`, or `None` if parsing fails.
-pub fn parse_info<T>(
-    record: &Record,
-    tag: &[u8],
-) -> Option<T>
-where
-    T: FromStr,
-{
+/// Returns the first value if the field exists, otherwise None.
+/// INFO fields can be arrays in VCF, so only the first value is used.
+pub fn parse_info_float(record: &Record, key: &[u8]) -> Option<f64> {
     record
-        .info(tag)
-        .string()
+        .info(key)
+        .float()
         .ok()
         .flatten()
-        .and_then(|values| {
-            values.first().map(|value| {
-                String::from_utf8_lossy(value).to_string()
-            })
-        })
-        .and_then(|value| value.parse::<T>().ok())
+        .and_then(|values| values.iter().next().copied())
+        .map(|value| value as f64)
+}
+
+/// Parse an Integer INFO field from a VCF record.
+///
+/// Returns the first value if the field exists, otherwise None.
+pub fn parse_info_int(record: &Record, key: &[u8]) -> Option<i32> {
+    record
+        .info(key)
+        .integer()
+        .ok()
+        .flatten()
+        .and_then(|values| values.iter().next().copied())
+}
+
+
+/// Parse a String INFO field from a VCF record.
+///
+/// Returns the first value if the field exists, otherwise None.
+pub fn parse_info_string(record: &Record, key: &[u8]) -> Option<String> {
+    match record.info(key).string() {
+        Ok(Some(values)) => values
+            .first()
+            .map(|value| String::from_utf8_lossy(value).to_string()),
+        _ => None,
+    }
 }
