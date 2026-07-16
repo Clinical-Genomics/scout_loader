@@ -8,3 +8,4 @@ pub mod rank_scores;
 pub mod cytobands;
 pub mod genetic_models;
 pub mod info;
+pub mod strs;

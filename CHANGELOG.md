@@ -23,5 +23,6 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse cytobands and collect cytoband start and end for each variant (#18)
 - Parse genmod genetic models (#19)
 - Parsing specific variant fields: `str_swegen_mean` and `str_swegen_std` (STRs) and `somatic_score` (cancer and cancer_sv variants) (#20)
+- Parse a number of STR-related fields (#21)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
