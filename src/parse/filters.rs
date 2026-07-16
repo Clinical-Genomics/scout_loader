@@ -1,4 +1,4 @@
-use rust_htslib::bcf::{Read, Record};
+use rust_htslib::bcf::{Record};
 use rust_htslib::bcf::header::HeaderView;
 
 /// Parses the FILTER field from a VCF record.
