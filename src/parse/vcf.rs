@@ -40,6 +40,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
     let header = vcf.header().clone();
 
+
     for result in vcf.records() {
         let case_id = case_id.to_string();
         let variant_type = variant_type.to_string();
@@ -123,7 +124,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             _ => {}
         }
 
-        println!("{:#?}", variant);
+        //println!("{:#?}", variant);
             
     }
 
