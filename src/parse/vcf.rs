@@ -11,9 +11,11 @@ use crate::parse::genetic_models::parse_genetic_models;
 use crate::parse::info::{parse_info_int, parse_info_string, parse_custom_data};
 use crate::parse::strs::set_str_info;
 use crate::parse::meis::set_mei_info;
+use crate::parse::genotypes::validate_sample_mapping;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
+use crate::models::sample::SampleInfo;
 
 
 /// Processes a VCF file and parses each record according to the variant category.
@@ -33,13 +35,17 @@ use crate::models::cytoband::Cytoband;
 /// # Panics
 ///
 /// Panics if the VCF file cannot be opened or if a record cannot be read.
-pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantType, case_id: &str, cytobands: &HashMap<String, Vec<Cytoband>>) {
+pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantType, case_id: &str, cytobands: &HashMap<String, Vec<Cytoband>>, sample_mapping: &HashMap<String, SampleInfo>) {
 
     let mut vcf = Reader::from_path(path)
         .expect("couldn't open input vcf");
 
     let header = vcf.header().clone();
 
+    if let Err(error) = validate_sample_mapping(vcf.header(), &sample_mapping) {
+        eprintln!("Sample mapping validation failed: {}", error);
+        return;
+    }
 
     for result in vcf.records() {
         let case_id = case_id.to_string();

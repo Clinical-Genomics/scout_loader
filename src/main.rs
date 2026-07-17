@@ -19,8 +19,7 @@ use parse::cytobands::set_cytobands;
 ///
 /// `--samples ADM1059A1:NA12881:0 ADM1059A2:NA12882:1`
 ///
-/// Creates `SampleInfo` entries containing the sample ID, display name,
-/// and VCF sample index.
+/// Creates `SampleInfo` entries containing the display name and VCF sample index.
 pub fn parse_sample_mapping(
     samples: Option<Vec<String>>,
 ) -> Result<HashMap<String, SampleInfo>, String> {
@@ -119,8 +118,6 @@ fn main() {
         }
     };
 
-    println!("{:?}", sample_mapping);
-
     let category = VariantCategory::from_str(&args.category)
         .expect("Invalid category");
     let variant_type = VariantType::from_str(&args.variant_type)
@@ -136,5 +133,5 @@ fn main() {
         }
     };
 
-    process_vcf(&args.vcf, category, variant_type, &args.case_id, &cytobands);
+    process_vcf(&args.vcf, category, variant_type, &args.case_id, &cytobands, &sample_mapping);
 }

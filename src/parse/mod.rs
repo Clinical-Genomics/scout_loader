@@ -10,3 +10,4 @@ pub mod genetic_models;
 pub mod info;
 pub mod strs;
 pub mod meis;
+pub mod genotypes;
