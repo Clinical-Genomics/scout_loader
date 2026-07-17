@@ -1,7 +1,7 @@
 use mongodb::bson::{doc, Document};
 use rust_htslib::bcf::Record;
 
-use crate::parse::info::parse_info_string;
+use crate::parse::info::parse_info_string_array;
 
 /// Add mobile element insertion (MEI) annotations to a MongoDB variant document.
 ///
@@ -21,21 +21,14 @@ use crate::parse::info::parse_info_string;
 ///
 /// Missing or malformed MEINFO fields are ignored.
 pub fn set_mei_info(record: &Record, variant: &mut Document) {
-    let Some(mei_info) = parse_info_string(record, b"MEINFO") else {
+    let Some(mei_info) = parse_info_string_array(record, b"MEINFO") else {
         return;
     };
 
-    let fields: Vec<&str> = mei_info.split(',').collect();
-
-    if fields.len() != 4 {
+    if mei_info.len() != 4 {
         return;
     }
 
-    variant.insert(
-        "mei",
-        doc! {
-            "name": fields[0],
-            "polarity": fields[3],
-        },
-    );
+    variant.insert("mei_name", mei_info[0].clone());
+    variant.insert("mei_polarity", mei_info[3].clone());
 }
