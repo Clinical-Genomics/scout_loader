@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use rust_htslib::bcf::header::HeaderView;
+use mongodb::bson::{doc, Document};
+use rust_htslib::bcf::Record;
 
 use crate::models::sample::SampleInfo;
 
@@ -39,4 +41,52 @@ pub fn validate_sample_mapping(
     }
 
     Ok(())
+}
+
+
+/// Parse genotype information for all selected samples.
+///
+/// Returns a MongoDB document for each sample.
+pub fn parse_genotypes(
+    record: &Record,
+    sample_mapping: &HashMap<String, SampleInfo>,
+) -> Vec<Document> {
+    sample_mapping
+        .iter()
+        .map(|(sample_id, sample_info)| {
+            parse_genotype(record, sample_id, sample_info)
+        })
+        .collect()
+}
+
+/// Parse genotype information for a single sample.
+///
+/// Extracts genotype-related FORMAT fields for the sample identified
+/// by `sample_info.vcf_index` and returns a MongoDB document.
+fn parse_genotype(
+    record: &Record,
+    sample_id: &str,
+    sample_info: &SampleInfo,
+) -> Document {
+    let pos = sample_info.vcf_index;
+
+    let mut genotype = doc! {
+        "sample_id": sample_id,
+        "display_name": &sample_info.display_name,
+    };
+
+    // GT
+    // if let Some(gt) = parse_genotype_call(record, pos) {
+    //     genotype.insert("genotype_call", gt);
+    // }
+
+    // STR-specific fields
+
+    // SV-specific fields
+
+    // MEI-specific fields
+
+    // Derived fields
+
+    genotype
 }

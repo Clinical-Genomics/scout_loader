@@ -11,7 +11,7 @@ use crate::parse::genetic_models::parse_genetic_models;
 use crate::parse::info::{parse_info_int, parse_info_string, parse_custom_data};
 use crate::parse::strs::set_str_info;
 use crate::parse::meis::set_mei_info;
-use crate::parse::genotypes::validate_sample_mapping;
+use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
@@ -67,6 +67,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let compounds_bson = bson::to_bson(&compounds).expect("Failed to convert compounds to BSON");
         let (rank_score, norm_rank_score) = parse_rank_scores(&record, &case_id);
         let genetic_models = parse_genetic_models(&record, &case_id);
+        let samples = parse_genotypes(&record, &sample_mapping);
 
         // This structure contains fields common to all variants categories
         let mut variant = doc! {
@@ -103,6 +104,8 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             "quality": record.qual(),
 
             "genetic_models": genetic_models,
+
+            "samples": samples,
         };
 
         if let Some(custom) = parse_custom_data(parse_info_string(&record, b"SCOUT_CUSTOM")) {
@@ -130,7 +133,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             _ => {}
         }
 
-        //println!("{:#?}", variant);
+        println!("{:#?}", variant);
             
     }
 

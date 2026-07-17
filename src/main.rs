@@ -17,7 +17,7 @@ use parse::cytobands::set_cytobands;
 ///
 /// Example CLI usage:
 ///
-/// `--samples ADM1059A1:NA12881:0 ADM1059A2:NA12882:1`
+/// `--samples ADM1059A1:NA12877:0 ADM1059A2:NA12882:1 ..
 ///
 /// Creates `SampleInfo` entries containing the display name and VCF sample index.
 pub fn parse_sample_mapping(
