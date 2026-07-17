@@ -96,6 +96,24 @@ pub fn insert_info_string(
     }
 }
 
+/// Parse a multi-valued string INFO field.
+///
+/// Returns all string values associated with the INFO tag,
+/// or `None` if the field is missing or cannot be parsed.
+///
+/// This is intended for INFO fields with `Number > 1`, such as
+/// `MEINFO` (`NAME,START,END,POLARITY`).
+pub fn parse_info_string_array(record: &Record, key: &[u8]) -> Option<Vec<String>> {
+    let values = record.info(key).string().ok().flatten()?;
+
+    Some(
+        values
+            .iter()
+            .map(|v| String::from_utf8_lossy(v).into_owned())
+            .collect::<Vec<String>>(),
+    )
+}
+
 
 /// Parse the SCOUT_CUSTOM INFO field.
 ///
