@@ -251,7 +251,7 @@ fn parse_genotype(
 
 
     let mut gt_obj = doc! {
-        "sample_id": gt_call.get("individual_id"),
+        "sample_id": gt_call.get("sample_id"),
         "display_name": gt_call.get("display_name"),
         "genotype_call": gt_call.get("genotype_call"),
         "allele_depths": [
