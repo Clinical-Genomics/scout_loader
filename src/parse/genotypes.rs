@@ -70,7 +70,50 @@ pub fn parse_genotypes(
 }
 
 /// Parse genotype information for a single sample.
-///
+/*
+    SV specific format fields
+    ##FORMAT=<ID=DV,Number=1,Type=Integer,Description="Number of paired-ends that support the event">
+    ##FORMAT=<ID=PE,Number=1,Type=Integer,Description="Number of paired-ends that support the event">
+    ##FORMAT=<ID=PR,Number=.,Type=Integer,Description="Spanning paired-read support for the ref and alt alleles in the order listed">
+    ##FORMAT=<ID=RC,Number=1,Type=Integer,Description="Raw high-quality read counts for the SV">
+    ##FORMAT=<ID=RCL,Number=1,Type=Integer,Description="Raw high-quality read counts for the left control region">
+    ##FORMAT=<ID=RCR,Number=1,Type=Integer,Description="Raw high-quality read counts for the right control region">
+    ##FORMAT=<ID=RR,Number=1,Type=Integer,Description="# high-quality reference junction reads">
+    ##FORMAT=<ID=RV,Number=1,Type=Integer,Description="# high-quality variant junction reads">
+    ##FORMAT=<ID=SR,Number=1,Type=Integer,Description="Number of split reads that support the event">
+    ##FORMAT=<ID=CN,Number=1,Type=Float,Description="Copy number genotype for imprecise events">
+
+    STR specific format fields
+    ##FORMAT=<ID=LC,Number=1,Type=Float,Description="Locus coverage">
+    ##FORMAT=<ID=REPCI,Number=1,Type=String,Description="Confidence interval for REPCN">
+    ##FORMAT=<ID=REPCN,Number=1,Type=String,Description="Number of repeat units spanned by the allele">
+    ##FORMAT=<ID=SO,Number=1,Type=String,Description="Type of reads that support the allele; can be SPANNING, FLANKING, or INREPEAT meaning that the reads span, flank, or are fully contained in the repeat">
+    ##FORMAT=<ID=ADFL,Number=1,Type=String,Description="Number of flanking reads consistent with the allele">
+    ##FORMAT=<ID=ADIR,Number=1,Type=String,Description="Number of in-repeat reads consistent with the allele">
+    ##FORMAT=<ID=ADSP,Number=1,Type=String,Description="Number of spanning reads consistent with the allele">
+
+    TRGT
+    ##FORMAT=<ID=AL,Number=.,Type=Integer,Description="Length of each allele">
+    ##FORMAT=<ID=ALLR,Number=.,Type=String,Description="Length range per allele">
+    ##FORMAT=<ID=SD,Number=.,Type=Integer,Description="Number of spanning reads supporting per allele">
+    ##FORMAT=<ID=MC,Number=.,Type=String,Description="Motif counts per allele">
+    ##FORMAT=<ID=MS,Number=.,Type=String,Description="Motif spans per allele">
+    ##FORMAT=<ID=AP,Number=.,Type=Float,Description="Allele purity per allele">
+    ##FORMAT=<ID=AM,Number=.,Type=Float,Description="Mean methylation level per allele">
+    ##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phase set identifier">
+
+    STRDROP
+    ##FORMAT=<ID=SDP,Number=1,Type=Float,Description="Strdrop coverage sequencing depth level probability">
+    ##FORMAT=<ID=EDR,Number=1,Type=Float,Description="Strdrop allele similarity Levenshtein edit distance ratio">
+    ##FORMAT=<ID=SDR,Number=1,Type=Float,Description="Strdrop case average adjusted sequencing depth ratio">
+    ##FORMAT=<ID=DROP,Number=1,Type=String,Description="Strdrop coverage drop detected, 1 for LowDepth">
+
+    MEI specific format fields
+    ##FORMAT=<ID=CLIP3,Number=1,Type=Float,Description="Number of soft clipped reads downstream of the breakpoint">
+    ##FORMAT=<ID=CLIP5,Number=1,Type=Float,Description="Number of soft clipped reads upstream of the breakpoint">
+    ##FORMAT=<ID=SP,Number=1,Type=Float,Description="Number of correctly mapped read pairs spanning breakpoint, useful for estimation of size of insertion">
+    ##FORMAT=<ID=SP,Number=1,Type=Float,Description="Number of correctly mapped read pairs spanning breakpoint, useful for estimation of size of insertion">
+*/
 /// Extracts the GT field for the sample identified by its VCF index
 /// and returns a MongoDB document containing the genotype call.
 fn parse_genotype(
@@ -153,12 +196,44 @@ fn parse_genotype(
         }
     }
 
-    // SV-specific fields
-
     // MEI-specific fields
     let (spanning_mei_ref, clip5_alt, clip3_alt) = get_mei_reads(record, pos);
 
-    // Derived fields
+    // SV-specific fields
+    let (paired_end_ref, paired_end_alt) = get_paired_ends(record, pos);
+    let (split_read_ref, split_read_alt) = get_split_reads(record, pos);
+
+    let alt_depth = get_alt_depth(
+        record,
+        pos,
+        paired_end_alt,
+        split_read_alt,
+        spanning_alt,
+        flanking_alt,
+        inrepeat_alt,
+        sd_alt,
+        clip5_alt,
+        clip3_alt,
+    );
+
+    gt_call.insert("alt_depth", alt_depth);
+
+    let ref_depth = get_ref_depth(
+        record,
+        pos,
+        paired_end_ref,
+        split_read_ref,
+        spanning_ref,
+        flanking_ref,
+        inrepeat_ref,
+        sd_ref,
+        spanning_mei_ref,
+    );
+
+    gt_call.insert("ref_depth", ref_depth);
+
+
+
 
     gt_call
 }
@@ -407,4 +482,237 @@ fn parse_format_entry_single_integer(
     } else {
         None
     }
+}
+
+
+/// Get paired-end read support from SV FORMAT fields.
+///
+/// Returns:
+/// * reference paired-end support
+/// * alternative paired-end support
+///
+/// Values are extracted from PE, PR, DV, and DR FORMAT fields.
+fn get_paired_ends(
+    record: &Record,
+    pos: usize,
+) -> (Option<i32>, Option<i32>) {
+    let mut paired_end_ref = None;
+    let mut paired_end_alt = None;
+
+    // PE: Number of paired-end reads supporting the variant
+    if let Ok(values) = record.format(b"PE").integer() {
+        if let Some(value) = values.get(pos).and_then(|v| v.first()) {
+            if *value >= 0 {
+                paired_end_alt = Some(*value);
+            }
+        }
+    }
+
+    // PR: Number of paired-end reads supporting ref and alt alleles
+    if let Ok(values) = record.format(b"PR").integer() {
+        if let Some(sample_values) = values.get(pos) {
+            if let Some(ref_value) = sample_values.first() {
+                if *ref_value >= 0 {
+                    paired_end_ref = Some(*ref_value);
+                }
+            }
+
+            if let Some(alt_value) = sample_values.get(1) {
+                if *alt_value >= 0 {
+                    paired_end_alt = Some(*alt_value);
+                }
+            }
+        }
+    }
+
+    // DV: Number of paired-end reads supporting the event
+    if let Ok(values) = record.format(b"DV").integer() {
+        if let Some(value) = values.get(pos).and_then(|v| v.first()) {
+            if *value >= 0 {
+                paired_end_alt = Some(*value);
+            }
+        }
+    }
+
+    // DR: Number of paired-end reads supporting the reference
+    if let Ok(values) = record.format(b"DR").integer() {
+        if let Some(value) = values.get(pos).and_then(|v| v.first()) {
+            if *value >= 0 {
+                paired_end_ref = Some(*value);
+            }
+        }
+    }
+
+    (paired_end_ref, paired_end_alt)
+}
+
+/// Get split-read support from SV FORMAT fields.
+///
+/// Returns:
+/// * reference split-read support
+/// * alternative split-read support
+///
+/// Values are extracted from SR, RV, and RR FORMAT fields.
+fn get_split_reads(
+    record: &Record,
+    pos: usize,
+) -> (Option<i32>, Option<i32>) {
+    let mut split_read_ref = None;
+    let mut split_read_alt = None;
+
+    // SR: Number of split reads supporting ref and alt alleles
+    if let Ok(values) = record.format(b"SR").integer() {
+        if let Some(sample_values) = values.get(pos) {
+            let (mut alt_value, mut ref_value) = (None, None);
+
+            if sample_values.len() == 1 {
+                alt_value = sample_values.first().copied();
+            }
+
+            if sample_values.len() == 2 {
+                ref_value = sample_values.first().copied();
+                alt_value = sample_values.get(1).copied();
+            }
+
+            if let Some(value) = alt_value {
+                if value >= 0 {
+                    split_read_alt = Some(value);
+                }
+            }
+
+            if let Some(value) = ref_value {
+                if value >= 0 {
+                    split_read_ref = Some(value);
+                }
+            }
+        }
+    }
+
+    // RV: Number of split reads supporting the event
+    if let Ok(values) = record.format(b"RV").integer() {
+        if let Some(value) = values.get(pos).and_then(|v| v.first()) {
+            if *value >= 0 {
+                split_read_alt = Some(*value);
+            }
+        }
+    }
+
+    // RR: Number of split reads supporting the reference
+    if let Ok(values) = record.format(b"RR").integer() {
+        if let Some(value) = values.get(pos).and_then(|v| v.first()) {
+            if *value >= 0 {
+                split_read_ref = Some(*value);
+            }
+        }
+    }
+
+    (split_read_ref, split_read_alt)
+}
+
+/// Extract alternative allele depth from the AD FORMAT field.
+fn get_gt_allele_depth(
+    record: &Record,
+    pos: usize,
+    allele_index: usize,
+) -> Option<i32> {
+    let depths = record.format(b"AD").integer().ok()?;
+
+    depths
+        .get(pos)
+        .and_then(|sample| sample.get(allele_index).copied())
+        .filter(|value| *value >= 0)
+}
+
+/// Get alternative read depth.
+///
+/// First tries to use the genotype-derived alternative depth.
+/// If unavailable, falls back to caller-specific FORMAT fields.
+fn get_alt_depth(
+    record: &Record,
+    pos: usize,
+    paired_end_alt: Option<i32>,
+    split_read_alt: Option<i32>,
+    spanning_alt: Option<i32>,
+    flanking_alt: Option<i32>,
+    inrepeat_alt: Option<i32>,
+    sd_alt: Option<i32>,
+    clip5_alt: Option<i32>,
+    clip3_alt: Option<i32>,
+) -> i32 {
+    let mut alt_depth = get_gt_allele_depth(record, pos, 1).unwrap_or(-1);
+
+    if alt_depth != -1 {
+        return alt_depth;
+    }
+
+    // VD: Number of variant supporting reads
+    if let Ok(values) = record.format(b"VD").integer() {
+        if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
+            alt_depth = *value;
+        }
+    }
+
+    let alt_items: &[&[Option<i32>]] = &[
+        &[sd_alt],
+        &[paired_end_alt, split_read_alt],
+        &[clip5_alt, clip3_alt],
+        &[spanning_alt, flanking_alt, inrepeat_alt],
+    ];
+
+    for items in alt_items {
+        if items.iter().any(|item| item.is_some()) {
+            alt_depth = items
+                .iter()
+                .filter_map(|item| *item)
+                .filter(|value| *value != 0)
+                .sum();
+        }
+    }
+
+    alt_depth
+}
+
+/// Get reference read depth.
+///
+/// First tries to use the genotype-derived reference depth.
+/// If unavailable, falls back to caller-specific FORMAT fields.
+fn get_ref_depth(
+    record: &Record,
+    pos: usize,
+    paired_end_ref: Option<i32>,
+    split_read_ref: Option<i32>,
+    spanning_ref: Option<i32>,
+    flanking_ref: Option<i32>,
+    inrepeat_ref: Option<i32>,
+    sd_ref: Option<i32>,
+    spanning_mei_ref: Option<i32>,
+) -> i32 {
+    let mut ref_depth = get_gt_allele_depth(record, pos, 0).unwrap_or(-1);
+
+    if ref_depth != -1 {
+        return ref_depth;
+    }
+
+    let ref_items: &[&[Option<i32>]] = &[
+        &[sd_ref],
+        &[paired_end_ref, split_read_ref],
+        &[spanning_ref, flanking_ref, inrepeat_ref],
+    ];
+
+    for items in ref_items {
+        if items.iter().any(|item| item.is_some()) {
+            ref_depth = items
+                .iter()
+                .filter_map(|item| *item)
+                .filter(|value| *value != 0)
+                .sum();
+        }
+    }
+
+    // MEI SP can add additional reference spanning support
+    if let Some(value) = spanning_mei_ref {
+        ref_depth += value;
+    }
+
+    ref_depth
 }
