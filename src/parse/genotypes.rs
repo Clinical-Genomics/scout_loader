@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use rust_htslib::bcf::header::HeaderView;
-use mongodb::bson::{doc, Document};
+use mongodb::bson::{doc, Bson, Document};
 use rust_htslib::bcf::Record;
 use rust_htslib::bcf::record::GenotypeAllele;
 use crate::models::variant::VariantCategory;
@@ -232,10 +232,57 @@ fn parse_genotype(
 
     gt_call.insert("ref_depth", ref_depth);
 
+    let read_depth = get_read_depth(record, pos, alt_depth, ref_depth);
+    gt_call.insert("read_depth", read_depth);
+
+    let alt_frequency = get_alt_frequency(record, pos);
+    gt_call.insert("alt_frequency", alt_frequency);
+
+    let genotype_quality = get_genotype_quality(record, pos);
+    gt_call.insert("genotype_quality", genotype_quality);
+
+    let ffpm = get_ffpm_info(record, pos);
+    gt_call.insert("ffpm", ffpm);
+
+    gt_call.insert("split_read", split_read_alt);
+
+    let copy_number = get_copy_number(record, pos);
+    gt_call.insert("copy_number", copy_number);
 
 
+    let mut gt_obj = doc! {
+        "sample_id": gt_call.get("individual_id"),
+        "display_name": gt_call.get("display_name"),
+        "genotype_call": gt_call.get("genotype_call"),
+        "allele_depths": [
+            gt_call.get("ref_depth"),
+            gt_call.get("alt_depth"),
+        ],
+        "read_depth": gt_call.get("read_depth"),
+        "alt_frequency": gt_call
+            .get("alt_frequency")
+            .cloned()
+            .unwrap_or(Bson::Int32(-1)),
+        "genotype_quality": gt_call.get("genotype_quality"),
+    };
 
-    gt_call
+
+    for format_tag in [
+        "alt_mc",
+        "copy_number",
+        "edr",
+        "ffpm",
+        "sdp",
+        "sdr",
+        "so",
+        "split_read",
+    ] {
+        if let Some(value) = gt_call.get(format_tag) {
+            gt_obj.insert(format_tag, value.clone());
+        }
+    }
+
+    gt_obj
 }
 
 /// Converts a genotype allele to its string representation.
@@ -715,4 +762,138 @@ fn get_ref_depth(
     }
 
     ref_depth
+}
+
+
+/// Get total read depth.
+///
+/// First tries to use the genotype-derived read depth.
+/// If unavailable, falls back to DP, LC, or the sum of the
+/// reference and alternative depths.
+fn get_read_depth(
+    record: &Record,
+    pos: usize,
+    alt_depth: i32,
+    ref_depth: i32,
+) -> i32 {
+    let mut read_depth = -1;
+
+    if let Ok(values) = record.format(b"DP").integer() {
+        if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
+            read_depth = *value;
+        }
+    }
+
+    if read_depth == -1 {
+        // DP: Total read depth
+        if let Ok(values) = record.format(b"DP").integer() {
+            if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
+                read_depth = *value;
+            }
+        }
+        // LC: Locus coverage
+        else if let Ok(values) = record.format(b"LC").float() {
+            if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
+                read_depth = value.round() as i32;
+            }
+        }
+        // Fall back to the sum of alt and ref depths
+        else if alt_depth != -1 || ref_depth != -1 {
+            read_depth = 0;
+
+            if alt_depth != -1 {
+                read_depth += alt_depth;
+            }
+
+            if ref_depth != -1 {
+                read_depth += ref_depth;
+            }
+        }
+    }
+
+    read_depth
+}
+
+/// Get alternative allele frequency.
+///
+/// Prioritises the caller-provided AF FORMAT field if available.
+/// Otherwise calculates it from genotype allele depths.
+fn get_alt_frequency(
+    record: &Record,
+    pos: usize,
+) -> f32 {
+    // AF FORMAT field (caller-provided)
+    if let Ok(values) = record.format(b"AF").float() {
+        if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
+            return *value;
+        }
+    }
+
+    // Fallback: calculate from genotype allele depths
+    let alt_depth = get_gt_allele_depth(record, pos, 1).unwrap_or(-1);
+    let ref_depth = get_gt_allele_depth(record, pos, 0).unwrap_or(-1);
+
+    if alt_depth == -1 || ref_depth == -1 {
+        return -1.0;
+    }
+
+    let total_depth = alt_depth + ref_depth;
+
+    if total_depth == 0 {
+        return 0.0;
+    }
+
+    alt_depth as f32 / total_depth as f32
+}
+
+/// Get FFPM information from FORMAT tags.
+///
+/// Returns the fusion fragments per million value if available.
+fn get_ffpm_info(
+    record: &Record,
+    pos: usize,
+) -> Option<i32> {
+    if let Ok(values) = record.format(b"FFPM").integer() {
+        if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
+            return Some(*value);
+        }
+    }
+
+    None
+}
+
+/// Get genotype quality (GQ) for a sample.
+///
+/// Returns -1 if genotype quality is missing or unavailable.
+fn get_genotype_quality(
+    record: &Record,
+    pos: usize,
+) -> i32 {
+    if let Ok(values) = record.format(b"GQ").integer() {
+        if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
+            return *value;
+        }
+    }
+
+    -1
+}
+
+/// Get copy number from the CN FORMAT field.
+///
+/// Returns None if CN is missing, invalid, or represents a missing value.
+fn get_copy_number(
+    record: &Record,
+    pos: usize,
+) -> Option<i32> {
+    let values = record.format(b"CN").float().ok()?;
+
+    let cn_value = values
+        .get(pos)
+        .and_then(|sample| sample.first())?;
+
+    if cn_value.is_nan() || *cn_value < 0.0 {
+        return None;
+    }
+
+    Some(*cn_value as i32)
 }
