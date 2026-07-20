@@ -67,7 +67,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let compounds_bson = bson::to_bson(&compounds).expect("Failed to convert compounds to BSON");
         let (rank_score, norm_rank_score) = parse_rank_scores(&record, &case_id);
         let genetic_models = parse_genetic_models(&record, &case_id);
-        let samples = parse_genotypes(&record, &sample_mapping);
+        let samples = parse_genotypes(&record, &sample_mapping, category);
 
         // This structure contains fields common to all variants categories
         let mut variant = doc! {
