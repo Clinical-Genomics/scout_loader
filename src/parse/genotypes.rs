@@ -104,7 +104,7 @@ fn parse_genotype(
         );
     }
 
-    // parse STR-specific fields
+    // STR-specific fields
     let mut spanning_ref = None;
     let mut spanning_alt = None;
     let mut flanking_ref = None;
@@ -128,16 +128,35 @@ fn parse_genotype(
         (inrepeat_ref, inrepeat_alt) =
             parse_format_entry(record, pos, b"ADIR");
 
+        // TRGT long read STR specific
         let (_, mc_alt) = parse_format_entry_trgt_mc(record, pos);
         gt_call.insert("alt_mc", mc_alt);
 
         (sd_ref, sd_alt) =
             parse_format_entry(record, pos, b"SD");
+
+        // STRdrop long read STR specific
+        if let Some(sdp) = parse_format_entry_single_float(record, pos, b"SDP") {
+            gt_call.insert("sdp", sdp);
+        }
+
+        if let Some(edr) = parse_format_entry_single_float(record, pos, b"EDR") {
+            gt_call.insert("edr", edr);
+        }
+
+        if let Some(sdr) = parse_format_entry_single_float(record, pos, b"SDR") {
+            gt_call.insert("sdr", sdr);
+        }
+
+        if let Some(drop) = parse_format_entry_single_string(record, pos, b"DROP") {
+            gt_call.insert("drop", drop);
+        }
     }
 
     // SV-specific fields
 
     // MEI-specific fields
+    let (spanning_mei_ref, clip5_alt, clip3_alt) = get_mei_reads(record, pos);
 
     // Derived fields
 
@@ -309,4 +328,83 @@ fn parse_format_entry_trgt_mc(
     }
 
     (mc_ref, mc_alt)
+}
+
+/// Parse a single string FORMAT entry.
+///
+/// Returns the value for the selected sample, or None if the FORMAT field
+/// is missing or empty.
+fn parse_format_entry_single_string(
+    record: &Record,
+    pos: usize,
+    format_entry_name: &[u8],
+) -> Option<String> {
+    let values = record.format(format_entry_name).string().ok()?;
+
+    let value = values.get(pos)?;
+
+    if value.is_empty() {
+        None
+    } else {
+        Some(String::from_utf8_lossy(value).to_string())
+    }
+}
+
+/// Parse a single floating-point FORMAT entry.
+///
+/// Returns the value for the selected sample, or None if the FORMAT field
+/// is missing or cannot be parsed.
+fn parse_format_entry_single_float(
+    record: &Record,
+    pos: usize,
+    format_entry_name: &[u8],
+) -> Option<f64> {
+    let values = record.format(format_entry_name).float().ok()?;
+
+    let value = values.get(pos)?.first()?;
+
+    if *value >= 0.0 {
+        Some(*value as f64)
+    } else {
+        None
+    }
+}
+
+/// Get MEI caller read details from FORMAT fields.
+///
+/// Returns:
+/// * number of reference spanning reads (`SP`)
+/// * number of alternative 5' clipped reads (`CLIP5`)
+/// * number of alternative 3' clipped reads (`CLIP3`)
+///
+/// Missing fields or invalid/negative values are returned as `None`.
+fn get_mei_reads(
+    record: &Record,
+    pos: usize,
+) -> (Option<i32>, Option<i32>, Option<i32>) {
+    let spanning_ref = parse_format_entry_single_integer(record, pos, b"SP");
+    let clip5_alt = parse_format_entry_single_integer(record, pos, b"CLIP5");
+    let clip3_alt = parse_format_entry_single_integer(record, pos, b"CLIP3");
+
+    (spanning_ref, clip5_alt, clip3_alt)
+}
+
+/// Parse a single integer FORMAT entry.
+///
+/// Returns the value for the selected sample, or None if the field is
+/// missing, invalid, or contains a negative value.
+fn parse_format_entry_single_integer(
+    record: &Record,
+    pos: usize,
+    format_entry_name: &[u8],
+) -> Option<i32> {
+    let values = record.format(format_entry_name).integer().ok()?;
+
+    let value = values.get(pos)?.first()?;
+
+    if *value >= 0 {
+        Some(*value)
+    } else {
+        None
+    }
 }
