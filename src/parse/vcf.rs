@@ -96,7 +96,6 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             "reference": reference,
             "alternative": alternative,
 
-            "mate_id": coordinates.mate_id,
             "cytoband_start": coordinates.cytoband_start,
             "cytoband_end": coordinates.cytoband_end,
 
@@ -107,6 +106,10 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
             "samples": samples,
         };
+
+        if coordinates.mate_id.is_some(){
+            variant.insert("mate_id", coordinates.mate_id);
+        }
 
         if let Some(custom) = parse_custom_data(parse_info_string(&record, b"SCOUT_CUSTOM")) {
                 variant.insert("custom", custom);

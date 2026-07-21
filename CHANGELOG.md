@@ -30,5 +30,6 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse mei info: `name` and `polarity` (#24)
 - Parse genotype info (#25)
 - Parse eventual dbSNP IDs (#26)
+- Parse INFO.MATEID as `mate_id`, when available (#27)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
