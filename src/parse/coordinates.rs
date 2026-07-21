@@ -112,6 +112,17 @@ pub fn parse_coordinates(
 
     let mut end_chrom = chrom.clone();
 
+    let mate_id = record
+        .info(b"MATEID")
+        .string()
+        .ok()
+        .flatten()
+        .and_then(|values| {
+            values
+                .first()
+                .map(|value| String::from_utf8_lossy(value).to_string())
+        });
+
     let cytoband_start = get_cytoband_coordinates(
         cytobands,
         &chrom,
@@ -131,7 +142,7 @@ pub fn parse_coordinates(
         end_chrom,
         length,
         sub_category,
-        mate_id: None,
+        mate_id: mate_id,
         cytoband_start,
         cytoband_end
     }
