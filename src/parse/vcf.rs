@@ -48,12 +48,12 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
     }
 
     for result in vcf.records() {
-        let case_id = case_id.to_string();
-        let variant_type = variant_type.to_string();
         let record = result.unwrap();
-        let coordinates = parse_coordinates(&record, &header, cytobands);
+        let case_id = case_id.to_string();
+        let coordinates = parse_coordinates(&record, &header, cytobands, &category);
+        let variant_type = variant_type.to_string();
         let (reference, alternative) = parse_alleles(&record, category);
-        let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type,);
+        let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type);
         let filters = parse_filters(&record, &header);
         let compound_info = record
             .info(b"Compounds")
