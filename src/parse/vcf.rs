@@ -11,6 +11,7 @@ use crate::parse::genetic_models::parse_genetic_models;
 use crate::parse::info::{parse_info_int, parse_info_string, parse_custom_data};
 use crate::parse::strs::set_str_info;
 use crate::parse::meis::set_mei_info;
+use crate::parse::fusions::set_fusion_info;
 use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
@@ -140,6 +141,10 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
             VariantCategory::Mei => {
                 set_mei_info(&record, &mut variant);
+            }
+
+            VariantCategory::Fusion => {
+                set_fusion_info(&record, &mut variant);
             }
 
             VariantCategory::Cancer | VariantCategory::CancerSv => {
