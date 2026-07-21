@@ -154,7 +154,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             _ => {}
         }
 
-        println!("{:?}", variant);
+        println!("{:#?}", variant);
             
     }
 
