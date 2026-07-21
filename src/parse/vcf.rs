@@ -31,6 +31,7 @@ use crate::models::sample::SampleInfo;
 /// * `variant_type` - Variant type (clinical or research).
 /// * `case_id` - _id of a case.
 /// * `cytobands` - A list of parsed cytobands, reflecting the case genome build
+/// * `sample_mapping`, a list of samples, with ID and expected position on the VCF
 ///
 /// # Panics
 ///
@@ -111,6 +112,16 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             variant.insert("mate_id", coordinates.mate_id);
         }
 
+        let azlength = parse_info_string(&record, b"AZLENGTH").and_then(|value| value.parse::<i32>().ok());
+        if let Some(value) = azlength {
+            variant.insert("azlength", value);
+        }
+
+        let azqual = parse_info_string(&record, b"AZQUAL").and_then(|value| value.parse::<f64>().ok());
+        if let Some(value) = azqual {
+            variant.insert("azqual", value);
+        }
+
         if let Some(custom) = parse_custom_data(parse_info_string(&record, b"SCOUT_CUSTOM")) {
                 variant.insert("custom", custom);
             }
@@ -143,7 +154,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             _ => {}
         }
 
-        println!("{:#?}", variant);
+        println!("{:?}", variant);
             
     }
 
