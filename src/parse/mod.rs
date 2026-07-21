@@ -11,3 +11,4 @@ pub mod info;
 pub mod strs;
 pub mod meis;
 pub mod genotypes;
+pub mod fusions;
