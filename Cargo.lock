@@ -1607,8 +1607,10 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "flate2",
+ "lazy_static",
  "md5",
  "mongodb",
+ "regex",
  "rust-htslib",
  "serde",
 ]

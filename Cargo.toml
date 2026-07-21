@@ -6,9 +6,10 @@ edition = "2024"
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 flate2 = "1.0"
+lazy_static = "1"
 md5 = "0.7"
-rust-htslib = "*"
 mongodb = "2"
+regex = "1"
+rust-htslib = "*"
 serde = { version = "1", features = ["derive"] }
-
 
