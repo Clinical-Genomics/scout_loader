@@ -12,57 +12,41 @@ use crate::parse::info::{
 /// Parses fusion-related annotations and inserts them into the variant
 /// document. Missing or placeholder values (e.g. `"nan"` or `"nan,nan"`)
 /// are replaced with empty strings where appropriate. The `FOUND_DB` field
-/// is converted into an array of database names, and `fusion_genes` is
-/// populated with the pair of fusion partner genes.
-pub fn set_fusion_info(
-    record: &Record,
-    variant: &mut Document,
-) {
-    
+/// is converted into an array of database names. Gene and transcript
+/// information for fusion partners is also added.
+pub fn set_fusion_info(record: &Record, variant: &mut Document) {
     fn replace_nan(value: Option<String>, nan_value: &str) -> String {
         match value {
-            Some(v) if v != nan_value => v,
+            Some(value) if value != nan_value => value,
             _ => String::new(),
         }
     }
 
-    fn set_found_db(found_db_info: Option<String>) -> Option<Vec<String>> {
-        found_db_info.and_then(|value| {
+    fn parse_found_db(value: Option<String>) -> Option<Vec<Bson>> {
+        value.and_then(|value| {
             if value.is_empty() || value == "[]" {
                 None
             } else {
-                Some(value.split(',').map(|s| s.to_string()).collect())
+                Some(
+                    value
+                        .split(',')
+                        .map(|entry| Bson::String(entry.to_string()))
+                        .collect(),
+                )
             }
         })
     }
-
-    let gene_a = parse_info_string(record, b"GENEA").unwrap_or_default();
-    let gene_b = parse_info_string(record, b"GENEB").unwrap_or_default();
-
-    variant.insert("gene_a", gene_a.clone());
-    variant.insert("gene_b", gene_b.clone());
 
     if let Some(value) = parse_info_int(record, b"TOOL_HITS") {
         variant.insert("tool_hits", value);
     }
 
-    if let Some(value) = set_found_db(parse_info_string(record, b"FOUND_DB")) {
-        variant.insert(
-            "found_db",
-            Bson::Array(value.into_iter().map(Bson::String).collect()),
-        );
+    if let Some(value) = parse_found_db(parse_info_string(record, b"FOUND_DB")) {
+        variant.insert("found_db", Bson::Array(value));
     }
 
     if let Some(value) = parse_info_float(record, b"SCORE") {
         variant.insert("fusion_score", value);
-    }
-
-    if let Some(value) = parse_info_int(record, b"HGNC_ID_A") {
-        variant.insert("hgnc_id_a", value);
-    }
-
-    if let Some(value) = parse_info_int(record, b"HGNC_ID_B") {
-        variant.insert("hgnc_id_b", value);
     }
 
     variant.insert(
@@ -75,33 +59,98 @@ pub fn set_fusion_info(
         replace_nan(parse_info_string(record, b"FRAME_STATUS"), "nan"),
     );
 
-    variant.insert(
-        "transcript_id_a",
-        replace_nan(parse_info_string(record, b"TRANSCRIPT_ID_A"), "nan"),
-    );
+    set_fusion_genes(record, variant);
+}
 
-    variant.insert(
-        "transcript_id_b",
-        replace_nan(parse_info_string(record, b"TRANSCRIPT_ID_B"), "nan"),
-    );
+/// Add gene and transcript information for fusion variants.
+///
+/// Parses fusion partner gene annotations from VCF INFO fields and stores them
+/// in the variant document. Gene entries are created when a gene symbol or an
+/// HGNC ID is available. Transcript annotations are stored under their
+/// corresponding gene and include transcript ID and exon information when
+/// available. Missing HGNC IDs are kept as null values rather than replaced
+/// with zero.
+fn set_fusion_genes(record: &Record, variant: &mut Document) {
+    let mut genes = Vec::new();
+    let mut hgnc_ids = Vec::new();
+    let mut hgnc_symbols = Vec::new();
 
-    if let Some(value) = replace_nan(parse_info_string(record, b"EXON_NUMBER_A"), "nan")
-        .parse::<i32>()
-        .ok()
-    {
-        variant.insert("exon_number_a", value.to_string());
+    for suffix in ["A", "B"] {
+        let gene = parse_info_string(
+            record,
+            format!("GENE{suffix}").as_bytes(),
+        )
+        .unwrap_or_default();
+
+        let hgnc_id = parse_info_float(
+            record,
+            format!("HGNC_ID_{suffix}").as_bytes(),
+        )
+        .map(|value| value as i32)
+        .filter(|value| *value > 0);
+
+        let transcript_id = parse_info_string(
+            record,
+            format!("TRANSCRIPT_ID_{suffix}").as_bytes(),
+        )
+        .filter(|value| !value.is_empty() && value != "nan");
+
+        let exon_number = parse_info_float(
+            record,
+            format!("EXON_NUMBER_{suffix}").as_bytes(),
+        )
+        .map(|value| value as i32)
+        .filter(|value| *value > 0);
+
+        if gene.is_empty() && hgnc_id.is_none() {
+            continue;
+        }
+
+        if !gene.is_empty() {
+            hgnc_symbols.push(Bson::String(gene.clone()));
+        }
+
+        if let Some(hgnc_id) = hgnc_id {
+            hgnc_ids.push(Bson::Int32(hgnc_id));
+        }
+
+        let mut gene_doc = Document::new();
+
+        if !gene.is_empty() {
+            gene_doc.insert("hgnc_symbol", gene);
+        }
+
+        match hgnc_id {
+            Some(hgnc_id) => {
+                gene_doc.insert("hgnc_id", hgnc_id);
+            }
+            None => {
+                gene_doc.insert("hgnc_id", Bson::Null);
+            }
+        }
+
+        let mut transcripts = Vec::new();
+
+        if transcript_id.is_some() || exon_number.is_some() {
+            let mut transcript = Document::new();
+
+            if let Some(transcript_id) = transcript_id {
+                transcript.insert("transcript_id", transcript_id);
+            }
+
+            if let Some(exon_number) = exon_number {
+                transcript.insert("exon", exon_number);
+            }
+
+            transcripts.push(Bson::Document(transcript));
+        }
+
+        gene_doc.insert("transcripts", Bson::Array(transcripts));
+
+        genes.push(Bson::Document(gene_doc));
     }
 
-    if let Some(value) = replace_nan(parse_info_string(record, b"EXON_NUMBER_B"), "nan")
-        .parse::<i32>()
-        .ok()
-    {
-        variant.insert("exon_number_b", value.to_string());
-    }
-
-    variant.insert(
-        "fusion_genes",
-        Bson::Array(vec![Bson::String(gene_a), Bson::String(gene_b)]),
-    );
-
+    variant.insert("genes", Bson::Array(genes));
+    variant.insert("hgnc_ids", Bson::Array(hgnc_ids));
+    variant.insert("hgnc_symbols", Bson::Array(hgnc_symbols));
 }
