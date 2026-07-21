@@ -31,6 +31,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse genotype info (#25)
 - Parse eventual dbSNP IDs (#27)
 - Parse INFO.MATEID as `mate_id`, when available (#28)
+- Parse AZLENGTH and AZQUAL values, when available (#30)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
 - Parsing of end chromosome (#29)
