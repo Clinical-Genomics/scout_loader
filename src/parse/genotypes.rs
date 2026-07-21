@@ -242,12 +242,18 @@ fn parse_genotype(
     gt_call.insert("genotype_quality", genotype_quality);
 
     let ffpm = get_ffpm_info(record, pos);
-    gt_call.insert("ffpm", ffpm);
+    if let Some(ffpm) = ffpm {
+        gt_call.insert("ffpm", ffpm);
+    }
 
-    gt_call.insert("split_read", split_read_alt);
+    if let Some(split_read) = split_read_alt {
+        gt_call.insert("split_read", split_read);
+    }
 
     let copy_number = get_copy_number(record, pos);
-    gt_call.insert("copy_number", copy_number);
+    if let Some(copy_number) = copy_number {
+        gt_call.insert("copy_number", copy_number);
+    }
 
 
     let mut gt_obj = doc! {
