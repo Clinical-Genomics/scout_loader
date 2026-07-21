@@ -29,5 +29,6 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse strs source fields (`SourceDisplay`, `Source`, `SourceId`) (#23)
 - Parse mei info: `name` and `polarity` (#24)
 - Parse genotype info (#25)
+- Parse eventual dbSNP IDs (#26)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)

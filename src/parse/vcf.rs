@@ -112,6 +112,13 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
                 variant.insert("custom", custom);
             }
 
+        let id = record.id();
+        let variant_id = String::from_utf8_lossy(&id);
+
+        if variant_id.contains("rs") {
+            variant.insert("dbsnp_id", variant_id.to_string());
+        }
+
         match category {
             VariantCategory::Str => {
                 set_str_info(&record, &mut variant);
