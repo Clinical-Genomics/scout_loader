@@ -13,6 +13,7 @@ use crate::parse::strs::set_str_info;
 use crate::parse::meis::set_mei_info;
 use crate::parse::fusions::set_fusion_info;
 use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
+use crate::parse::mitomap::set_mitomap_associated_diseases;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
@@ -133,6 +134,8 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         if variant_id.contains("rs") {
             variant.insert("dbsnp_id", variant_id.to_string());
         }
+
+        set_mitomap_associated_diseases(&record, &mut variant);
 
         match category {
             VariantCategory::Str => {
