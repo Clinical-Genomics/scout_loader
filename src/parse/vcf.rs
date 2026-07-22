@@ -14,6 +14,7 @@ use crate::parse::meis::set_mei_info;
 use crate::parse::fusions::set_fusion_info;
 use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
 use crate::parse::mt_annotations::{set_mitomap_associated_diseases, set_hmtvar};
+use crate::parse::vep::{parse_vep_header, parse_vep_transcripts};
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
@@ -44,6 +45,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         .expect("couldn't open input vcf");
 
     let header = vcf.header().clone();
+    let vep_header = parse_vep_header(&header);
 
     if let Err(error) = validate_sample_mapping(vcf.header(), &sample_mapping) {
         eprintln!("Sample mapping validation failed: {}", error);
@@ -149,6 +151,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
             VariantCategory::Fusion => {
                 set_fusion_info(&record, &mut variant);
+                return; // Setting of genes and transcripts is handled specifically by set_fusion_info for this category
             }
 
             VariantCategory::Cancer | VariantCategory::CancerSv => {
@@ -163,7 +166,10 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             _ => {}
         }
 
-        println!("{:#?}", variant);
+        let vep_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
+
+
+        println!("{:#?}", vep_transcripts);
             
     }
 
