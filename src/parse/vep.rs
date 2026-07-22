@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use crate::HashMap;
 use crate::parse::info::parse_info_string;
 use crate::parse::genes::parse_genes;
+use crate::models::gene::GeneAnnotation;
 
 
 /// Extract the VEP CSQ annotation fields from the VCF header.
@@ -65,71 +66,65 @@ fn get_string_array(document: &Document, key: &str) -> Vec<String> {
 
 
 
-/// Parse VEP transcript annotations and add gene information to a variant.
+/// Parse VEP CSQ annotations from a VCF record.
 ///
-/// Extracts CSQ annotations from a VCF record using the VEP header, converts
-/// raw VEP transcript entries into parsed transcript documents, collects dbSNP
-/// and COSMIC identifiers, and derives gene information from the parsed
-/// transcripts.
+/// Extracts transcript annotations from the CSQ INFO field using the VEP
+/// header, collects dbSNP and COSMIC identifiers, and builds gene-level
+/// information separately from transcript-level information.
 ///
-/// Fusion variants are not handled here because they have their own dedicated
-/// gene/transcript parser.
+/// Gene identifiers are not stored in transcripts to avoid duplication.
+/// They are passed separately to `parse_genes`.
 ///
-/// # Arguments
-///
-/// * `record` - VCF record containing the variant annotations.
-/// * `vep_header` - Parsed VEP CSQ header fields used to decode transcript
-///   annotations.
-/// * `variant` - BSON document representing the parsed variant. Gene, HGNC,
-///   dbSNP and COSMIC information is added to this document.
-///
-/// # Returns
-///
-/// A vector of parsed transcript documents for downstream processing.
+/// Returns the parsed transcripts and gene annotations.
 pub fn parse_vep_transcripts(
     record: &Record,
     vep_header: &[String],
     variant: &mut Document,
-) -> Vec<Document> {
+) -> (Vec<Document>, Vec<GeneAnnotation>) {
     let mut parsed_transcripts = Vec::new();
+    let mut gene_annotations = Vec::new();
 
-    let mut dbsnp_ids: HashSet<String> = HashSet::new();
-    let mut cosmic_ids: HashSet<String> = HashSet::new();
+    let mut dbsnp_ids = HashSet::new();
+    let mut cosmic_ids = HashSet::new();
 
-    // Parse VEP CSQ annotations
     if !vep_header.is_empty() {
         if let Some(csq) = parse_info_string(record, b"CSQ") {
-            let raw_transcripts = csq.split(',')
-                .map(|transcript_info| {
-                    vep_header
-                        .iter()
-                        .zip(transcript_info.split('|'))
-                        .map(|(key, value)| {
-                            (key.clone(), value.to_string())
-                        })
-                        .collect::<HashMap<String, String>>()
+            for transcript_info in csq.split(',') {
+                let raw_transcript: HashMap<String, String> = vep_header
+                    .iter()
+                    .zip(transcript_info.split('|'))
+                    .map(|(key, value)| {
+                        (key.clone(), value.to_string())
+                    })
+                    .collect();
+
+                gene_annotations.push(GeneAnnotation {
+                    hgnc_id: get_hgnc_id(&raw_transcript),
+                    hgnc_symbol: raw_transcript
+                        .get("SYMBOL")
+                        .cloned(),
                 });
 
-            for raw_transcript in raw_transcripts {
                 if let Some(transcript) = parse_vep_transcript(raw_transcript) {
-                    for dbsnp in get_string_array(&transcript, "dbsnp") {
-                        dbsnp_ids.insert(dbsnp);
+                    if let Ok(values) = transcript.get_array("dbsnp") {
+                        for value in values {
+                            if let Bson::String(id) = value {
+                                dbsnp_ids.insert(id.clone());
+                            }
+                        }
                     }
 
-                    for cosmic in get_string_array(&transcript, "cosmic") {
-                        cosmic_ids.insert(cosmic);
+                    if let Ok(values) = transcript.get_array("cosmic") {
+                        for value in values {
+                            if let Bson::String(id) = value {
+                                cosmic_ids.insert(id.clone());
+                            }
+                        }
                     }
 
                     parsed_transcripts.push(transcript);
                 }
             }
-        }
-    }
-
-    // COSMIC can also be added independently by VEP/bcftools annotate
-    if let Some(cosmic_tag) = parse_info_string(record, b"COSMIC") {
-        for cosmic_id in cosmic_tag.split('&') {
-            cosmic_ids.insert(cosmic_id.to_string());
         }
     }
 
@@ -154,120 +149,33 @@ pub fn parse_vep_transcripts(
         );
     }
 
-    // Derive genes from parsed transcripts
-    let mut genes = parse_genes(&parsed_transcripts);
-
-    let mut hgnc_ids: HashSet<String> = genes
-        .iter()
-        .filter_map(|gene| {
-            gene.get_str("hgnc_id")
-                .ok()
-                .map(str::to_string)
-        })
-        .collect();
-
-    // HGNC IDs annotated by Stranger for STR variants
-    if let Some(str_hgnc_id) = parse_info_string(record, b"HGNCId") {
-        hgnc_ids.insert(str_hgnc_id.clone());
-
-        if genes.is_empty() {
-            let mut gene = Document::new();
-            gene.insert("hgnc_id", str_hgnc_id);
-            genes.push(gene);
-        }
-    }
-
-    variant.insert(
-        "genes",
-        Bson::Array(
-            genes
-                .into_iter()
-                .map(Bson::Document)
-                .collect(),
-        ),
-    );
-
-    variant.insert(
-        "hgnc_ids",
-        Bson::Array(
-            hgnc_ids
-                .into_iter()
-                .map(Bson::String)
-                .collect(),
-        ),
-    );
-
-    parsed_transcripts
+    (parsed_transcripts, gene_annotations)
 }
 
 /// Parse a single VEP transcript annotation.
 ///
-/// Extracts the basic transcript, gene and consequence information from a
-/// single VEP CSQ entry.
+/// Extracts transcript-specific information from a single CSQ entry.
+/// Gene-level information such as HGNC ID and gene symbol is handled
+/// separately by the gene parser.
 ///
-/// # Arguments
-///
-/// * `entry` - A single VEP CSQ annotation represented as key-value pairs.
-///
-/// # Returns
-///
-/// A parsed transcript document, or `None` if no transcript identifier
-/// can be extracted.
+/// Returns None if no transcript ID is available.
 pub fn parse_vep_transcript(
     entry: HashMap<String, String>,
 ) -> Option<Document> {
-    let mut transcript = Document::new();
-
-    // Transcript ID
     let transcript_id = entry
         .get("FEATURE")
-        .map(|value| value.split(':').next().unwrap_or(""))
+        .map(|id| id.split(':').next().unwrap_or(""))
         .unwrap_or("");
 
     if transcript_id.is_empty() {
         return None;
     }
 
+    let mut transcript = Document::new();
+
     transcript.insert(
         "transcript_id",
         transcript_id.to_string(),
-    );
-
-    // Gene information
-    transcript.insert(
-        "hgnc_id",
-        get_hgnc_id(&entry),
-    );
-
-    transcript.insert(
-        "hgnc_symbol",
-        entry
-            .get("SYMBOL")
-            .cloned()
-            .unwrap_or_default(),
-    );
-
-    // Consequences
-    let consequences: Vec<Bson> = entry
-        .get("CONSEQUENCE")
-        .unwrap_or(&String::new())
-        .split('&')
-        .filter(|value| !value.is_empty())
-        .map(|value| Bson::String(value.to_string()))
-        .collect();
-
-    transcript.insert(
-        "functional_annotations",
-        Bson::Array(consequences),
-    );
-
-    // Transcript annotations
-    transcript.insert(
-        "coding_sequence_name",
-        entry
-            .get("HGVSc")
-            .cloned()
-            .unwrap_or_default(),
     );
 
     transcript.insert(
@@ -287,42 +195,56 @@ pub fn parse_vep_transcript(
     );
 
     transcript.insert(
+        "intron",
+        entry
+            .get("INTRON")
+            .cloned()
+            .unwrap_or_default(),
+    );
+
+    transcript.insert(
+        "functional_annotations",
+        Bson::Array(
+            entry
+                .get("Consequence")
+                .unwrap_or(&String::new())
+                .split('&')
+                .map(|x| Bson::String(x.to_string()))
+                .collect(),
+        ),
+    );
+
+    transcript.insert(
         "is_canonical",
         entry
             .get("CANONICAL")
-            .map(|value| value == "YES")
+            .map(|x| x == "YES")
             .unwrap_or(false),
+    );
+
+    transcript.insert(
+        "coding_sequence_name",
+        entry
+            .get("HGVSc")
+            .cloned()
+            .unwrap_or_default(),
     );
 
     Some(transcript)
 }
 
-/// Extract the HGNC identifier from a VEP transcript annotation.
+/// Extract the HGNC identifier from a VEP annotation.
 ///
-/// The HGNC identifier is extracted from the HGNC_ID field. If the field
-/// contains a prefix (for example, "HGNC:1234"), only the numeric identifier
-/// is retained.
+/// The HGNC_ID field may contain a prefix (for example, "HGNC:1234").
+/// Only the numeric identifier is retained.
 ///
-/// # Arguments
-///
-/// * `entry` - A raw VEP transcript annotation represented as key-value pairs.
-///
-/// # Returns
-///
-/// A BSON integer containing the HGNC identifier, or BSON null if the field
-/// is missing or cannot be parsed.
-pub fn get_hgnc_id(entry: &HashMap<String, String>) -> Bson {
-    match entry.get("HGNC_ID") {
-        Some(value) => {
-            value
-                .split(':')
-                .last()
-                .and_then(|id| id.parse::<i32>().ok())
-                .map(Bson::Int32)
-                .unwrap_or(Bson::Null)
-        }
-        None => Bson::Null,
-    }
+/// Returns `None` if the HGNC identifier is missing or invalid.
+pub fn get_hgnc_id(entry: &HashMap<String, String>) -> Option<String> {
+    entry
+        .get("HGNC_ID")
+        .and_then(|value| value.split(':').last())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string())
 }
 
 

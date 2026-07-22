@@ -1,6 +1,7 @@
 use rust_htslib::bcf::{Read, Reader};
 use mongodb::bson::{doc, self};
 use std::collections::HashMap;
+use mongodb::bson::{Bson, Document};
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::alleles::parse_alleles;
 use crate::parse::filters::parse_filters;
@@ -15,6 +16,7 @@ use crate::parse::fusions::set_fusion_info;
 use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
 use crate::parse::mt_annotations::{set_mitomap_associated_diseases, set_hmtvar};
 use crate::parse::vep::{parse_vep_header, parse_vep_transcripts};
+use crate::parse::genes::parse_genes;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
@@ -166,7 +168,17 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             _ => {}
         }
 
-        let vep_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
+        let (parsed_transcripts, gene_annotations) = parse_vep_transcripts(&record, &vep_header, &mut variant);
+        let genes = parse_genes(parsed_transcripts, gene_annotations);
+        variant.insert(
+            "genes",
+            Bson::Array(
+                genes
+                    .into_iter()
+                    .map(Bson::Document)
+                    .collect(),
+            ),
+        );
 
 
         println!("{:#?}", variant);
