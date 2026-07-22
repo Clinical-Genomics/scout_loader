@@ -12,4 +12,4 @@ pub mod strs;
 pub mod meis;
 pub mod genotypes;
 pub mod fusions;
-pub mod mitomap;
+pub mod mt_annotations;

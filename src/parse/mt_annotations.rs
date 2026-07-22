@@ -21,3 +21,20 @@ pub fn set_mitomap_associated_diseases(
         }
     }
 }
+
+/// Parse the HmtVar variant identifier from the VCF INFO field.
+///
+/// If the `HmtVar` annotation is present and not equal to `"."`, stores the
+/// variant identifier in the variant document.
+pub fn set_hmtvar(
+    record: &Record,
+    variant: &mut Document,
+) {
+    if let Some(value) = parse_info_string(record, b"HmtVar") {
+        if value != "." {
+            if let Ok(id) = value.parse::<i32>() {
+                variant.insert("hmtvar_variant_id", id);
+            }
+        }
+    }
+}
