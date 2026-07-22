@@ -3,7 +3,6 @@ use rust_htslib::bcf::Record;
 use mongodb::bson::{Bson, Document};
 use std::collections::HashSet;
 use crate::HashMap;
-use crate::parse::info::parse_info_string;
 use crate::parse::genes::parse_genes;
 use crate::models::gene::GeneAnnotation;
 
@@ -88,8 +87,14 @@ pub fn parse_vep_transcripts(
     let mut cosmic_ids = HashSet::new();
 
     if !vep_header.is_empty() {
-        if let Some(csq) = parse_info_string(record, b"CSQ") {
-            for transcript_info in csq.split(',') {
+        if let Ok(Some(csq)) = record.info(b"CSQ").string() {
+            let csq_string = csq
+                .iter()
+                .map(|value| String::from_utf8_lossy(value))
+                .collect::<Vec<_>>()
+                .join(",");
+            for transcript_info in csq_string.split(',') {
+                println!("tx info: {}", transcript_info);
                 let raw_transcript: HashMap<String, String> = vep_header
                     .iter()
                     .zip(transcript_info.split('|'))

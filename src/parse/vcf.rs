@@ -167,7 +167,6 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
             _ => {}
         }
-
         let (parsed_transcripts, gene_annotations) = parse_vep_transcripts(&record, &vep_header, &mut variant);
         let genes = parse_genes(parsed_transcripts, gene_annotations);
         variant.insert(
@@ -180,8 +179,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             ),
         );
 
-
-        println!("{:#?}", variant);
+        println!("{:#?}\n\n", variant["genes"]); 
             
     }
 
