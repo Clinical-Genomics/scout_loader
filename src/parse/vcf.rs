@@ -178,9 +178,11 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
                     .collect(),
             ),
         );
-
+        println!("{:#?}\n", variant["document_id"]);
         println!("{:#?}\n\n", variant["genes"]); 
             
     }
+
+    println!("{:#?}", vep_header);
 
 }

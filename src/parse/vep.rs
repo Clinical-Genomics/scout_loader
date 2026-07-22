@@ -192,26 +192,10 @@ pub fn parse_vep_transcript(
     );
 
     transcript.insert(
-        "exon",
-        entry
-            .get("EXON")
-            .cloned()
-            .unwrap_or_default(),
-    );
-
-    transcript.insert(
-        "intron",
-        entry
-            .get("INTRON")
-            .cloned()
-            .unwrap_or_default(),
-    );
-
-    transcript.insert(
         "functional_annotations",
         Bson::Array(
             entry
-                .get("Consequence")
+                .get("CONSEQUENCE")
                 .unwrap_or(&String::new())
                 .split('&')
                 .map(|x| Bson::String(x.to_string()))
@@ -220,19 +204,107 @@ pub fn parse_vep_transcript(
     );
 
     transcript.insert(
-        "is_canonical",
-        entry
-            .get("CANONICAL")
-            .map(|x| x == "YES")
-            .unwrap_or(false),
+        "biotype",
+        Bson::String(
+            entry.get("BIOTYPE")
+                .cloned()
+                .unwrap_or_default(),
+        ),
     );
 
     transcript.insert(
+        "exon",
+        Bson::String(
+            entry.get("EXON")
+                .cloned()
+                .unwrap_or_default(),
+        ),
+    );
+
+    transcript.insert(
+        "intron",
+        Bson::String(
+            entry.get("INTRON")
+                .cloned()
+                .unwrap_or_default(),
+        ),
+    );
+
+    transcript.insert(
+        "strand",
+        Bson::String(
+            entry.get("STRAND")
+                .cloned()
+                .unwrap_or_default(),
+        ),
+    );
+
+    // Canonical transcript
+    transcript.insert(
+        "is_canonical",
+        Bson::Boolean(
+            entry.get("CANONICAL")
+                .map(|x| x == "YES")
+                .unwrap_or(false),
+        ),
+    );
+
+
+    transcript.insert(
+        "polyphen_prediction",
+        Bson::String(
+            entry.get("POLYPHEN")
+                .cloned()
+                .unwrap_or_default(),
+        ),
+    );
+
+    transcript.insert(
+        "sift_prediction",
+        Bson::String(
+            entry.get("SIFT")
+                .cloned()
+                .unwrap_or_default(),
+        ),
+    );
+
+    // Domains
+    transcript.insert(
+        "domains",
+        Bson::String(
+            entry.get("DOMAINS")
+                .cloned()
+                .unwrap_or_default(),
+        ),
+    );
+
+    // Protein databases
+    transcript.insert(
+        "swiss_prot",
+        Bson::String(
+            entry.get("SWISSPROT")
+                .cloned()
+                .unwrap_or_else(|| "unknown".to_string()),
+        ),
+    );
+
+    // HGVS
+    transcript.insert(
         "coding_sequence_name",
-        entry
-            .get("HGVSc")
-            .cloned()
-            .unwrap_or_default(),
+        Bson::String(
+            entry.get("HGVSC")
+                .cloned()
+                .unwrap_or_default(),
+        ),
+    );
+
+    transcript.insert(
+        "protein_sequence_name",
+        Bson::String(
+            entry.get("HGVSP")
+                .cloned()
+                .unwrap_or_default(),
+        ),
     );
 
     Some(transcript)
