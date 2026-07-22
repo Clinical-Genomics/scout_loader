@@ -13,7 +13,7 @@ use crate::parse::strs::set_str_info;
 use crate::parse::meis::set_mei_info;
 use crate::parse::fusions::set_fusion_info;
 use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
-use crate::parse::mitomap::set_mitomap_associated_diseases;
+use crate::parse::mt_annotations::{set_mitomap_associated_diseases, set_hmtvar};
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
@@ -136,6 +136,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         }
 
         set_mitomap_associated_diseases(&record, &mut variant);
+        set_hmtvar(&record, &mut variant);
 
         match category {
             VariantCategory::Str => {

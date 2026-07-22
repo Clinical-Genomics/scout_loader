@@ -35,6 +35,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse fusion variants INFO field (#32)
 - Set fusion genes from fusion variant INFO (#33)
 - Parse MitoMap-associated diseases (#34)
+- Parse HmtVar annotations (#35)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
 - Parsing of end chromosome (#29)
