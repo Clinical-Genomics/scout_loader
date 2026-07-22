@@ -169,7 +169,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let vep_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
 
 
-        println!("{:#?}", vep_transcripts);
+        println!("{:#?}", variant);
             
     }
 
