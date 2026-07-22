@@ -84,7 +84,7 @@ impl fmt::Display for VariantCategory {
     }
 }
 
-/// Represents the identifiers associated with a variant.
+// Represents the identifiers associated with a variant.
 pub struct VariantIds {
     pub simple_id: String,
     pub variant_id: String,
