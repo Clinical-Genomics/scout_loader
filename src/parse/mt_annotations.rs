@@ -22,7 +22,6 @@ pub fn set_mitomap_associated_diseases(
     }
 }
 
-
 /// Parse the HmtVar variant identifier from the VCF INFO field.
 ///
 /// If the `HmtVar` annotation is present and not equal to `"."`, stores the
