@@ -13,3 +13,5 @@ pub mod meis;
 pub mod genotypes;
 pub mod fusions;
 pub mod mt_annotations;
+pub mod genes;
+pub mod vep;
