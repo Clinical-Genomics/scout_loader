@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::HashSet;
 use mongodb::bson::{doc, Bson, Document};
 
 use crate::models::consequence::SO_TERMS;
@@ -194,7 +195,7 @@ pub fn set_hgnc_ids(variant: &mut Document) {
     // Collect HGNC IDs from parsed genes
     if let Some(Bson::Array(genes)) = variant.get("genes") {
         for gene in genes {
-            let Some(Bson::Document(gene)) = gene.as_document() else {
+            let Some(gene) = gene.as_document() else {
                 continue;
             };
 
