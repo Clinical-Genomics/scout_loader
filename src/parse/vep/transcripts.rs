@@ -9,6 +9,8 @@ use crate::parse::vep::utils::{get_highest_float_score_in_string, get_sequence_a
 use crate::parse::vep::domains::parse_domains;
 use crate::parse::vep::scores::parse_cadd;
 use crate::parse::vep::frequencies::{parse_mt_frequencies, parse_variant_frequencies};
+use crate::parse::info::parse_info_string;
+use crate::parse::vep::genes::parse_genes;
 
 /// Parse VEP CSQ annotations from a VCF record.
 ///
@@ -24,83 +26,101 @@ pub fn parse_vep_transcripts(
     record: &Record,
     vep_header: &[String],
     variant: &mut Document,
-) -> (Vec<Document>, Vec<GeneAnnotation>) {
+) -> Vec<Document> {
     let mut parsed_transcripts = Vec::new();
-    let mut gene_annotations = Vec::new();
 
     let mut dbsnp_ids = HashSet::new();
     let mut cosmic_ids = HashSet::new();
 
-    if !vep_header.is_empty() {
-        if let Ok(Some(csq)) = record.info(b"CSQ").string() {
-            let csq_string = csq
+    if vep_header.is_empty() {
+        return parsed_transcripts;
+    }
+
+
+    if let Ok(Some(csq)) = record.info(b"CSQ").string() {
+        let csq_string = csq
+            .iter()
+            .map(|value| String::from_utf8_lossy(value))
+            .collect::<Vec<_>>()
+            .join(",");
+        for transcript_info in csq_string.split(',') {
+            let raw_transcript: HashMap<String, String> = vep_header
                 .iter()
-                .map(|value| String::from_utf8_lossy(value))
-                .collect::<Vec<_>>()
-                .join(",");
-            for transcript_info in csq_string.split(',') {
-                let raw_transcript: HashMap<String, String> = vep_header
-                    .iter()
-                    .zip(transcript_info.split('|'))
-                    .map(|(key, value)| {
-                        (key.clone(), value.to_string())
-                    })
-                    .collect();
+                .zip(transcript_info.split('|'))
+                .map(|(key, value)| {
+                    (key.clone(), value.to_string())
+                })
+                .collect();
 
-                gene_annotations.push(GeneAnnotation {
-                    hgnc_id: get_hgnc_id(&raw_transcript),
-                    hgnc_symbol: raw_transcript
-                        .get("SYMBOL")
-                        .cloned(),
-                });
-
-                if let Some(transcript) = parse_vep_transcript(raw_transcript) {
-                    if let Ok(values) = transcript.get_array("dbsnp") {
-                        for value in values {
-                            if let Bson::String(id) = value {
-                                dbsnp_ids.insert(id.clone());
-                            }
+            if let Some(transcript) = parse_vep_transcript(raw_transcript) {
+                if let Ok(values) = transcript.get_array("dbsnp") {
+                    for value in values {
+                        if let Bson::String(id) = value {
+                            dbsnp_ids.insert(id.clone());
                         }
                     }
-
-                    if let Ok(values) = transcript.get_array("cosmic") {
-                        for value in values {
-                            if let Bson::String(id) = value {
-                                cosmic_ids.insert(id.clone());
-                            }
-                        }
-                    }
-
-                    parsed_transcripts.push(transcript);
                 }
+
+                if let Ok(values) = transcript.get_array("cosmic") {
+                    for value in values {
+                        if let Bson::String(id) = value {
+                            cosmic_ids.insert(id.clone());
+                        }
+                    }
+                }
+
+                parsed_transcripts.push(transcript);
             }
         }
-    }
 
-    if !dbsnp_ids.is_empty() && !variant.contains_key("dbsnp_id") {
-        variant.insert(
-            "dbsnp_id",
-            Bson::String(
-                dbsnp_ids.into_iter().collect::<Vec<_>>().join(";"),
-            ),
-        );
-    }
+        // The COSMIC INFO tag may be added by VEP and/or bcftools annotate.
+        if let Some(cosmic_tag) = parse_info_string(record, b"COSMIC") {
+            cosmic_ids.extend(
+                cosmic_tag
+                    .split('&')
+                    .filter(|id| !id.is_empty())
+                    .map(str::to_string),
+            );
+        }
 
-    if !cosmic_ids.is_empty() {
+        if !cosmic_ids.is_empty() {
+            variant.insert(
+                "cosmic_ids",
+                Bson::Array(
+                    cosmic_ids
+                        .iter()
+                        .cloned()
+                        .map(Bson::String)
+                        .collect(),
+                ),
+            );
+        }
+
+        if !dbsnp_ids.is_empty() && !variant.contains_key("dbsnp_id") {
+            variant.insert(
+                "dbsnp_id",
+                Bson::String(
+                    dbsnp_ids.iter().cloned().collect::<Vec<_>>().join(";"),
+                ),
+            );
+        }
+
+
+        let genes = parse_genes(&parsed_transcripts);
         variant.insert(
-            "cosmic_ids",
+            "genes",
             Bson::Array(
-                cosmic_ids
+                genes
                     .into_iter()
-                    .map(Bson::String)
+                    .map(Bson::Document)
                     .collect(),
             ),
         );
+
     }
 
-    (parsed_transcripts, gene_annotations)
+     parsed_transcripts
 }
-
 
 /// Parse a single VEP transcript annotation.
 ///

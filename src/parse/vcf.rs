@@ -17,7 +17,6 @@ use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
 use crate::parse::mt_annotations::{set_mitomap_associated_diseases, set_hmtvar};
 use crate::parse::vep::header::parse_vep_header;
 use crate::parse::vep::transcripts::parse_vep_transcripts;
-use crate::parse::vep::genes::parse_genes;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
@@ -63,11 +62,11 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let (reference, alternative) = parse_alleles(&record, category);
         let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type);
         
-        /*
-        if ids.document_id != "4c7d5c70d955875504db72ef8e1abe77"{
+        
+        if ids.document_id != "4c7d5c70d955875504db72ef8e1abe77" {
             continue;
         }
-        */
+        
         let filters = parse_filters(&record, &header);
         let compound_info = record
             .info(b"Compounds")
@@ -174,17 +173,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
             _ => {}
         }
-        let (parsed_transcripts, gene_annotations) = parse_vep_transcripts(&record, &vep_header, &mut variant);
-        let genes = parse_genes(parsed_transcripts, gene_annotations);
-        variant.insert(
-            "genes",
-            Bson::Array(
-                genes
-                    .into_iter()
-                    .map(Bson::Document)
-                    .collect(),
-            ),
-        );
+        let parsed_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
         println!("{:#?}\n", variant);
             
     }
