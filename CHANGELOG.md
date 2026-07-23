@@ -5,9 +5,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
 ## [unreleased]
-### Changed
-- Structure of parsed entities, to reflect documents saved in the database (#20)
-- Improved and simplified code (#22)
 ### Added
 - Use the `rust-htslib` for reading VCF files (#1)
 - First Variant model and parsing modules (#2)
@@ -37,6 +34,10 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse MitoMap-associated diseases (#34)
 - Parse HmtVar annotations (#35)
 - Parsing Genes and transcript annotations from VEP annotations - basic parsing (#36)
+### Changed
+- Structure of parsed entities, to reflect documents saved in the database (#20)
+- Improved and simplified code (#22)
+- Refactored VEP annotations parsing module (#38)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
 - Parsing of end chromosome (#29)

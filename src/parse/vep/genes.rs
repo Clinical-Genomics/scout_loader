@@ -56,4 +56,3 @@ pub fn parse_genes(
 
     genes.into_values().collect()
 }
-
