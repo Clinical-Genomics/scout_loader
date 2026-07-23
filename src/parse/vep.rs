@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use crate::HashMap;
 use crate::parse::genes::parse_genes;
 use crate::models::gene::GeneAnnotation;
+use crate::models::consequence::SO_TERMS;
 
 
 /// Extract the VEP CSQ annotation fields from the VCF header.
@@ -184,18 +185,6 @@ pub fn parse_vep_transcript(
     );
 
     transcript.insert(
-        "functional_annotations",
-        Bson::Array(
-            entry
-                .get("CONSEQUENCE")
-                .unwrap_or(&String::new())
-                .split('&')
-                .map(|x| Bson::String(x.to_string()))
-                .collect(),
-        ),
-    );
-
-    transcript.insert(
         "protein_id",
         entry
             .get("ENSP")
@@ -214,15 +203,6 @@ pub fn parse_vep_transcript(
     transcript.insert(
         "sift_prediction",
         Bson::String(sift),
-    );
-
-    transcript.insert(
-        "biotype",
-        Bson::String(
-            entry.get("BIOTYPE")
-                .cloned()
-                .unwrap_or_default(),
-        ),
     );
 
     if let Some(value) = entry.get("REVEL_RANKSCORE").filter(|v| !v.is_empty()) {
@@ -287,33 +267,71 @@ pub fn parse_vep_transcript(
         );
     }
 
+    transcript.insert(
+        "biotype",
+        Bson::String(
+            entry.get("BIOTYPE")
+                .cloned()
+                .unwrap_or_default(),
+        ),
+    );
+
+    for (source, target) in [("EXON", "exon"),("INTRON", "intron")] {
+        if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
+            transcript.insert(
+                target,
+                Bson::String(value.clone()),
+            );
+        }
+    }
+
+    if let Some(strand) = get_strand(&entry) {
+        transcript.insert(
+            "strand",
+            Bson::String(strand),
+        );
+    }
+
+    let functional_annotations: Vec<String> = entry
+        .get("CONSEQUENCE")
+        .unwrap_or(&String::new())
+        .split('&')
+        .map(|x| x.to_string())
+        .collect();
+
+    let functional_annotations: Vec<String> = entry
+        .get("CONSEQUENCE")
+        .filter(|value| !value.is_empty())
+        .map(|value| value.split('&').map(String::from).collect())
+        .unwrap_or_default();
+
+    if !functional_annotations.is_empty() {
+        transcript.insert(
+            "functional_annotations",
+            Bson::Array(
+                functional_annotations
+                    .iter()
+                    .map(|annotation| Bson::String(annotation.clone()))
+                    .collect(),
+            ),
+        );
+
+        let region_annotations = get_regional_annotation(&functional_annotations);
+
+        transcript.insert(
+            "region_annotations",
+            Bson::Array(
+                region_annotations
+                    .into_iter()
+                    .map(Bson::String)
+                    .collect(),
+            ),
+        );
+    }
+
+
+
     /*
-    transcript.insert(
-        "exon",
-        Bson::String(
-            entry.get("EXON")
-                .cloned()
-                .unwrap_or_default(),
-        ),
-    );
-
-    transcript.insert(
-        "intron",
-        Bson::String(
-            entry.get("INTRON")
-                .cloned()
-                .unwrap_or_default(),
-        ),
-    );
-
-    transcript.insert(
-        "strand",
-        Bson::String(
-            entry.get("STRAND")
-                .cloned()
-                .unwrap_or_default(),
-        ),
-    );
 
     // Canonical transcript
     transcript.insert(
@@ -326,35 +344,6 @@ pub fn parse_vep_transcript(
     );
 
 
-    // Domains
-    transcript.insert(
-        "domains",
-        Bson::String(
-            entry.get("DOMAINS")
-                .cloned()
-                .unwrap_or_default(),
-        ),
-    );
-
-
-    // HGVS
-    transcript.insert(
-        "coding_sequence_name",
-        Bson::String(
-            entry.get("HGVSC")
-                .cloned()
-                .unwrap_or_default(),
-        ),
-    );
-
-    transcript.insert(
-        "protein_sequence_name",
-        Bson::String(
-            entry.get("HGVSP")
-                .cloned()
-                .unwrap_or_default(),
-        ),
-    );
     */
 
     Some(transcript)
@@ -573,4 +562,40 @@ fn get_sequence_aux(entry: &HashMap<String, String>, name: &str) -> Option<Strin
     } else {
         None
     }
+}
+
+/// Get strand information from a VEP transcript entry.
+fn get_strand(entry: &HashMap<String, String>) -> Option<String> {
+    match entry.get("STRAND").map(String::as_str) {
+        Some("1") => Some("+".to_string()),
+        Some("-1") => Some("-".to_string()),
+        _ => None,
+    }
+}
+
+/// Get regional annotations from Sequence Ontology consequence terms.
+///
+/// Maps functional annotations (SO consequence terms) to their broader
+/// functional regions using the predefined Sequence Ontology term mapping.
+///
+/// Unknown annotations are ignored.
+///
+/// # Arguments
+///
+/// * `functional_annotations` - A list of Sequence Ontology consequence terms
+///   extracted from a VEP transcript annotation.
+///
+/// # Returns
+///
+/// A vector containing the regional annotations corresponding to the provided
+/// functional annotations.
+fn get_regional_annotation(functional_annotations: &[String]) -> Vec<String> {
+    functional_annotations
+        .iter()
+        .filter_map(|annotation| {
+            SO_TERMS
+                .get(annotation.as_str())
+                .map(|term| term.region.to_string())
+        })
+        .collect()
 }
