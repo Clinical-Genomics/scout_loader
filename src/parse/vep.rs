@@ -184,14 +184,6 @@ pub fn parse_vep_transcript(
     );
 
     transcript.insert(
-        "protein_id",
-        entry
-            .get("ENSP")
-            .cloned()
-            .unwrap_or_default(),
-    );
-
-    transcript.insert(
         "functional_annotations",
         Bson::Array(
             entry
@@ -204,6 +196,27 @@ pub fn parse_vep_transcript(
     );
 
     transcript.insert(
+        "protein_id",
+        entry
+            .get("ENSP")
+            .cloned()
+            .unwrap_or_default(),
+    );
+
+    let polyphen = get_prediction(&entry, &["POLYPHEN"]);
+
+    transcript.insert(
+        "polyphen_prediction",
+        Bson::String(polyphen),
+    );
+
+    let sift = get_prediction(&entry, &["SIFT", "SIFT_PRED"]);
+    transcript.insert(
+        "sift_prediction",
+        Bson::String(sift),
+    );
+
+    transcript.insert(
         "biotype",
         Bson::String(
             entry.get("BIOTYPE")
@@ -212,6 +225,69 @@ pub fn parse_vep_transcript(
         ),
     );
 
+    if let Some(value) = entry.get("REVEL_RANKSCORE").filter(|v| !v.is_empty()) {
+        if let Some(rankscore) = get_highest_float_score_in_string(value) {
+            transcript.insert(
+                "revel_rankscore",
+                Bson::Double(rankscore),
+            );
+        }
+    }
+
+    if let Some(value) = entry.get("REVEL_SCORE").filter(|v| !v.is_empty()) {
+        if let Some(score) = get_highest_float_score_in_string(value) {
+            transcript.insert(
+                "revel_raw_score",
+                Bson::Double(score),
+            );
+        }
+    }
+
+    parse_transcripts_spliceai(&mut transcript, &entry);
+
+
+    transcript.insert(
+        "swiss_prot",
+        Bson::String(
+            entry
+                .get("SWISSPROT")
+                .filter(|value| !value.is_empty())
+                .cloned()
+                .unwrap_or_else(|| "unknown".to_string()),
+        ),
+    );
+
+
+    for (source, target) in [
+        ("GERP++_RS", "gerp"),
+        ("PHASTCONS100WAY_VERTEBRATE", "phast"),
+        ("PHYLOP100WAY_VERTEBRATE", "phylop"),
+    ] {
+        if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
+            transcript.insert(
+                target,
+                Bson::String(value.clone()),
+            );
+        }
+    }
+
+    parse_domains(&mut transcript, &entry);
+
+    if let Some(coding_sequence) = get_sequence_aux(&entry, "HGVSC") {
+        transcript.insert(
+            "coding_sequence_name",
+            Bson::String(coding_sequence),
+        );
+    }
+
+    if let Some(coding_sequence) = get_sequence_aux(&entry, "HGVSP") {
+        transcript.insert(
+            "protein_sequence_name",
+            Bson::String(coding_sequence),
+        );
+    }
+
+    /*
     transcript.insert(
         "exon",
         Bson::String(
@@ -250,24 +326,6 @@ pub fn parse_vep_transcript(
     );
 
 
-    transcript.insert(
-        "polyphen_prediction",
-        Bson::String(
-            entry.get("POLYPHEN")
-                .cloned()
-                .unwrap_or_default(),
-        ),
-    );
-
-    transcript.insert(
-        "sift_prediction",
-        Bson::String(
-            entry.get("SIFT")
-                .cloned()
-                .unwrap_or_default(),
-        ),
-    );
-
     // Domains
     transcript.insert(
         "domains",
@@ -278,15 +336,6 @@ pub fn parse_vep_transcript(
         ),
     );
 
-    // Protein databases
-    transcript.insert(
-        "swiss_prot",
-        Bson::String(
-            entry.get("SWISSPROT")
-                .cloned()
-                .unwrap_or_else(|| "unknown".to_string()),
-        ),
-    );
 
     // HGVS
     transcript.insert(
@@ -306,6 +355,7 @@ pub fn parse_vep_transcript(
                 .unwrap_or_default(),
         ),
     );
+    */
 
     Some(transcript)
 }
@@ -324,5 +374,203 @@ pub fn get_hgnc_id(entry: &HashMap<String, String>) -> Option<String> {
         .map(|value| value.to_string())
 }
 
+/// Extract a prediction from VEP transcript annotations.
+///
+/// The prediction fields are typically formatted as
+/// `prediction(score)`, for example `deleterious(0.01)`.
+/// Returns only the prediction label. If none of the provided fields
+/// are available or contain a value, `"unknown"` is returned.
+fn get_prediction(entry: &HashMap<String, String>, fields: &[&str]) -> String {
+    for field in fields {
+        if let Some(value) = entry.get(*field).filter(|value| !value.is_empty()) {
+            return value
+                .split('(')
+                .next()
+                .unwrap_or("unknown")
+                .to_string();
+        }
+    }
+
+    "unknown".to_string()
+}
+
+/// Return the highest float value from a string with numbers possibly
+/// separated by `&`.
+///
+/// Invalid values are ignored. Returns `None` if the input is empty or
+/// no valid float values are found.
+fn get_highest_float_score_in_string(value: &str) -> Option<f64> {
+    value
+        .split('&')
+        .filter_map(|part| part.trim().parse::<f64>().ok())
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+}
 
 
+/// Parse SpliceAI annotations from a VEP transcript entry.
+///
+/// Extracts SpliceAI delta scores and positions from VEP CSQ fields.
+/// The maximum delta score is stored together with its corresponding
+/// position. Also stores a summary of all splice predictions.
+fn parse_transcripts_spliceai(
+    transcript: &mut Document,
+    entry: &HashMap<String, String>,
+) {
+    let spliceai_positions = [
+        ("SPLICEAI_PRED_DP_AG", "spliceai_dp_ag"),
+        ("SPLICEAI_PRED_DP_AL", "spliceai_dp_al"),
+        ("SPLICEAI_PRED_DP_DG", "spliceai_dp_dg"),
+        ("SPLICEAI_PRED_DP_DL", "spliceai_dp_dl"),
+    ];
+
+    let spliceai_delta_scores = [
+        ("SPLICEAI_PRED_DS_AG", "spliceai_ds_ag"),
+        ("SPLICEAI_PRED_DS_AL", "spliceai_ds_al"),
+        ("SPLICEAI_PRED_DS_DG", "spliceai_ds_dg"),
+        ("SPLICEAI_PRED_DS_DL", "spliceai_ds_dl"),
+    ];
+
+    for (source, target) in spliceai_positions {
+        if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
+            if let Ok(position) = value.parse::<i32>() {
+                transcript.insert(
+                    target,
+                    Bson::Int32(position),
+                );
+            }
+        }
+    }
+
+    for (source, target) in spliceai_delta_scores {
+        if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
+            if let Ok(score) = value.parse::<f64>() {
+                transcript.insert(
+                    target,
+                    Bson::Double(score),
+                );
+            }
+        }
+    }
+
+    let spliceai_pairs = [
+        ("spliceai_ds_ag", "spliceai_dp_ag"),
+        ("spliceai_ds_al", "spliceai_dp_al"),
+        ("spliceai_ds_dg", "spliceai_dp_dg"),
+        ("spliceai_ds_dl", "spliceai_dp_dl"),
+    ];
+
+    let mut max_score: Option<f64> = None;
+    let mut max_position: Option<i32> = None;
+    let mut predictions = Vec::new();
+
+    for (score_key, position_key) in spliceai_pairs {
+        let score = transcript.get_f64(score_key).ok();
+        let position = transcript.get_i32(position_key).ok();
+
+        if let Some(score) = score {
+            if max_score.map_or(true, |current| score > current) {
+                max_score = Some(score);
+                max_position = position;
+            }
+        }
+
+        predictions.push(format!(
+            "{} {} {} {}",
+            score_key,
+            score.map(|x| x.to_string()).unwrap_or("-".to_string()),
+            position_key,
+            position.map(|x| x.to_string()).unwrap_or("-".to_string()),
+        ));
+    }
+
+    if let Some(score) = max_score {
+        transcript.insert(
+            "spliceai_score",
+            Bson::Double(score),
+        );
+
+        if let Some(position) = max_position {
+            transcript.insert(
+                "spliceai_position",
+                Bson::Int32(position),
+            );
+        }
+
+        transcript.insert(
+            "spliceai_prediction",
+            Bson::Array(
+                predictions
+                    .into_iter()
+                    .map(Bson::String)
+                    .collect(),
+            ),
+        );
+    }
+}
+
+/// Parse protein domain annotations from a VEP transcript entry.
+///
+/// Extracts supported protein domains from the VEP `DOMAINS` field.
+fn parse_domains(
+    transcript: &mut Document,
+    entry: &HashMap<String, String>,
+) {
+    if let Some(domains) = entry.get("DOMAINS").filter(|v| !v.is_empty()) {
+        for annotation in domains.split('&') {
+            let parts: Vec<&str> = annotation.split(':').collect();
+
+            if parts.len() < 2 {
+                continue;
+            }
+
+            let domain_name = parts[0];
+            let domain_id = parts[1];
+
+            match domain_name {
+                "Pfam_domain" => {
+                    transcript.insert(
+                        "pfam_domain",
+                        Bson::String(domain_id.to_string()),
+                    );
+                }
+                "PROSITE_profiles" => {
+                    transcript.insert(
+                        "prosite_profile",
+                        Bson::String(domain_id.to_string()),
+                    );
+                }
+                "SMART_domains" => {
+                    transcript.insert(
+                        "smart_domain",
+                        Bson::String(domain_id.to_string()),
+                    );
+                }
+                "hmmpanther" => {
+                    transcript.insert(
+                        "panther_domain",
+                        Bson::String(domain_id.to_string()),
+                    );
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// Extract a sequence annotation from a VEP transcript entry.
+///
+/// The VEP fields `HGVSC` and `HGVSP` are formatted as
+/// `transcript:sequence`. This function returns only the sequence part.
+/// Returns `None` if the field is missing or does not contain `:`.
+fn get_sequence_aux(entry: &HashMap<String, String>, name: &str) -> Option<String> {
+    let sequence_entry = entry
+        .get(name)?
+        .split(':')
+        .collect::<Vec<&str>>();
+
+    if sequence_entry.len() > 1 {
+        Some(sequence_entry.last()?.to_string())
+    } else {
+        None
+    }
+}

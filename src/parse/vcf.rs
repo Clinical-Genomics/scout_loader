@@ -61,6 +61,9 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let variant_type = variant_type.to_string();
         let (reference, alternative) = parse_alleles(&record, category);
         let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type);
+        if ids.document_id != "4c7d5c70d955875504db72ef8e1abe77"{
+            continue;
+        }
         let filters = parse_filters(&record, &header);
         let compound_info = record
             .info(b"Compounds")
