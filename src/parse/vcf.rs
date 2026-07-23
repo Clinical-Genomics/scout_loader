@@ -20,7 +20,7 @@ use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
-use crate::parse::vep::genes::parse_genes;
+use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 
 
 /// Processes a VCF file and parses each record according to the variant category.
@@ -174,18 +174,8 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
             _ => {}
         }
-        let parsed_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
-        let genes = parse_genes(&parsed_transcripts);
-        println!("parsed transcripts: {}", parsed_transcripts.len());
-        variant.insert(
-            "genes",
-            Bson::Array(
-                genes
-                    .into_iter()
-                    .map(Bson::Document)
-                    .collect(),
-            ),
-        );
+        set_hgnc_ids(&mut variant);
+
 
         println!("{:#?}\n", variant);
             

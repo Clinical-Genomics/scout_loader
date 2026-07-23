@@ -177,3 +177,71 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
 
     genes
 }
+
+
+/// Collect HGNC identifiers from parsed genes and variant annotations.
+///
+/// HGNC identifiers are collected from the gene annotations. For STR variants,
+/// Stranger can annotate the HGNC identifier directly in the INFO field
+/// (`HGNCId`), which is added as an additional identifier. If no genes were
+/// parsed, a minimal gene document containing only the HGNC identifier is
+/// created.
+///
+/// The collected identifiers are stored in the variant as `hgnc_ids`.
+pub fn set_hgnc_ids(variant: &mut Document) {
+    let mut hgnc_ids: HashSet<String> = HashSet::new();
+
+    // Collect HGNC IDs from parsed genes
+    if let Some(Bson::Array(genes)) = variant.get("genes") {
+        for gene in genes {
+            let Some(Bson::Document(gene)) = gene.as_document() else {
+                continue;
+            };
+
+            if let Some(Bson::Int64(hgnc_id)) = gene.get("hgnc_id") {
+                hgnc_ids.insert(hgnc_id.to_string());
+            }
+
+            if let Some(Bson::Int32(hgnc_id)) = gene.get("hgnc_id") {
+                hgnc_ids.insert(hgnc_id.to_string());
+            }
+
+            if let Some(Bson::String(hgnc_id)) = gene.get("hgnc_id") {
+                hgnc_ids.insert(hgnc_id.clone());
+            }
+        }
+    }
+
+    // STR HGNC IDs are annotated by Stranger
+    if let Some(Bson::String(str_hgnc_id)) = variant.get("HGNCId") {
+        hgnc_ids.insert(str_hgnc_id.clone());
+
+        let has_genes = matches!(
+            variant.get("genes"),
+            Some(Bson::Array(genes)) if !genes.is_empty()
+        );
+
+        if !has_genes {
+            variant.insert(
+                "genes",
+                Bson::Array(vec![
+                    Bson::Document(doc! {
+                        "hgnc_id": str_hgnc_id,
+                    })
+                ]),
+            );
+        }
+    }
+
+    if !hgnc_ids.is_empty() {
+        variant.insert(
+            "hgnc_ids",
+            Bson::Array(
+                hgnc_ids
+                    .into_iter()
+                    .map(Bson::String)
+                    .collect(),
+            ),
+        );
+    }
+}
