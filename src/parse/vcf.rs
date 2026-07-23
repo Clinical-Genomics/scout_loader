@@ -1,7 +1,6 @@
 use rust_htslib::bcf::{Read, Reader};
-use mongodb::bson::{doc, self};
+use mongodb::bson::{Bson, doc, self};
 use std::collections::HashMap;
-use mongodb::bson::{Bson};
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::alleles::parse_alleles;
 use crate::parse::filters::parse_filters;
@@ -21,6 +20,7 @@ use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
+use crate::parse::vep::genes::parse_genes;
 
 
 /// Processes a VCF file and parses each record according to the variant category.
@@ -174,6 +174,18 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             _ => {}
         }
         let parsed_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
+        let genes = parse_genes(&parsed_transcripts);
+        println!("parsed transcripts: {}", parsed_transcripts.len());
+        variant.insert(
+            "genes",
+            Bson::Array(
+                genes
+                    .into_iter()
+                    .map(Bson::Document)
+                    .collect(),
+            ),
+        );
+
         println!("{:#?}\n", variant);
             
     }

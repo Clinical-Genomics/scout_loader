@@ -2,15 +2,14 @@ use rust_htslib::bcf::Record;
 use mongodb::bson::{Bson, Document};
 use std::collections::HashSet;
 use crate::HashMap;
-use crate::models::gene::GeneAnnotation;
-use crate::parse::vep::annotations::{get_hgnc_id, get_strand, get_regional_annotation, parse_mane_annotations, parse_superdups_fracmatch, parse_clinvar_annotations, parse_dbsnp, parse_cosmic};
+use crate::parse::vep::annotations::{get_strand, get_regional_annotation, parse_mane_annotations, parse_superdups_fracmatch, parse_clinvar_annotations, parse_dbsnp, parse_cosmic};
 use crate::parse::vep::predictors::{get_prediction, parse_transcripts_spliceai};
 use crate::parse::vep::utils::{get_highest_float_score_in_string, get_sequence_aux};
 use crate::parse::vep::domains::parse_domains;
 use crate::parse::vep::scores::parse_cadd;
 use crate::parse::vep::frequencies::{parse_mt_frequencies, parse_variant_frequencies};
 use crate::parse::info::parse_info_string;
-use crate::parse::vep::genes::parse_genes;
+
 
 /// Parse VEP CSQ annotations from a VCF record.
 ///
@@ -105,18 +104,6 @@ pub fn parse_vep_transcripts(
             );
         }
 
-
-        let genes = parse_genes(&parsed_transcripts);
-        variant.insert(
-            "genes",
-            Bson::Array(
-                genes
-                    .into_iter()
-                    .map(Bson::Document)
-                    .collect(),
-            ),
-        );
-
     }
 
      parsed_transcripts
@@ -143,6 +130,32 @@ pub fn parse_vep_transcript(
     }
     
     let mut transcript = Document::new();
+
+    if let Some(hgnc_id) = entry.get("HGNC_ID") {
+        if !hgnc_id.is_empty() {
+            let hgnc_id = hgnc_id
+                .split(':')
+                .last()
+                .and_then(|value| value.parse::<i64>().ok());
+
+            if let Some(hgnc_id) = hgnc_id {
+                transcript.insert(
+                    "hgnc_id",
+                    Bson::Int64(hgnc_id),
+                );
+            }
+        }
+    }
+
+    // HGNC symbol
+    if let Some(symbol) = entry.get("SYMBOL") {
+        if !symbol.is_empty() {
+            transcript.insert(
+                "hgnc_symbol",
+                Bson::String(symbol.to_string()),
+            );
+        }
+    }
 
     transcript.insert(
         "transcript_id",

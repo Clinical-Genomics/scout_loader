@@ -3,19 +3,6 @@ use crate::HashMap;
 use std::collections::HashSet;
 use crate::models::consequence::SO_TERMS;
 
-/// Extract the HGNC identifier from a VEP annotation.
-///
-/// The HGNC_ID field may contain a prefix (for example, "HGNC:1234").
-/// Only the numeric identifier is retained.
-///
-/// Returns `None` if the HGNC identifier is missing or invalid.
-pub fn get_hgnc_id(entry: &HashMap<String, String>) -> Option<String> {
-    entry
-        .get("HGNC_ID")
-        .and_then(|value| value.split(':').last())
-        .filter(|value| !value.is_empty())
-        .map(|value| value.to_string())
-}
 
 /// Get strand information from a VEP transcript entry.
 pub fn get_strand(entry: &HashMap<String, String>) -> Option<String> {
