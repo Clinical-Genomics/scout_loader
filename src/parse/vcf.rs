@@ -1,7 +1,7 @@
 use rust_htslib::bcf::{Read, Reader};
 use mongodb::bson::{doc, self};
 use std::collections::HashMap;
-use mongodb::bson::{Bson, Document};
+use mongodb::bson::{Bson};
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::alleles::parse_alleles;
 use crate::parse::filters::parse_filters;
@@ -61,6 +61,12 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let variant_type = variant_type.to_string();
         let (reference, alternative) = parse_alleles(&record, category);
         let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type);
+        
+        /*
+        if ids.document_id != "4c7d5c70d955875504db72ef8e1abe77"{
+            continue;
+        }
+        */
         let filters = parse_filters(&record, &header);
         let compound_info = record
             .info(b"Compounds")
@@ -167,7 +173,6 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
             _ => {}
         }
-
         let (parsed_transcripts, gene_annotations) = parse_vep_transcripts(&record, &vep_header, &mut variant);
         let genes = parse_genes(parsed_transcripts, gene_annotations);
         variant.insert(
@@ -179,9 +184,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
                     .collect(),
             ),
         );
-
-
-        println!("{:#?}", variant);
+        println!("{:#?}\n", variant);
             
     }
 

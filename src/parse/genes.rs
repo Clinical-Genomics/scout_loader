@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use mongodb::bson::{Bson, Document};
 use crate::models::gene::GeneAnnotation;
-use crate::models::consequence::SO_TERMS;
 
 /// Group transcripts into genes.
 ///
