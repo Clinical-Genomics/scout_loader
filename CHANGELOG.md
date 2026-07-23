@@ -34,6 +34,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse MitoMap-associated diseases (#34)
 - Parse HmtVar annotations (#35)
 - Parsing Genes and transcript annotations from VEP annotations - basic parsing (#36)
+- Create list of genes from parsed VEP transcripts (#39)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)

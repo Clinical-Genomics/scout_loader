@@ -1,7 +1,6 @@
 use rust_htslib::bcf::{Read, Reader};
-use mongodb::bson::{doc, self};
+use mongodb::bson::{Bson, doc, self};
 use std::collections::HashMap;
-use mongodb::bson::{Bson};
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::alleles::parse_alleles;
 use crate::parse::filters::parse_filters;
@@ -17,11 +16,11 @@ use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
 use crate::parse::mt_annotations::{set_mitomap_associated_diseases, set_hmtvar};
 use crate::parse::vep::header::parse_vep_header;
 use crate::parse::vep::transcripts::parse_vep_transcripts;
-use crate::parse::vep::genes::parse_genes;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
+use crate::parse::vep::genes::parse_genes;
 
 
 /// Processes a VCF file and parses each record according to the variant category.
@@ -63,11 +62,12 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let (reference, alternative) = parse_alleles(&record, category);
         let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type);
         
-        /*
-        if ids.document_id != "4c7d5c70d955875504db72ef8e1abe77"{
+        
+        if ids.document_id != "4c7d5c70d955875504db72ef8e1abe77" {
             continue;
         }
-        */
+        
+        
         let filters = parse_filters(&record, &header);
         let compound_info = record
             .info(b"Compounds")
@@ -174,8 +174,9 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
             _ => {}
         }
-        let (parsed_transcripts, gene_annotations) = parse_vep_transcripts(&record, &vep_header, &mut variant);
-        let genes = parse_genes(parsed_transcripts, gene_annotations);
+        let parsed_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
+        let genes = parse_genes(&parsed_transcripts);
+        println!("parsed transcripts: {}", parsed_transcripts.len());
         variant.insert(
             "genes",
             Bson::Array(
@@ -185,6 +186,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
                     .collect(),
             ),
         );
+
         println!("{:#?}\n", variant);
             
     }
