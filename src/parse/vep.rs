@@ -3,7 +3,6 @@ use rust_htslib::bcf::Record;
 use mongodb::bson::{Bson, Document};
 use std::collections::HashSet;
 use crate::HashMap;
-use crate::parse::genes::parse_genes;
 use crate::models::gene::GeneAnnotation;
 use crate::models::consequence::SO_TERMS;
 
@@ -39,33 +38,6 @@ pub fn parse_vep_header(header: &HeaderView) -> Vec<String> {
     Vec::new()
 }
 
-/// Extract string values from a BSON document field.
-///
-/// The field can either be stored as a BSON array of strings or as a single
-/// string value. Any other BSON type, missing field, or non-string array
-/// elements are ignored.
-///
-/// Args:
-///     document: BSON document containing the field.
-///     key: Name of the field to extract.
-///
-/// Returns:
-///     A vector containing the extracted string values.
-fn get_string_array(document: &Document, key: &str) -> Vec<String> {
-    match document.get(key) {
-        Some(Bson::Array(values)) => values
-            .iter()
-            .filter_map(|value| value.as_str().map(str::to_string))
-            .collect(),
-
-        Some(Bson::String(value)) => vec![value.clone()],
-
-        _ => Vec::new(),
-    }
-}
-
-
-
 /// Parse VEP CSQ annotations from a VCF record.
 ///
 /// Extracts transcript annotations from the CSQ INFO field using the VEP
@@ -95,7 +67,6 @@ pub fn parse_vep_transcripts(
                 .collect::<Vec<_>>()
                 .join(",");
             for transcript_info in csq_string.split(',') {
-                println!("tx info: {}", transcript_info);
                 let raw_transcript: HashMap<String, String> = vep_header
                     .iter()
                     .zip(transcript_info.split('|'))
@@ -294,13 +265,6 @@ pub fn parse_vep_transcript(
 
     let functional_annotations: Vec<String> = entry
         .get("CONSEQUENCE")
-        .unwrap_or(&String::new())
-        .split('&')
-        .map(|x| x.to_string())
-        .collect();
-
-    let functional_annotations: Vec<String> = entry
-        .get("CONSEQUENCE")
         .filter(|value| !value.is_empty())
         .map(|value| value.split('&').map(String::from).collect())
         .unwrap_or_default();
@@ -329,22 +293,30 @@ pub fn parse_vep_transcript(
         );
     }
 
-
-
-    /*
-
-    // Canonical transcript
     transcript.insert(
         "is_canonical",
         Bson::Boolean(
             entry.get("CANONICAL")
-                .map(|x| x == "YES")
+                .map(|value| value == "YES")
                 .unwrap_or(false),
         ),
     );
 
+    parse_mane_annotations(&mut transcript, &entry);
 
-    */
+    parse_cadd(&mut transcript, &entry);
+
+    parse_superdups_fracmatch(&mut transcript, &entry);
+
+    parse_mt_frequencies(&mut transcript, &entry);
+
+    parse_variant_frequencies(&mut transcript, &entry);
+
+    parse_clinvar_annotations(&mut transcript, &entry);
+
+    parse_dbsnp(&mut transcript, &entry);
+
+    parse_cosmic(&mut transcript, &entry);
 
     Some(transcript)
 }
@@ -598,4 +570,323 @@ fn get_regional_annotation(functional_annotations: &[String]) -> Vec<String> {
                 .map(|term| term.region.to_string())
         })
         .collect()
+}
+
+
+/// Parse MANE transcript annotations from a VEP transcript entry.
+///
+/// Extracts MANE Select and MANE Plus Clinical transcript identifiers from
+/// VEP v103/MANE v0.92 annotations. Falls back to the older `MANE` field
+/// used by previous VEP versions.
+fn parse_mane_annotations(
+    transcript: &mut Document,
+    entry: &HashMap<String, String>,
+) {
+    if entry.contains_key("MANE_SELECT") {
+        if let Some(mane_select) = entry.get("MANE_SELECT").filter(|v| !v.is_empty()) {
+            transcript.insert(
+                "mane_select_transcript",
+                Bson::String(mane_select.clone()),
+            );
+        }
+
+        if let Some(mane_plus_clinical) = entry
+            .get("MANE_PLUS_CLINICAL")
+            .filter(|v| !v.is_empty())
+        {
+            transcript.insert(
+                "mane_plus_clinical_transcript",
+                Bson::String(mane_plus_clinical.clone()),
+            );
+        }
+    } else if entry.contains_key("MANE") {
+        if let Some(mane) = entry.get("MANE").filter(|v| !v.is_empty()) {
+            transcript.insert(
+                "mane_select_transcript",
+                Bson::String(mane.clone()),
+            );
+        }
+    }
+}
+
+
+/// Parse transcript-level CADD Phred score.
+fn parse_cadd(transcript: &mut Document, entry: &HashMap<String, String>) {
+    if let Some(cadd_phred) = entry.get("CADD_PHRED") {
+        if let Ok(value) = cadd_phred.parse::<f64>() {
+            transcript.insert(
+                "cadd",
+                Bson::Double(value),
+            );
+        }
+    }
+}
+
+/// Parse genomic superdups fractional match values from a VEP transcript entry.
+fn parse_superdups_fracmatch(
+    transcript: &mut Document,
+    entry: &HashMap<String, String>,
+) {
+    if let Some(superdups_fractmatch) = entry
+        .get("GENOMIC_SUPERDUPS_FRAC_MATCH")
+        .filter(|value| !value.is_empty())
+    {
+        let values: Vec<Bson> = superdups_fractmatch
+            .split('&')
+            .filter_map(|fractmatch| {
+                fractmatch.parse::<f64>().ok().map(Bson::Double)
+            })
+            .collect();
+
+        if !values.is_empty() {
+            transcript.insert(
+                "superdups_fracmatch",
+                Bson::Array(values),
+            );
+        }
+    }
+}
+
+/// Parse mitochondrial gnomAD allele frequencies from a VEP transcript.
+///
+/// Extracts homoplasmic and heteroplasmic mitochondrial allele frequencies
+/// when available.
+fn parse_mt_frequencies(
+    transcript: &mut Document,
+    entry: &HashMap<String, String>,
+) {
+    if let Some(value) = entry
+        .get("GNOMAD_MT_AF_HOM")
+        .filter(|value| !value.is_empty())
+    {
+        if let Ok(value) = value.parse::<f64>() {
+            transcript.insert(
+                "gnomad_mt_homoplasmic",
+                Bson::Double(value),
+            );
+        }
+    }
+
+    if let Some(value) = entry
+        .get("GNOMAD_MT_AF_HET")
+        .filter(|value| !value.is_empty())
+    {
+        if let Ok(value) = value.parse::<f64>() {
+            transcript.insert(
+                "gnomad_mt_heteroplasmic",
+                Bson::Double(value),
+            );
+        }
+    }
+}
+
+/// Parse variant population frequencies from VEP transcript annotations.
+///
+/// Supports VEP v90+ frequency fields, including 1000 Genomes, gnomAD,
+/// and ExAC frequencies. Stores specific allele frequencies and calculates
+/// maximum frequencies across population-specific annotations.
+fn parse_variant_frequencies(
+    transcript: &mut Document,
+    entry: &HashMap<String, String>,
+) {
+    let gnomad_csq_keys = [
+        "GNOMAD_AF",
+        "GNOMADG_AF",
+        "GNOMAD_EXOMES_AF",
+        "GNOMAD_EXOMES_AF",
+    ];
+
+    let thousand_genomes_csq_keys = [
+        "AF",
+        "1000GAF",
+        "1000GP3_AF",
+    ];
+
+    let mut thousandg_freqs: Vec<f64> = Vec::new();
+    let mut gnomad_freqs: Vec<f64> = Vec::new();
+
+    for (key, value) in entry {
+        // Frequency fields end with AF or POPMAX
+        if !(key.ends_with("AF") || key.ends_with("POPMAX")) {
+            continue;
+        }
+
+        if value.is_empty()
+            || value == "."
+            || value.chars().all(char::is_alphabetic)
+        {
+            continue;
+        }
+
+        let Ok(freq) = value.parse::<f64>() else {
+            continue;
+        };
+
+        if thousand_genomes_csq_keys.contains(&key.as_str()) {
+            transcript.insert(
+                "thousand_g_maf",
+                Bson::Double(freq),
+            );
+            continue;
+        }
+
+        if gnomad_csq_keys.contains(&key.as_str()) {
+            transcript.insert(
+                "gnomad_maf",
+                Bson::Double(freq),
+            );
+            continue;
+        }
+
+        if key == "EXAC_MAX_AF" {
+            transcript.insert(
+                "exac_max",
+                Bson::Double(freq),
+            );
+            transcript.insert(
+                "exac_maf",
+                Bson::Double(freq),
+            );
+            continue;
+        }
+
+        // Remaining population-specific frequencies
+        if key.contains("GNOMAD") {
+            gnomad_freqs.push(freq);
+        } else {
+            thousandg_freqs.push(freq);
+        }
+    }
+
+    if let Some(max) = thousandg_freqs.iter().max_by(|a, b| a.total_cmp(b)) {
+        transcript.insert(
+            "thousandg_max",
+            Bson::Double(*max),
+        );
+    }
+
+    if let Some(max) = gnomad_freqs.iter().max_by(|a, b| a.total_cmp(b)) {
+        transcript.insert(
+            "gnomad_max",
+            Bson::Double(*max),
+        );
+    }
+}
+
+/// Parse ClinVar annotations from a VEP transcript entry.
+///
+/// Extracts ClinVar variation identifiers, clinical significance, review
+/// status, and clinical significance terms when available.
+fn parse_clinvar_annotations(
+    transcript: &mut Document,
+    entry: &HashMap<String, String>,
+) {
+    let clinvar_id = entry
+        .get("CLINVAR_CLNVID")
+        .or_else(|| entry.get("CLINVAR"));
+
+    if let Some(clinvar_id) = clinvar_id {
+        transcript.insert(
+            "clinvar_clnvid",
+            Bson::String(clinvar_id.clone()),
+        );
+
+        if let Some(clnsig) = entry.get("CLINVAR_CLNSIG") {
+            transcript.insert(
+                "clinvar_clnsig",
+                Bson::String(clnsig.to_lowercase()),
+            );
+        }
+
+        if let Some(revstat) = entry.get("CLINVAR_CLNREVSTAT") {
+            transcript.insert(
+                "clinvar_revstat",
+                Bson::String(revstat.to_lowercase()),
+            );
+        }
+    }
+
+    let clnsig = entry
+        .get("CLIN_SIG")
+        .or_else(|| entry.get("ClinVar_CLNSIG"));
+
+    if let Some(clnsig) = clnsig.filter(|value| !value.is_empty()) {
+        transcript.insert(
+            "clnsig",
+            Bson::Array(
+                clnsig
+                    .split('&')
+                    .map(|value| Bson::String(value.to_string()))
+                    .collect(),
+            ),
+        );
+    }
+}
+
+/// Parse dbSNP identifiers from a VEP transcript entry.
+///
+/// Supports different VEP versions where dbSNP identifiers can be stored
+/// in `EXISTING_VARIATION`, `RS_DBSNP150`, or `RS_DBSNP`. Only identifiers
+/// starting with `rs` are retained.
+fn parse_dbsnp(
+    transcript: &mut Document,
+    entry: &HashMap<String, String>,
+) {
+    let dbsnp_keys = [
+        "EXISTING_VARIATION",
+        "RS_DBSNP150",
+        "RS_DBSNP",
+    ];
+
+    let mut dbsnp_ids: HashSet<String> = HashSet::new();
+
+    for key in dbsnp_keys {
+        if let Some(variant_ids) = entry.get(key) {
+            for variant_id in variant_ids.split('&') {
+                if variant_id.starts_with("rs") {
+                    dbsnp_ids.insert(variant_id.to_string());
+                }
+            }
+        }
+    }
+
+    transcript.insert(
+        "dbsnp",
+        Bson::Array(
+            dbsnp_ids
+                .into_iter()
+                .map(Bson::String)
+                .collect(),
+        ),
+    );
+}
+
+/// Parse COSMIC identifiers from a VEP transcript entry.
+///
+/// Extracts COSMIC identifiers from `EXISTING_VARIATION` (COSM/COSV
+/// prefixes) and from the dedicated `COSMIC` field when available.
+fn parse_cosmic(
+    transcript: &mut Document,
+    entry: &HashMap<String, String>,
+) {
+    let mut cosmic_ids: Vec<Bson> = Vec::new();
+
+    if let Some(variant_ids) = entry.get("EXISTING_VARIATION") {
+        for variant_id in variant_ids.split('&') {
+            if variant_id.starts_with("COSM") || variant_id.starts_with("COSV") {
+                cosmic_ids.push(Bson::String(variant_id.to_string()));
+            }
+        }
+    }
+
+    if let Some(cosmic_ids_entry) = entry.get("COSMIC") {
+        for cosmic_id in cosmic_ids_entry.split('&') {
+            cosmic_ids.push(Bson::String(cosmic_id.to_string()));
+        }
+    }
+
+    transcript.insert(
+        "cosmic",
+        Bson::Array(cosmic_ids),
+    );
 }
