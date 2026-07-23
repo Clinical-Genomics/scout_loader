@@ -1,8 +1,11 @@
+use mongodb::bson::{Bson, Document};
+use crate::HashMap;
+
 /// Parse mitochondrial gnomAD allele frequencies from a VEP transcript.
 ///
 /// Extracts homoplasmic and heteroplasmic mitochondrial allele frequencies
 /// when available.
-fn parse_mt_frequencies(
+pub fn parse_mt_frequencies(
     transcript: &mut Document,
     entry: &HashMap<String, String>,
 ) {
@@ -37,7 +40,7 @@ fn parse_mt_frequencies(
 /// Supports VEP v90+ frequency fields, including 1000 Genomes, gnomAD,
 /// and ExAC frequencies. Stores specific allele frequencies and calculates
 /// maximum frequencies across population-specific annotations.
-fn parse_variant_frequencies(
+pub fn parse_variant_frequencies(
     transcript: &mut Document,
     entry: &HashMap<String, String>,
 ) {

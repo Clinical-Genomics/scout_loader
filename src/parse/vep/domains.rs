@@ -1,7 +1,10 @@
+use mongodb::bson::{Bson, Document};
+use crate::HashMap;
+
 /// Parse protein domain annotations from a VEP transcript entry.
 ///
 /// Extracts supported protein domains from the VEP `DOMAINS` field.
-fn parse_domains(
+pub fn parse_domains(
     transcript: &mut Document,
     entry: &HashMap<String, String>,
 ) {

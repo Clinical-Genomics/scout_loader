@@ -1,9 +1,11 @@
+use crate::HashMap;
+
 /// Return the highest float value from a string with numbers possibly
 /// separated by `&`.
 ///
 /// Invalid values are ignored. Returns `None` if the input is empty or
 /// no valid float values are found.
-fn get_highest_float_score_in_string(value: &str) -> Option<f64> {
+pub fn get_highest_float_score_in_string(value: &str) -> Option<f64> {
     value
         .split('&')
         .filter_map(|part| part.trim().parse::<f64>().ok())
@@ -15,7 +17,7 @@ fn get_highest_float_score_in_string(value: &str) -> Option<f64> {
 /// The VEP fields `HGVSC` and `HGVSP` are formatted as
 /// `transcript:sequence`. This function returns only the sequence part.
 /// Returns `None` if the field is missing or does not contain `:`.
-fn get_sequence_aux(entry: &HashMap<String, String>, name: &str) -> Option<String> {
+pub fn get_sequence_aux(entry: &HashMap<String, String>, name: &str) -> Option<String> {
     let sequence_entry = entry
         .get(name)?
         .split(':')

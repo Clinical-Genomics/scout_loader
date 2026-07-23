@@ -18,7 +18,7 @@ pub fn get_hgnc_id(entry: &HashMap<String, String>) -> Option<String> {
 }
 
 /// Get strand information from a VEP transcript entry.
-fn get_strand(entry: &HashMap<String, String>) -> Option<String> {
+pub fn get_strand(entry: &HashMap<String, String>) -> Option<String> {
     match entry.get("STRAND").map(String::as_str) {
         Some("1") => Some("+".to_string()),
         Some("-1") => Some("-".to_string()),
@@ -42,7 +42,7 @@ fn get_strand(entry: &HashMap<String, String>) -> Option<String> {
 ///
 /// A vector containing the regional annotations corresponding to the provided
 /// functional annotations.
-fn get_regional_annotation(functional_annotations: &[String]) -> Vec<String> {
+pub fn get_regional_annotation(functional_annotations: &[String]) -> Vec<String> {
     functional_annotations
         .iter()
         .filter_map(|annotation| {
@@ -59,7 +59,7 @@ fn get_regional_annotation(functional_annotations: &[String]) -> Vec<String> {
 /// Extracts MANE Select and MANE Plus Clinical transcript identifiers from
 /// VEP v103/MANE v0.92 annotations. Falls back to the older `MANE` field
 /// used by previous VEP versions.
-fn parse_mane_annotations(
+pub fn parse_mane_annotations(
     transcript: &mut Document,
     entry: &HashMap<String, String>,
 ) {
@@ -92,7 +92,7 @@ fn parse_mane_annotations(
 
 
 /// Parse genomic superdups fractional match values from a VEP transcript entry.
-fn parse_superdups_fracmatch(
+pub fn parse_superdups_fracmatch(
     transcript: &mut Document,
     entry: &HashMap<String, String>,
 ) {
@@ -120,7 +120,7 @@ fn parse_superdups_fracmatch(
 ///
 /// Extracts ClinVar variation identifiers, clinical significance, review
 /// status, and clinical significance terms when available.
-fn parse_clinvar_annotations(
+pub fn parse_clinvar_annotations(
     transcript: &mut Document,
     entry: &HashMap<String, String>,
 ) {
@@ -171,7 +171,7 @@ fn parse_clinvar_annotations(
 /// Supports different VEP versions where dbSNP identifiers can be stored
 /// in `EXISTING_VARIATION`, `RS_DBSNP150`, or `RS_DBSNP`. Only identifiers
 /// starting with `rs` are retained.
-fn parse_dbsnp(
+pub fn parse_dbsnp(
     transcript: &mut Document,
     entry: &HashMap<String, String>,
 ) {
@@ -208,7 +208,7 @@ fn parse_dbsnp(
 ///
 /// Extracts COSMIC identifiers from `EXISTING_VARIATION` (COSM/COSV
 /// prefixes) and from the dedicated `COSMIC` field when available.
-fn parse_cosmic(
+pub fn parse_cosmic(
     transcript: &mut Document,
     entry: &HashMap<String, String>,
 ) {

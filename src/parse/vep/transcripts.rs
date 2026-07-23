@@ -3,7 +3,12 @@ use mongodb::bson::{Bson, Document};
 use std::collections::HashSet;
 use crate::HashMap;
 use crate::models::gene::GeneAnnotation;
-use crate::parse::vep::annotations::{get_hgnc_id};
+use crate::parse::vep::annotations::{get_hgnc_id, get_strand, get_regional_annotation, parse_mane_annotations, parse_superdups_fracmatch, parse_clinvar_annotations, parse_dbsnp, parse_cosmic};
+use crate::parse::vep::predictors::{get_prediction, parse_transcripts_spliceai};
+use crate::parse::vep::utils::{get_highest_float_score_in_string, get_sequence_aux};
+use crate::parse::vep::domains::parse_domains;
+use crate::parse::vep::scores::parse_cadd;
+use crate::parse::vep::frequencies::{parse_mt_frequencies, parse_variant_frequencies};
 
 /// Parse VEP CSQ annotations from a VCF record.
 ///
@@ -108,7 +113,6 @@ pub fn parse_vep_transcript(
     entry: HashMap<String, String>,
 ) -> Option<Document> {
 
-    /*
     let transcript_id = entry
         .get("FEATURE")
         .map(|id| id.split(':').next().unwrap_or(""))
@@ -118,10 +122,7 @@ pub fn parse_vep_transcript(
         return None;
     }
     
-    */
     let mut transcript = Document::new();
-
-    /*
 
     transcript.insert(
         "transcript_id",
@@ -168,7 +169,6 @@ pub fn parse_vep_transcript(
     }
 
     parse_transcripts_spliceai(&mut transcript, &entry);
-
 
     transcript.insert(
         "swiss_prot",
@@ -236,6 +236,7 @@ pub fn parse_vep_transcript(
         );
     }
 
+
     let functional_annotations: Vec<String> = entry
         .get("CONSEQUENCE")
         .filter(|value| !value.is_empty())
@@ -291,6 +292,5 @@ pub fn parse_vep_transcript(
 
     parse_cosmic(&mut transcript, &entry);
 
-    */
     Some(transcript)
 }

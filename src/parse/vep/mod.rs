@@ -2,3 +2,8 @@ pub mod transcripts;
 pub mod header;
 pub mod annotations;
 pub mod genes;
+pub mod predictors;
+pub mod utils;
+pub mod domains;
+pub mod scores;
+pub mod frequencies;

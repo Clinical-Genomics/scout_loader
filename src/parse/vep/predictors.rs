@@ -1,10 +1,13 @@
+use mongodb::bson::{Bson, Document};
+use crate::HashMap;
+
 /// Extract a prediction from VEP transcript annotations.
 ///
 /// The prediction fields are typically formatted as
 /// `prediction(score)`, for example `deleterious(0.01)`.
 /// Returns only the prediction label. If none of the provided fields
 /// are available or contain a value, `"unknown"` is returned.
-fn get_prediction(entry: &HashMap<String, String>, fields: &[&str]) -> String {
+pub fn get_prediction(entry: &HashMap<String, String>, fields: &[&str]) -> String {
     for field in fields {
         if let Some(value) = entry.get(*field).filter(|value| !value.is_empty()) {
             return value
@@ -23,7 +26,7 @@ fn get_prediction(entry: &HashMap<String, String>, fields: &[&str]) -> String {
 /// Extracts SpliceAI delta scores and positions from VEP CSQ fields.
 /// The maximum delta score is stored together with its corresponding
 /// position. Also stores a summary of all splice predictions.
-fn parse_transcripts_spliceai(
+pub fn parse_transcripts_spliceai(
     transcript: &mut Document,
     entry: &HashMap<String, String>,
 ) {
