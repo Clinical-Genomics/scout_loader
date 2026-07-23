@@ -67,6 +67,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             continue;
         }
         
+        
         let filters = parse_filters(&record, &header);
         let compound_info = record
             .info(b"Compounds")

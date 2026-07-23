@@ -28,8 +28,6 @@ use crate::models::consequence::SO_TERMS;
 pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
     let mut genes_to_transcripts: HashMap<String, Vec<Document>> = HashMap::new();
 
-    println!("parse_genes: received {} transcripts", transcripts.len());
-
     // Group transcripts by gene
     for (idx, transcript) in transcripts.iter().enumerate() {
         let hgnc_id = match transcript.get("hgnc_id") {
@@ -45,11 +43,6 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
             .filter(|value| !value.is_empty())
             .map(str::to_string);
 
-        println!(
-            "Transcript {} - hgnc_id: {:?}, hgnc_symbol: {:?}",
-            idx, hgnc_id, hgnc_symbol
-        );
-
         let gene_identifier = hgnc_id.or(hgnc_symbol);
 
         let Some(gene_identifier) = gene_identifier else {
@@ -63,20 +56,9 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
             .push(transcript.clone());
     }
 
-    println!(
-        "parse_genes: grouped into {} genes",
-        genes_to_transcripts.len()
-    );
-
     let mut genes = Vec::new();
 
-    for (gene_id, gene_transcripts) in genes_to_transcripts {
-        println!(
-            "Processing gene {} with {} transcripts",
-            gene_id,
-            gene_transcripts.len()
-        );
-
+    for (_gene_id, gene_transcripts) in genes_to_transcripts {
         let mut most_severe_rank = u32::MAX;
 
         let mut most_severe_consequence: Option<Bson> = None;
