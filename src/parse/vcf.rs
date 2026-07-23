@@ -20,7 +20,7 @@ use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
-use crate::parse::vep::genes::parse_genes;
+use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 
 
 /// Processes a VCF file and parses each record according to the variant category.
@@ -62,10 +62,11 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let (reference, alternative) = parse_alleles(&record, category);
         let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type);
         
-        
+        /*
         if ids.document_id != "4c7d5c70d955875504db72ef8e1abe77" {
             continue;
         }
+        */
         
         
         let filters = parse_filters(&record, &header);
@@ -174,6 +175,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
             _ => {}
         }
+
         let parsed_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
         let genes = parse_genes(&parsed_transcripts);
         println!("parsed transcripts: {}", parsed_transcripts.len());
@@ -186,6 +188,8 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
                     .collect(),
             ),
         );
+        set_hgnc_ids(&mut variant);
+
 
         println!("{:#?}\n", variant);
             
