@@ -174,8 +174,6 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
         });
     }
 
-    println!("parse_genes: returning {} genes", genes.len());
-
     genes
 }
 
