@@ -16,3 +16,4 @@ pub mod mt_annotations;
 pub mod vep;
 pub mod onco_clnsig;
 pub mod frequencies;
+pub mod loqusdb_frequencies;

@@ -24,6 +24,7 @@ use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::clnsig::{parse_clnsig, build_clnsig};
 use crate::parse::onco_clnsig::parse_clnsig_onc;
 use crate::parse::frequencies::{parse_frequencies, add_frequencies};
+use crate::parse::loqusdb_frequencies::add_loqus_archive_frequencies;
 
 /// Processes a VCF file and parses each record according to the variant category.
 ///
@@ -222,6 +223,8 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         if !frequencies.is_empty() {
             add_frequencies(&mut variant, &frequencies);
         }
+
+        add_loqus_archive_frequencies(&record, &mut variant);
 
         println!("{:#?}\n", variant);
             
