@@ -14,7 +14,7 @@ use crate::parse::meis::set_mei_info;
 use crate::parse::fusions::set_fusion_info;
 use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
 use crate::parse::mt_annotations::{set_mitomap_associated_diseases, set_hmtvar};
-use crate::parse::vep::header::parse_vep_header;
+use crate::parse::header::{parse_vep_header, parse_local_archive_header};
 use crate::parse::vep::transcripts::parse_vep_transcripts;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
@@ -50,7 +50,12 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         .expect("couldn't open input vcf");
 
     let header = vcf.header().clone();
+
     let vep_header = parse_vep_header(&header);
+
+    let local_archive_info = parse_local_archive_header(path);
+    println!("Local archive info: {:?}", local_archive_info);
+
 
     if let Err(error) = validate_sample_mapping(vcf.header(), &sample_mapping) {
         eprintln!("Sample mapping validation failed: {}", error);
@@ -65,12 +70,9 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let (reference, alternative) = parse_alleles(&record, category);
         let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type);
         
-        /*
         if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
             continue;
-
         }
-        */
         
         let filters = parse_filters(&record, &header);
         let compound_info = record
@@ -224,7 +226,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             add_frequencies(&mut variant, &frequencies);
         }
 
-        add_loqus_archive_frequencies(&record, &mut variant);
+        add_loqus_archive_frequencies(&record, &mut variant, local_archive_info.as_ref());
 
         println!("{:#?}\n", variant);
             
