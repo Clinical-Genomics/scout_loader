@@ -22,6 +22,7 @@ use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::clnsig::{parse_clnsig, build_clnsig};
+use crate::parse::onco_clnsig::parse_clnsig_onc;
 
 /// Processes a VCF file and parses each record according to the variant category.
 ///
@@ -198,6 +199,20 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
                     clnsig_predictions
                         .into_iter()
                         .map(build_clnsig)
+                        .map(Bson::Document)
+                        .collect(),
+                ),
+            );
+        }
+
+        let clnsig_onc_predictions = parse_clnsig_onc(&record);
+
+        if !clnsig_onc_predictions.is_empty() {
+            variant.insert(
+                "clnsig_onc",
+                Bson::Array(
+                    clnsig_onc_predictions
+                        .into_iter()
                         .map(Bson::Document)
                         .collect(),
                 ),

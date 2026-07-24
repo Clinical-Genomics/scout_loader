@@ -14,3 +14,4 @@ pub mod genotypes;
 pub mod fusions;
 pub mod mt_annotations;
 pub mod vep;
+pub mod onco_clnsig;
