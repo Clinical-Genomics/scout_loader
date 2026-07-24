@@ -248,4 +248,3 @@ pub fn build_clnsig(clnsig_info: Document) -> Document {
 
     clnsig_obj
 }
-

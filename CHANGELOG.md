@@ -37,6 +37,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Create list of genes from parsed VEP transcripts (#40)
 - Create list of variant HGNC ids from variant genes (#41)
 - Parse clnsig from VEP transcripts (#42)
+- Parse oncogenicity clnsig from `ONC`, `ONCREVSTAT`, `ONCDN`, `CLNVID` INFO field (#43)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)
