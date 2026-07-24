@@ -1,14 +1,13 @@
 use mongodb::bson::{Bson, Document};
 use rust_htslib::bcf::Record;
-use crate::parse::info::parse_info_string;
 
 pub const EXAC_KEYS: &[&str] = &[
     "EXACAF",
 ];
 
 pub const EXAC_MAX_KEYS: &[&str] = &[
-    "ExAC_MAX_AF",
-    "EXAC_MAX_AF",
+    "EXACMAXAF",
+    "EXACMAX_AF",
 ];
 
 pub const GNOMAD_INFO_KEYS: &[&str] = &[
@@ -20,9 +19,9 @@ pub const GNOMAD_INFO_KEYS: &[&str] = &[
 ];
 
 pub const SWEGEN_KEYS: &[&str] = &[
-    "swegen",
-    "swegenAF",
     "SWEGENAF",
+    "swegenAF",
+    "swegen",
 ];
 
 pub const GNOMAD_INFO_MAX_KEYS: &[&str] = &[
@@ -41,23 +40,21 @@ pub const THOUSAND_GENOMES_MAX_KEYS: &[&str] = &[
     "1000G_MAX_AF",
 ];
 
-
 /// Parse a frequency value from a VCF INFO field.
 ///
 /// Returns `None` if the field is missing or contains a placeholder value
 /// (`.`, `0`, `-1`).
 ///
 /// Returns the frequency as `f64` otherwise.
-pub fn parse_frequency(
-    record: &Record,
-    info_key: &str,
-) -> Option<f64> {
-    let raw_annotation = parse_info_string(record, info_key.as_bytes())?;
-
-    match raw_annotation.as_str() {
-        "." | "-1" | "0" => None,
-        _ => raw_annotation.parse::<f64>().ok(),
-    }
+fn parse_frequency(record: &Record, key: &[u8]) -> Option<f64> {
+    record
+        .info(key)
+        .float()
+        .ok()
+        .flatten()
+        .and_then(|values| values.first().copied())
+        .filter(|v| *v != 0.0 && *v != -1.0)
+        .map(|v| v as f64)
 }
 
 
@@ -79,7 +76,7 @@ pub fn update_frequency_from_vcf(
     new_key: &str,
 ) {
     for key in key_list {
-        if let Some(value) = parse_frequency(record, key) {
+        if let Some(value) = parse_frequency(record, key.as_bytes()) {
             frequency.insert(
                 new_key,
                 Bson::Double(value),
@@ -125,14 +122,46 @@ pub fn parse_frequencies(
         );
     }
 
-    /*
     if frequencies.is_empty() {
         update_frequency_from_transcript(
             &mut frequencies,
             transcripts,
         );
     }
-    */
 
     frequencies
+}
+
+
+/// Update frequencies from VEP transcript annotations.
+///
+/// Searches transcript-level annotations for population frequencies and adds
+/// them to the frequency document.
+pub fn update_frequency_from_transcript(
+    frequencies: &mut Document,
+    transcripts: &[Document],
+) {
+    for transcript in transcripts {
+        let frequency_fields = [
+            ("exac_maf", "exac"),
+            ("exac_max", "exac_max"),
+            ("thousand_g_maf", "thousand_g"),
+            ("thousandg_max", "thousand_g_max"),
+            ("gnomad_maf", "gnomad"),
+            ("gnomad_max", "gnomad_max"),
+            ("gnomad_mt_homoplasmic", "gnomad_mt_homoplasmic"),
+            ("gnomad_mt_heteroplasmic", "gnomad_mt_heteroplasmic"),
+        ];
+
+        for (transcript_key, frequency_key) in frequency_fields {
+            if let Some(value) = transcript.get(transcript_key) {
+                if !matches!(value, Bson::Null) {
+                    frequencies.insert(
+                        frequency_key,
+                        value.clone(),
+                    );
+                }
+            }
+        }
+    }
 }
