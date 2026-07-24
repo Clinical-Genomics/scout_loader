@@ -36,6 +36,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parsing Genes and transcript annotations from VEP annotations - basic parsing (#36)
 - Create list of genes from parsed VEP transcripts (#40)
 - Create list of variant HGNC ids from variant genes (#41)
+- Parse clnsig from VEP transcripts (#42)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)

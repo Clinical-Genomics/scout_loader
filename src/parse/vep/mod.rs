@@ -7,3 +7,4 @@ pub mod utils;
 pub mod domains;
 pub mod scores;
 pub mod frequencies;
+pub mod clnsig;
