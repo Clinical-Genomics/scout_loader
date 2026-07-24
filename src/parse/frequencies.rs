@@ -165,3 +165,99 @@ pub fn update_frequency_from_transcript(
         }
     }
 }
+
+/// Add a frequency annotation to a variant if it exists.
+///
+/// Copies a value from the parsed frequency document to the target variant
+/// using the provided source and target field names.
+///
+/// # Arguments
+///
+/// * `variant` - Mutable MongoDB document representing the parsed variant.
+/// * `frequencies` - Document containing parsed frequency annotations.
+/// * `source_key` - Key used in the frequency document.
+/// * `target_key` - Field name to add to the variant document.
+fn add_frequency_field(
+    variant: &mut Document,
+    frequencies: &Document,
+    source_key: &str,
+    target_key: &str,
+) {
+    if let Some(value) = frequencies.get(source_key) {
+        variant.insert(target_key, value.clone());
+    }
+}
+
+/// Add frequency annotations to a variant.
+///
+/// Frequencies are first collected from VCF INFO fields or transcript
+/// annotations into an intermediate frequency document. This function maps
+/// those internal keys to the field names expected in the Scout MongoDB
+/// variant document.
+///
+/// Missing frequencies are ignored and are not added to the variant.
+///
+/// # Arguments
+///
+/// * `variant` - Mutable MongoDB document representing the parsed variant.
+/// * `frequencies` - Document containing parsed frequency annotations.
+pub fn add_frequencies(variant: &mut Document, frequencies: &Document) {
+    let mappings = [
+        ("exac", "exac_frequency"),
+        ("gnomad", "gnomad_frequency"),
+        (
+            "gnomad_mt_heteroplasmic",
+            "gnomad_mt_heteroplasmic_frequency",
+        ),
+        (
+            "gnomad_mt_homoplasmic",
+            "gnomad_mt_homoplasmic_frequency",
+        ),
+        ("exac_max", "max_exac_frequency"),
+        ("gnomad_max", "max_gnomad_frequency"),
+        (
+            "thousand_g_max",
+            "max_thousand_genomes_frequency",
+        ),
+        (
+            "thousand_g",
+            "thousand_genomes_frequency",
+        ),
+        (
+            "thousand_g_left",
+            "thousand_genomes_frequency_left",
+        ),
+        (
+            "thousand_g_right",
+            "thousand_genomes_frequency_right",
+        ),
+        ("colorsdb_af", "colorsdb_af"),
+    ];
+
+    for (source, target) in mappings {
+        add_frequency_field(variant, frequencies, source, target);
+    }
+
+    let sv_fields = [
+        ("clingen_benign", "clingen_cgh_benign"),
+        ("clingen_pathogenic", "clingen_cgh_pathogenic"),
+        ("clingen_mip", "clingen_mip"),
+        ("clingen_ngi", "clingen_ngi"),
+        ("swegen", "swegen"),
+        ("decipher", "decipher"),
+    ];
+
+    for (source, target) in sv_fields {
+        add_frequency_field(variant, frequencies, source, target);
+    }
+
+    for key in [
+        "swegen_alu",
+        "swegen_herv",
+        "swegen_l1",
+        "swegen_sva",
+        "swegen_mei_max",
+    ] {
+        add_frequency_field(variant, frequencies, key, key);
+    }
+}
