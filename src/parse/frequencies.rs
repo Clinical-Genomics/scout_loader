@@ -8,6 +8,7 @@ pub const EXAC_KEYS: &[&str] = &[
 pub const EXAC_MAX_KEYS: &[&str] = &[
     "EXACMAXAF",
     "EXACMAX_AF",
+    "ExAC_MAX_AF",
 ];
 
 pub const GNOMAD_INFO_KEYS: &[&str] = &[
