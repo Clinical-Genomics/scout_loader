@@ -21,7 +21,7 @@ use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
-
+use crate::parse::vep::clnsig::{parse_clnsig, build_clnsig};
 
 /// Processes a VCF file and parses each record according to the variant category.
 ///
@@ -63,7 +63,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type);
         
         /*
-        if ids.document_id != "4c7d5c70d955875504db72ef8e1abe77" {
+        if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
             continue;
         }
         */
@@ -190,6 +190,19 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         );
         set_hgnc_ids(&mut variant);
 
+        let clnsig_predictions = parse_clnsig(&record, &parsed_transcripts);
+        if !clnsig_predictions.is_empty() {
+            variant.insert(
+                "clnsig",
+                Bson::Array(
+                    clnsig_predictions
+                        .into_iter()
+                        .map(build_clnsig)
+                        .map(Bson::Document)
+                        .collect(),
+                ),
+            );
+        }
 
         println!("{:#?}\n", variant);
             
