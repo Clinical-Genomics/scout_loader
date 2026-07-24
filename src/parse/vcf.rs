@@ -14,7 +14,7 @@ use crate::parse::meis::set_mei_info;
 use crate::parse::fusions::set_fusion_info;
 use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
 use crate::parse::mt_annotations::{set_mitomap_associated_diseases, set_hmtvar};
-use crate::parse::vep::header::parse_vep_header;
+use crate::parse::header::{parse_vep_header, parse_local_archive_header};
 use crate::parse::vep::transcripts::parse_vep_transcripts;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
@@ -24,6 +24,7 @@ use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::clnsig::{parse_clnsig, build_clnsig};
 use crate::parse::onco_clnsig::parse_clnsig_onc;
 use crate::parse::frequencies::{parse_frequencies, add_frequencies};
+use crate::parse::loqusdb_frequencies::add_loqus_archive_frequencies;
 
 /// Processes a VCF file and parses each record according to the variant category.
 ///
@@ -49,7 +50,12 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         .expect("couldn't open input vcf");
 
     let header = vcf.header().clone();
+
     let vep_header = parse_vep_header(&header);
+
+    let local_archive_info = parse_local_archive_header(path);
+    println!("Local archive info: {:?}", local_archive_info);
+
 
     if let Err(error) = validate_sample_mapping(vcf.header(), &sample_mapping) {
         eprintln!("Sample mapping validation failed: {}", error);
@@ -67,7 +73,6 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         /*
         if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
             continue;
-
         }
         */
         
@@ -222,6 +227,8 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         if !frequencies.is_empty() {
             add_frequencies(&mut variant, &frequencies);
         }
+
+        add_loqus_archive_frequencies(&record, &mut variant, local_archive_info.as_ref());
 
         println!("{:#?}\n", variant);
             
