@@ -23,6 +23,7 @@ use crate::models::sample::SampleInfo;
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::clnsig::{parse_clnsig, build_clnsig};
 use crate::parse::onco_clnsig::parse_clnsig_onc;
+use crate::parse::frequencies::parse_frequencies;
 
 /// Processes a VCF file and parses each record according to the variant category.
 ///
@@ -63,11 +64,9 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let (reference, alternative) = parse_alleles(&record, category);
         let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type);
         
-        /*
         if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
             continue;
         }
-        */
         
         
         let filters = parse_filters(&record, &header);
@@ -206,7 +205,6 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         }
 
         let clnsig_onc_predictions = parse_clnsig_onc(&record);
-
         if !clnsig_onc_predictions.is_empty() {
             variant.insert(
                 "clnsig_onc",
@@ -218,6 +216,12 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
                 ),
             );
         }
+
+        let frequencies = parse_frequencies(&record, &parsed_transcripts);
+        variant.insert(
+            "frequencies",
+            Bson::Document(frequencies),
+        );
 
         println!("{:#?}\n", variant);
             
