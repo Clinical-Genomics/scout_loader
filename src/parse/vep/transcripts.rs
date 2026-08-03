@@ -118,24 +118,24 @@ pub fn parse_vep_transcript(entry: HashMap<String, String>) -> Option<Document> 
 
     let mut transcript = Document::new();
 
-    if let Some(hgnc_id) = entry.get("HGNC_ID") {
-        if !hgnc_id.is_empty() {
-            let hgnc_id = hgnc_id
-                .split(':')
-                .last()
-                .and_then(|value| value.parse::<i64>().ok());
+    if let Some(hgnc_id) = entry.get("HGNC_ID")
+        && !hgnc_id.is_empty()
+    {
+        let hgnc_id = hgnc_id
+            .split(':')
+            .next_back()
+            .and_then(|value| value.parse::<i64>().ok());
 
-            if let Some(hgnc_id) = hgnc_id {
-                transcript.insert("hgnc_id", Bson::Int64(hgnc_id));
-            }
+        if let Some(hgnc_id) = hgnc_id {
+            transcript.insert("hgnc_id", Bson::Int64(hgnc_id));
         }
     }
 
     // HGNC symbol
-    if let Some(symbol) = entry.get("SYMBOL") {
-        if !symbol.is_empty() {
-            transcript.insert("hgnc_symbol", Bson::String(symbol.to_string()));
-        }
+    if let Some(symbol) = entry.get("SYMBOL")
+        && !symbol.is_empty()
+    {
+        transcript.insert("hgnc_symbol", Bson::String(symbol.to_string()));
     }
 
     transcript.insert("transcript_id", transcript_id.to_string());
@@ -149,16 +149,16 @@ pub fn parse_vep_transcript(entry: HashMap<String, String>) -> Option<Document> 
     let sift = get_prediction(&entry, &["SIFT", "SIFT_PRED"]);
     transcript.insert("sift_prediction", Bson::String(sift));
 
-    if let Some(value) = entry.get("REVEL_RANKSCORE").filter(|v| !v.is_empty()) {
-        if let Some(rankscore) = get_highest_float_score_in_string(value) {
-            transcript.insert("revel_rankscore", Bson::Double(rankscore));
-        }
+    if let Some(value) = entry.get("REVEL_RANKSCORE").filter(|v| !v.is_empty())
+        && let Some(rankscore) = get_highest_float_score_in_string(value)
+    {
+        transcript.insert("revel_rankscore", Bson::Double(rankscore));
     }
 
-    if let Some(value) = entry.get("REVEL_SCORE").filter(|v| !v.is_empty()) {
-        if let Some(score) = get_highest_float_score_in_string(value) {
-            transcript.insert("revel_raw_score", Bson::Double(score));
-        }
+    if let Some(value) = entry.get("REVEL_SCORE").filter(|v| !v.is_empty())
+        && let Some(score) = get_highest_float_score_in_string(value)
+    {
+        transcript.insert("revel_raw_score", Bson::Double(score));
     }
 
     parse_transcripts_spliceai(&mut transcript, &entry);

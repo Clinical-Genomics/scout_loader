@@ -79,13 +79,13 @@ pub fn parse_frequencies(record: &Record, transcripts: &[Document]) -> Document 
     let mut frequencies = Document::new();
 
     let frequency_fields = [
-        (&EXAC_KEYS[..], "exac"),
-        (&EXAC_MAX_KEYS[..], "exac_max"),
-        (&GNOMAD_INFO_KEYS[..], "gnomad"),
-        (&SWEGEN_KEYS[..], "swegen"),
-        (&GNOMAD_INFO_MAX_KEYS[..], "gnomad_max"),
-        (&THOUSAND_GENOMES_KEYS[..], "thousand_g"),
-        (&THOUSAND_GENOMES_MAX_KEYS[..], "thousand_g_max"),
+        (EXAC_KEYS, "exac"),
+        (EXAC_MAX_KEYS, "exac_max"),
+        (GNOMAD_INFO_KEYS, "gnomad"),
+        (SWEGEN_KEYS, "swegen"),
+        (GNOMAD_INFO_MAX_KEYS, "gnomad_max"),
+        (THOUSAND_GENOMES_KEYS, "thousand_g"),
+        (THOUSAND_GENOMES_MAX_KEYS, "thousand_g_max"),
         (&["GNOMAD_MT_AF_HOM"][..], "gnomad_mt_homoplasmic"),
         (&["GNOMAD_MT_AF_HET"][..], "gnomad_mt_heteroplasmic"),
         (&["left_1000GAF"][..], "thousand_g_left"),
@@ -122,10 +122,10 @@ pub fn update_frequency_from_transcript(frequencies: &mut Document, transcripts:
         ];
 
         for (transcript_key, frequency_key) in frequency_fields {
-            if let Some(value) = transcript.get(transcript_key) {
-                if !matches!(value, Bson::Null) {
-                    frequencies.insert(frequency_key, value.clone());
-                }
+            if let Some(value) = transcript.get(transcript_key)
+                && !matches!(value, Bson::Null)
+            {
+                frequencies.insert(frequency_key, value.clone());
             }
         }
     }

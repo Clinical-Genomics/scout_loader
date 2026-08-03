@@ -9,10 +9,10 @@ use crate::parse::info::parse_info_string;
 /// `"."`, stores it in the variant document after replacing underscores with
 /// spaces.
 pub fn set_mitomap_associated_diseases(record: &Record, variant: &mut Document) {
-    if let Some(value) = parse_info_string(record, b"MitomapAssociatedDiseases") {
-        if value != "." {
-            variant.insert("mitomap_associated_diseases", value.replace('_', " "));
-        }
+    if let Some(value) = parse_info_string(record, b"MitomapAssociatedDiseases")
+        && value != "."
+    {
+        variant.insert("mitomap_associated_diseases", value.replace('_', " "));
     }
 }
 
@@ -21,11 +21,10 @@ pub fn set_mitomap_associated_diseases(record: &Record, variant: &mut Document) 
 /// If the `HmtVar` annotation is present and not equal to `"."`, stores the
 /// variant identifier in the variant document.
 pub fn set_hmtvar(record: &Record, variant: &mut Document) {
-    if let Some(value) = parse_info_string(record, b"HmtVar") {
-        if value != "." {
-            if let Ok(id) = value.parse::<i32>() {
-                variant.insert("hmtvar_variant_id", id);
-            }
-        }
+    if let Some(value) = parse_info_string(record, b"HmtVar")
+        && value != "."
+        && let Ok(id) = value.parse::<i32>()
+    {
+        variant.insert("hmtvar_variant_id", id);
     }
 }

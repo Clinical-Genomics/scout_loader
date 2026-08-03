@@ -62,10 +62,10 @@ fn get_end_chrom(alt: &str, chrom: &str) -> String {
         return chrom.to_string();
     }
 
-    if let Some(bnd_match) = BND_ALT_PATTERN.captures(alt) {
-        if let Some(other_chrom) = bnd_match.get(1) {
-            return normalize_chromosome(other_chrom.as_str());
-        }
+    if let Some(bnd_match) = BND_ALT_PATTERN.captures(alt)
+        && let Some(other_chrom) = bnd_match.get(1)
+    {
+        return normalize_chromosome(other_chrom.as_str());
     }
 
     chrom.to_string()
@@ -77,16 +77,16 @@ fn get_end_chrom(alt: &str, chrom: &str) -> String {
 /// be present. If available, it is preferred. Otherwise, the type is
 /// inferred from the ALT allele.
 fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
-    if let Ok(Some(values)) = record.info(b"SVTYPE").string() {
-        if let Some(value) = values.first() {
-            let mut svtype = String::from_utf8_lossy(value).to_lowercase();
+    if let Ok(Some(values)) = record.info(b"SVTYPE").string()
+        && let Some(value) = values.first()
+    {
+        let mut svtype = String::from_utf8_lossy(value).to_lowercase();
 
-            if svtype == "sgl" {
-                svtype = "bnd".to_string();
-            }
-
-            return svtype;
+        if svtype == "sgl" {
+            svtype = "bnd".to_string();
         }
+
+        return svtype;
     }
 
     let alt_type = alt
@@ -117,19 +117,19 @@ fn sv_end(pos: u64, alt: &str, svend: Option<i64>, svlen: Option<i64>) -> u64 {
     let mut end = svend.map(|value| value as u64);
 
     if alt.contains(':') {
-        if let Some(captures) = BND_ALT_PATTERN.captures(alt) {
-            if let Some(position) = captures.get(2) {
-                end = position.as_str().parse::<u64>().ok();
-            }
+        if let Some(captures) = BND_ALT_PATTERN.captures(alt)
+            && let Some(position) = captures.get(2)
+        {
+            end = position.as_str().parse::<u64>().ok();
         }
     } else if alt.contains('.') && alt.len() > 1 {
         end = Some(pos);
     }
 
-    if end.is_none() {
-        if let Some(svlen) = svlen {
-            end = Some((pos as i64 + svlen) as u64);
-        }
+    if end.is_none()
+        && let Some(svlen) = svlen
+    {
+        end = Some((pos as i64 + svlen) as u64);
     }
 
     end.unwrap_or(pos)

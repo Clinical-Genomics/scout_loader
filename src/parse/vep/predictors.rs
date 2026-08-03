@@ -38,18 +38,18 @@ pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &HashMap<Str
     ];
 
     for (source, target) in spliceai_positions {
-        if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
-            if let Ok(position) = value.parse::<i32>() {
-                transcript.insert(target, Bson::Int32(position));
-            }
+        if let Some(value) = entry.get(source).filter(|v| !v.is_empty())
+            && let Ok(position) = value.parse::<i32>()
+        {
+            transcript.insert(target, Bson::Int32(position));
         }
     }
 
     for (source, target) in spliceai_delta_scores {
-        if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
-            if let Ok(score) = value.parse::<f64>() {
-                transcript.insert(target, Bson::Double(score));
-            }
+        if let Some(value) = entry.get(source).filter(|v| !v.is_empty())
+            && let Ok(score) = value.parse::<f64>()
+        {
+            transcript.insert(target, Bson::Double(score));
         }
     }
 
@@ -68,11 +68,11 @@ pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &HashMap<Str
         let score = transcript.get_f64(score_key).ok();
         let position = transcript.get_i32(position_key).ok();
 
-        if let Some(score) = score {
-            if max_score.map_or(true, |current| score > current) {
-                max_score = Some(score);
-                max_position = position;
-            }
+        if let Some(score) = score
+            && max_score.is_none_or(|current| score > current)
+        {
+            max_score = Some(score);
+            max_position = position;
         }
 
         predictions.push(format!(

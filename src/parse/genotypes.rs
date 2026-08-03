@@ -127,7 +127,7 @@ fn parse_genotype(
         let genotypes = record.genotypes().expect("Could not read genotypes");
         let genotype = genotypes.get(pos);
 
-        let allele_1 = genotype_allele_to_string(genotype.get(0));
+        let allele_1 = genotype_allele_to_string(genotype.first());
         let allele_2 = genotype_allele_to_string(genotype.get(1));
 
         let phase_sep = match genotype.get(1) {
@@ -523,47 +523,44 @@ fn get_paired_ends(record: &Record, pos: usize) -> (Option<i32>, Option<i32>) {
     let mut paired_end_alt = None;
 
     // PE: Number of paired-end reads supporting the variant
-    if let Ok(values) = record.format(b"PE").integer() {
-        if let Some(value) = values.get(pos).and_then(|v| v.first()) {
-            if *value >= 0 {
-                paired_end_alt = Some(*value);
-            }
-        }
+    if let Ok(values) = record.format(b"PE").integer()
+        && let Some(value) = values.get(pos).and_then(|v| v.first())
+        && *value >= 0
+    {
+        paired_end_alt = Some(*value);
     }
 
     // PR: Number of paired-end reads supporting ref and alt alleles
-    if let Ok(values) = record.format(b"PR").integer() {
-        if let Some(sample_values) = values.get(pos) {
-            if let Some(ref_value) = sample_values.first() {
-                if *ref_value >= 0 {
-                    paired_end_ref = Some(*ref_value);
-                }
-            }
+    if let Ok(values) = record.format(b"PR").integer()
+        && let Some(sample_values) = values.get(pos)
+    {
+        if let Some(ref_value) = sample_values.first()
+            && *ref_value >= 0
+        {
+            paired_end_ref = Some(*ref_value);
+        }
 
-            if let Some(alt_value) = sample_values.get(1) {
-                if *alt_value >= 0 {
-                    paired_end_alt = Some(*alt_value);
-                }
-            }
+        if let Some(alt_value) = sample_values.get(1)
+            && *alt_value >= 0
+        {
+            paired_end_alt = Some(*alt_value);
         }
     }
 
     // DV: Number of paired-end reads supporting the event
-    if let Ok(values) = record.format(b"DV").integer() {
-        if let Some(value) = values.get(pos).and_then(|v| v.first()) {
-            if *value >= 0 {
-                paired_end_alt = Some(*value);
-            }
-        }
+    if let Ok(values) = record.format(b"DV").integer()
+        && let Some(value) = values.get(pos).and_then(|v| v.first())
+        && *value >= 0
+    {
+        paired_end_alt = Some(*value);
     }
 
     // DR: Number of paired-end reads supporting the reference
-    if let Ok(values) = record.format(b"DR").integer() {
-        if let Some(value) = values.get(pos).and_then(|v| v.first()) {
-            if *value >= 0 {
-                paired_end_ref = Some(*value);
-            }
-        }
+    if let Ok(values) = record.format(b"DR").integer()
+        && let Some(value) = values.get(pos).and_then(|v| v.first())
+        && *value >= 0
+    {
+        paired_end_ref = Some(*value);
     }
 
     (paired_end_ref, paired_end_alt)
@@ -581,49 +578,47 @@ fn get_split_reads(record: &Record, pos: usize) -> (Option<i32>, Option<i32>) {
     let mut split_read_alt = None;
 
     // SR: Number of split reads supporting ref and alt alleles
-    if let Ok(values) = record.format(b"SR").integer() {
-        if let Some(sample_values) = values.get(pos) {
-            let (mut alt_value, mut ref_value) = (None, None);
+    if let Ok(values) = record.format(b"SR").integer()
+        && let Some(sample_values) = values.get(pos)
+    {
+        let (mut alt_value, mut ref_value) = (None, None);
 
-            if sample_values.len() == 1 {
-                alt_value = sample_values.first().copied();
-            }
+        if sample_values.len() == 1 {
+            alt_value = sample_values.first().copied();
+        }
 
-            if sample_values.len() == 2 {
-                ref_value = sample_values.first().copied();
-                alt_value = sample_values.get(1).copied();
-            }
+        if sample_values.len() == 2 {
+            ref_value = sample_values.first().copied();
+            alt_value = sample_values.get(1).copied();
+        }
 
-            if let Some(value) = alt_value {
-                if value >= 0 {
-                    split_read_alt = Some(value);
-                }
-            }
+        if let Some(value) = alt_value
+            && value >= 0
+        {
+            split_read_alt = Some(value);
+        }
 
-            if let Some(value) = ref_value {
-                if value >= 0 {
-                    split_read_ref = Some(value);
-                }
-            }
+        if let Some(value) = ref_value
+            && value >= 0
+        {
+            split_read_ref = Some(value);
         }
     }
 
     // RV: Number of split reads supporting the event
-    if let Ok(values) = record.format(b"RV").integer() {
-        if let Some(value) = values.get(pos).and_then(|v| v.first()) {
-            if *value >= 0 {
-                split_read_alt = Some(*value);
-            }
-        }
+    if let Ok(values) = record.format(b"RV").integer()
+        && let Some(value) = values.get(pos).and_then(|v| v.first())
+        && *value >= 0
+    {
+        split_read_alt = Some(*value);
     }
 
     // RR: Number of split reads supporting the reference
-    if let Ok(values) = record.format(b"RR").integer() {
-        if let Some(value) = values.get(pos).and_then(|v| v.first()) {
-            if *value >= 0 {
-                split_read_ref = Some(*value);
-            }
-        }
+    if let Ok(values) = record.format(b"RR").integer()
+        && let Some(value) = values.get(pos).and_then(|v| v.first())
+        && *value >= 0
+    {
+        split_read_ref = Some(*value);
     }
 
     (split_read_ref, split_read_alt)
@@ -643,6 +638,7 @@ fn get_gt_allele_depth(record: &Record, pos: usize, allele_index: usize) -> Opti
 ///
 /// First tries to use the genotype-derived alternative depth.
 /// If unavailable, falls back to caller-specific FORMAT fields.
+#[allow(clippy::too_many_arguments)]
 fn get_alt_depth(
     record: &Record,
     pos: usize,
@@ -662,10 +658,10 @@ fn get_alt_depth(
     }
 
     // VD: Number of variant supporting reads
-    if let Ok(values) = record.format(b"VD").integer() {
-        if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
-            alt_depth = *value;
-        }
+    if let Ok(values) = record.format(b"VD").integer()
+        && let Some(value) = values.get(pos).and_then(|sample| sample.first())
+    {
+        alt_depth = *value;
     }
 
     let alt_items: &[&[Option<i32>]] = &[
@@ -692,6 +688,7 @@ fn get_alt_depth(
 ///
 /// First tries to use the genotype-derived reference depth.
 /// If unavailable, falls back to caller-specific FORMAT fields.
+#[allow(clippy::too_many_arguments)]
 fn get_ref_depth(
     record: &Record,
     pos: usize,
@@ -741,10 +738,10 @@ fn get_ref_depth(
 fn get_read_depth(record: &Record, pos: usize, alt_depth: i32, ref_depth: i32) -> i32 {
     let mut read_depth = -1;
 
-    if let Ok(values) = record.format(b"DP").integer() {
-        if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
-            read_depth = *value;
-        }
+    if let Ok(values) = record.format(b"DP").integer()
+        && let Some(value) = values.get(pos).and_then(|sample| sample.first())
+    {
+        read_depth = *value;
     }
 
     if read_depth == -1 {
@@ -783,10 +780,10 @@ fn get_read_depth(record: &Record, pos: usize, alt_depth: i32, ref_depth: i32) -
 /// Otherwise calculates it from genotype allele depths.
 fn get_alt_frequency(record: &Record, pos: usize) -> f32 {
     // AF FORMAT field (caller-provided)
-    if let Ok(values) = record.format(b"AF").float() {
-        if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
-            return *value;
-        }
+    if let Ok(values) = record.format(b"AF").float()
+        && let Some(value) = values.get(pos).and_then(|sample| sample.first())
+    {
+        return *value;
     }
 
     // Fallback: calculate from genotype allele depths
@@ -810,10 +807,10 @@ fn get_alt_frequency(record: &Record, pos: usize) -> f32 {
 ///
 /// Returns the fusion fragments per million value if available.
 fn get_ffpm_info(record: &Record, pos: usize) -> Option<i32> {
-    if let Ok(values) = record.format(b"FFPM").integer() {
-        if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
-            return Some(*value);
-        }
+    if let Ok(values) = record.format(b"FFPM").integer()
+        && let Some(value) = values.get(pos).and_then(|sample| sample.first())
+    {
+        return Some(*value);
     }
 
     None
@@ -823,10 +820,10 @@ fn get_ffpm_info(record: &Record, pos: usize) -> Option<i32> {
 ///
 /// Returns -1 if genotype quality is missing or unavailable.
 fn get_genotype_quality(record: &Record, pos: usize) -> i32 {
-    if let Ok(values) = record.format(b"GQ").integer() {
-        if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
-            return *value;
-        }
+    if let Ok(values) = record.format(b"GQ").integer()
+        && let Some(value) = values.get(pos).and_then(|sample| sample.first())
+    {
+        return *value;
     }
 
     -1

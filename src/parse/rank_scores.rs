@@ -68,9 +68,7 @@ pub fn parse_rank_scores(record: &Record, case_id: &str) -> (i32, f64) {
 ///
 /// The score value as a string slice if the case ID is found, otherwise `None`.
 pub fn parse_score_entry<'a>(score_entry: Option<&'a str>, case_id: &str) -> Option<&'a str> {
-    let Some(score_entry) = score_entry else {
-        return None;
-    };
+    let score_entry = score_entry?;
 
     for family_info in score_entry.split(',') {
         let mut split_info = family_info.split(':');

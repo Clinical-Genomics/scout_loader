@@ -57,10 +57,10 @@ pub fn parse_mane_annotations(transcript: &mut Document, entry: &HashMap<String,
                 Bson::String(mane_plus_clinical.clone()),
             );
         }
-    } else if entry.contains_key("MANE") {
-        if let Some(mane) = entry.get("MANE").filter(|v| !v.is_empty()) {
-            transcript.insert("mane_select_transcript", Bson::String(mane.clone()));
-        }
+    } else if entry.contains_key("MANE")
+        && let Some(mane) = entry.get("MANE").filter(|v| !v.is_empty())
+    {
+        transcript.insert("mane_select_transcript", Bson::String(mane.clone()));
     }
 }
 

@@ -67,43 +67,43 @@ pub fn parse_clnsig(record: &Record, transcripts: &[Document]) -> Vec<Document> 
     let mut clnsig_accessions = Vec::new();
 
     // VEP transcript-level ClinVar annotations
-    if acc.is_empty() {
-        if let Some(first) = transcripts.first() {
-            if first.get_array("clnsig").is_ok() {
-                let mut values = HashSet::new();
+    if acc.is_empty()
+        && let Some(first) = transcripts.first()
+    {
+        if first.get_array("clnsig").is_ok() {
+            let mut values = HashSet::new();
 
-                for transcript in transcripts {
-                    if let Ok(annotations) = transcript.get_array("clnsig") {
-                        for annotation in annotations {
-                            let Some(annotation) = annotation.as_str() else {
-                                continue;
-                            };
+            for transcript in transcripts {
+                if let Ok(annotations) = transcript.get_array("clnsig") {
+                    for annotation in annotations {
+                        let Some(annotation) = annotation.as_str() else {
+                            continue;
+                        };
 
-                            for value in annotation.split('/') {
-                                values.insert(value.trim_start_matches('_').to_string());
-                            }
+                        for value in annotation.split('/') {
+                            values.insert(value.trim_start_matches('_').to_string());
                         }
                     }
                 }
-
-                for value in values {
-                    clnsig_accessions.push(doc! {
-                        "value": value,
-                    });
-                }
             }
 
-            // VEP 97+ ClinVar annotations
-            if let Ok(clnvid) = first.get_str("clinvar_clnvid") {
-                acc = clnvid.to_string();
+            for value in values {
+                clnsig_accessions.push(doc! {
+                    "value": value,
+                });
+            }
+        }
 
-                if let Ok(value) = first.get_str("clinvar_clnsig") {
-                    sig = value.to_lowercase();
-                }
+        // VEP 97+ ClinVar annotations
+        if let Ok(clnvid) = first.get_str("clinvar_clnvid") {
+            acc = clnvid.to_string();
 
-                if let Ok(value) = first.get_str("clinvar_revstat") {
-                    revstat = value.to_lowercase();
-                }
+            if let Ok(value) = first.get_str("clinvar_clnsig") {
+                sig = value.to_lowercase();
+            }
+
+            if let Ok(value) = first.get_str("clinvar_revstat") {
+                revstat = value.to_lowercase();
             }
         }
     }
@@ -220,10 +220,10 @@ pub fn build_clnsig(clnsig_info: Document) -> Document {
         "revstat": clnsig_info.get("revstat").cloned(),
     };
 
-    if let Some(Bson::String(value)) = value {
-        if value.contains("low_penetrance") {
-            clnsig_obj.insert("low_penetrance", true);
-        }
+    if let Some(Bson::String(value)) = value
+        && value.contains("low_penetrance")
+    {
+        clnsig_obj.insert("low_penetrance", true);
     }
 
     clnsig_obj

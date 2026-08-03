@@ -9,19 +9,17 @@ pub fn parse_mt_frequencies(transcript: &mut Document, entry: &HashMap<String, S
     if let Some(value) = entry
         .get("GNOMAD_MT_AF_HOM")
         .filter(|value| !value.is_empty())
+        && let Ok(value) = value.parse::<f64>()
     {
-        if let Ok(value) = value.parse::<f64>() {
-            transcript.insert("gnomad_mt_homoplasmic", Bson::Double(value));
-        }
+        transcript.insert("gnomad_mt_homoplasmic", Bson::Double(value));
     }
 
     if let Some(value) = entry
         .get("GNOMAD_MT_AF_HET")
         .filter(|value| !value.is_empty())
+        && let Ok(value) = value.parse::<f64>()
     {
-        if let Ok(value) = value.parse::<f64>() {
-            transcript.insert("gnomad_mt_heteroplasmic", Bson::Double(value));
-        }
+        transcript.insert("gnomad_mt_heteroplasmic", Bson::Double(value));
     }
 }
 
