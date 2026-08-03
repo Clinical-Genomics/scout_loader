@@ -1,15 +1,17 @@
-use rust_htslib::bcf::Record;
-use mongodb::bson::{Bson, Document};
-use std::collections::HashSet;
 use crate::HashMap;
-use crate::parse::vep::annotations::{get_strand, get_regional_annotation, parse_mane_annotations, parse_superdups_fracmatch, parse_clinvar_annotations, parse_dbsnp, parse_cosmic};
-use crate::parse::vep::predictors::{get_prediction, parse_transcripts_spliceai};
-use crate::parse::vep::utils::{get_highest_float_score_in_string, get_sequence_aux};
-use crate::parse::vep::domains::parse_domains;
-use crate::parse::vep::scores::parse_cadd;
-use crate::parse::vep::frequencies::{parse_mt_frequencies, parse_variant_frequencies};
 use crate::parse::info::parse_info_string;
-
+use crate::parse::vep::annotations::{
+    get_regional_annotation, get_strand, parse_clinvar_annotations, parse_cosmic, parse_dbsnp,
+    parse_mane_annotations, parse_superdups_fracmatch,
+};
+use crate::parse::vep::domains::parse_domains;
+use crate::parse::vep::frequencies::{parse_mt_frequencies, parse_variant_frequencies};
+use crate::parse::vep::predictors::{get_prediction, parse_transcripts_spliceai};
+use crate::parse::vep::scores::parse_cadd;
+use crate::parse::vep::utils::{get_highest_float_score_in_string, get_sequence_aux};
+use mongodb::bson::{Bson, Document};
+use rust_htslib::bcf::Record;
+use std::collections::HashSet;
 
 /// Parse VEP CSQ annotations from a VCF record.
 ///
@@ -35,7 +37,6 @@ pub fn parse_vep_transcripts(
         return parsed_transcripts;
     }
 
-
     if let Ok(Some(csq)) = record.info(b"CSQ").string() {
         let csq_string = csq
             .iter()
@@ -46,9 +47,7 @@ pub fn parse_vep_transcripts(
             let raw_transcript: HashMap<String, String> = vep_header
                 .iter()
                 .zip(transcript_info.split('|'))
-                .map(|(key, value)| {
-                    (key.clone(), value.to_string())
-                })
+                .map(|(key, value)| (key.clone(), value.to_string()))
                 .collect();
 
             if let Some(transcript) = parse_vep_transcript(raw_transcript) {
@@ -85,28 +84,19 @@ pub fn parse_vep_transcripts(
         if !cosmic_ids.is_empty() {
             variant.insert(
                 "cosmic_ids",
-                Bson::Array(
-                    cosmic_ids
-                        .iter()
-                        .cloned()
-                        .map(Bson::String)
-                        .collect(),
-                ),
+                Bson::Array(cosmic_ids.iter().cloned().map(Bson::String).collect()),
             );
         }
 
         if !dbsnp_ids.is_empty() && !variant.contains_key("dbsnp_id") {
             variant.insert(
                 "dbsnp_id",
-                Bson::String(
-                    dbsnp_ids.iter().cloned().collect::<Vec<_>>().join(";"),
-                ),
+                Bson::String(dbsnp_ids.iter().cloned().collect::<Vec<_>>().join(";")),
             );
         }
-
     }
 
-     parsed_transcripts
+    parsed_transcripts
 }
 
 /// Parse a single VEP transcript annotation.
@@ -116,10 +106,7 @@ pub fn parse_vep_transcripts(
 /// separately by the gene parser.
 ///
 /// Returns None if no transcript ID is available.
-pub fn parse_vep_transcript(
-    entry: HashMap<String, String>,
-) -> Option<Document> {
-
+pub fn parse_vep_transcript(entry: HashMap<String, String>) -> Option<Document> {
     let transcript_id = entry
         .get("FEATURE")
         .map(|id| id.split(':').next().unwrap_or(""))
@@ -128,7 +115,7 @@ pub fn parse_vep_transcript(
     if transcript_id.is_empty() {
         return None;
     }
-    
+
     let mut transcript = Document::new();
 
     if let Some(hgnc_id) = entry.get("HGNC_ID") {
@@ -139,10 +126,7 @@ pub fn parse_vep_transcript(
                 .and_then(|value| value.parse::<i64>().ok());
 
             if let Some(hgnc_id) = hgnc_id {
-                transcript.insert(
-                    "hgnc_id",
-                    Bson::Int64(hgnc_id),
-                );
+                transcript.insert("hgnc_id", Bson::Int64(hgnc_id));
             }
         }
     }
@@ -150,54 +134,30 @@ pub fn parse_vep_transcript(
     // HGNC symbol
     if let Some(symbol) = entry.get("SYMBOL") {
         if !symbol.is_empty() {
-            transcript.insert(
-                "hgnc_symbol",
-                Bson::String(symbol.to_string()),
-            );
+            transcript.insert("hgnc_symbol", Bson::String(symbol.to_string()));
         }
     }
 
-    transcript.insert(
-        "transcript_id",
-        transcript_id.to_string(),
-    );
+    transcript.insert("transcript_id", transcript_id.to_string());
 
-    transcript.insert(
-        "protein_id",
-        entry
-            .get("ENSP")
-            .cloned()
-            .unwrap_or_default(),
-    );
+    transcript.insert("protein_id", entry.get("ENSP").cloned().unwrap_or_default());
 
     let polyphen = get_prediction(&entry, &["POLYPHEN"]);
 
-    transcript.insert(
-        "polyphen_prediction",
-        Bson::String(polyphen),
-    );
+    transcript.insert("polyphen_prediction", Bson::String(polyphen));
 
     let sift = get_prediction(&entry, &["SIFT", "SIFT_PRED"]);
-    transcript.insert(
-        "sift_prediction",
-        Bson::String(sift),
-    );
+    transcript.insert("sift_prediction", Bson::String(sift));
 
     if let Some(value) = entry.get("REVEL_RANKSCORE").filter(|v| !v.is_empty()) {
         if let Some(rankscore) = get_highest_float_score_in_string(value) {
-            transcript.insert(
-                "revel_rankscore",
-                Bson::Double(rankscore),
-            );
+            transcript.insert("revel_rankscore", Bson::Double(rankscore));
         }
     }
 
     if let Some(value) = entry.get("REVEL_SCORE").filter(|v| !v.is_empty()) {
         if let Some(score) = get_highest_float_score_in_string(value) {
-            transcript.insert(
-                "revel_raw_score",
-                Bson::Double(score),
-            );
+            transcript.insert("revel_raw_score", Bson::Double(score));
         }
     }
 
@@ -214,61 +174,40 @@ pub fn parse_vep_transcript(
         ),
     );
 
-
     for (source, target) in [
         ("GERP++_RS", "gerp"),
         ("PHASTCONS100WAY_VERTEBRATE", "phast"),
         ("PHYLOP100WAY_VERTEBRATE", "phylop"),
     ] {
         if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
-            transcript.insert(
-                target,
-                Bson::String(value.clone()),
-            );
+            transcript.insert(target, Bson::String(value.clone()));
         }
     }
 
     parse_domains(&mut transcript, &entry);
 
     if let Some(coding_sequence) = get_sequence_aux(&entry, "HGVSC") {
-        transcript.insert(
-            "coding_sequence_name",
-            Bson::String(coding_sequence),
-        );
+        transcript.insert("coding_sequence_name", Bson::String(coding_sequence));
     }
 
     if let Some(coding_sequence) = get_sequence_aux(&entry, "HGVSP") {
-        transcript.insert(
-            "protein_sequence_name",
-            Bson::String(coding_sequence),
-        );
+        transcript.insert("protein_sequence_name", Bson::String(coding_sequence));
     }
 
     transcript.insert(
         "biotype",
-        Bson::String(
-            entry.get("BIOTYPE")
-                .cloned()
-                .unwrap_or_default(),
-        ),
+        Bson::String(entry.get("BIOTYPE").cloned().unwrap_or_default()),
     );
 
-    for (source, target) in [("EXON", "exon"),("INTRON", "intron")] {
+    for (source, target) in [("EXON", "exon"), ("INTRON", "intron")] {
         if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
-            transcript.insert(
-                target,
-                Bson::String(value.clone()),
-            );
+            transcript.insert(target, Bson::String(value.clone()));
         }
     }
 
     if let Some(strand) = get_strand(&entry) {
-        transcript.insert(
-            "strand",
-            Bson::String(strand),
-        );
+        transcript.insert("strand", Bson::String(strand));
     }
-
 
     let functional_annotations: Vec<String> = entry
         .get("CONSEQUENCE")
@@ -291,19 +230,15 @@ pub fn parse_vep_transcript(
 
         transcript.insert(
             "region_annotations",
-            Bson::Array(
-                region_annotations
-                    .into_iter()
-                    .map(Bson::String)
-                    .collect(),
-            ),
+            Bson::Array(region_annotations.into_iter().map(Bson::String).collect()),
         );
     }
 
     transcript.insert(
         "is_canonical",
         Bson::Boolean(
-            entry.get("CANONICAL")
+            entry
+                .get("CANONICAL")
                 .map(|value| value == "YES")
                 .unwrap_or(false),
         ),

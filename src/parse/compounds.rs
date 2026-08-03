@@ -1,5 +1,5 @@
-use crate::utils::hash::generate_md5_key;
 use crate::models::variant::Compound;
+use crate::utils::hash::generate_md5_key;
 
 /// Parses compound annotations from Genmod output.
 ///
@@ -58,8 +58,7 @@ pub fn parse_compounds(
                 continue;
             }
 
-            let compound_name = split_compound[0]
-                .trim_start_matches("chr");
+            let compound_name = split_compound[0].trim_start_matches("chr");
 
             let variant_id = generate_md5_key(
                 &compound_name

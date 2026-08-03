@@ -1,13 +1,10 @@
-use mongodb::bson::{Bson, Document};
 use crate::HashMap;
+use mongodb::bson::{Bson, Document};
 
 /// Parse protein domain annotations from a VEP transcript entry.
 ///
 /// Extracts supported protein domains from the VEP `DOMAINS` field.
-pub fn parse_domains(
-    transcript: &mut Document,
-    entry: &HashMap<String, String>,
-) {
+pub fn parse_domains(transcript: &mut Document, entry: &HashMap<String, String>) {
     if let Some(domains) = entry.get("DOMAINS").filter(|v| !v.is_empty()) {
         for annotation in domains.split('&') {
             let parts: Vec<&str> = annotation.split(':').collect();
@@ -21,28 +18,16 @@ pub fn parse_domains(
 
             match domain_name {
                 "Pfam_domain" => {
-                    transcript.insert(
-                        "pfam_domain",
-                        Bson::String(domain_id.to_string()),
-                    );
+                    transcript.insert("pfam_domain", Bson::String(domain_id.to_string()));
                 }
                 "PROSITE_profiles" => {
-                    transcript.insert(
-                        "prosite_profile",
-                        Bson::String(domain_id.to_string()),
-                    );
+                    transcript.insert("prosite_profile", Bson::String(domain_id.to_string()));
                 }
                 "SMART_domains" => {
-                    transcript.insert(
-                        "smart_domain",
-                        Bson::String(domain_id.to_string()),
-                    );
+                    transcript.insert("smart_domain", Bson::String(domain_id.to_string()));
                 }
                 "hmmpanther" => {
-                    transcript.insert(
-                        "panther_domain",
-                        Bson::String(domain_id.to_string()),
-                    );
+                    transcript.insert("panther_domain", Bson::String(domain_id.to_string()));
                 }
                 _ => {}
             }

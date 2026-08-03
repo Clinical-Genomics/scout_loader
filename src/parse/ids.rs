@@ -23,19 +23,11 @@ pub fn parse_ids(
     case_id: &str,
     variant_type: &str,
 ) -> VariantIds {
-
     VariantIds {
         simple_id: parse_simple_id(chrom, pos, reference, alternative),
         variant_id: parse_variant_id(chrom, pos, reference, alternative, variant_type),
         display_name: parse_display_name(chrom, pos, reference, alternative, variant_type),
-        document_id: parse_document_id(
-            chrom,
-            pos,
-            reference,
-            alternative,
-            variant_type,
-            case_id,
-        ),
+        document_id: parse_document_id(chrom, pos, reference, alternative, variant_type, case_id),
     }
 }
 
@@ -43,12 +35,7 @@ pub fn parse_ids(
 ///
 /// The simple identifier is a human-readable representation of the variant
 /// location and alleles. It is **not** guaranteed to be unique.
-pub fn parse_simple_id(
-    chrom: &str,
-    pos: &u64,
-    reference: &str,
-    alternative: &str,
-) -> String {
+pub fn parse_simple_id(chrom: &str, pos: &u64, reference: &str, alternative: &str) -> String {
     format!("{chrom}_{pos}_{reference}_{alternative}")
 }
 
@@ -84,9 +71,7 @@ pub fn parse_display_name(
     alternative: &str,
     variant_type: &str,
 ) -> String {
-    format!(
-        "{chrom}_{pos}_{reference}_{alternative}_{variant_type}"
-    )
+    format!("{chrom}_{pos}_{reference}_{alternative}_{variant_type}")
 }
 
 /// Generates the unique document identifier for a variant.

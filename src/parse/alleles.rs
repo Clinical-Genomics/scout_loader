@@ -1,5 +1,5 @@
-use rust_htslib::bcf::Record;
 use crate::models::variant::VariantCategory;
+use rust_htslib::bcf::Record;
 
 /// Parses the reference and alternative alleles from a VCF record.
 ///
@@ -16,7 +16,7 @@ use crate::models::variant::VariantCategory;
 /// # Panics
 ///
 /// Panics if the record does not contain a reference or alternative allele.
-pub fn parse_alleles(record: &Record, category: VariantCategory,) -> (String, String) {
+pub fn parse_alleles(record: &Record, category: VariantCategory) -> (String, String) {
     let alleles = record.alleles();
 
     let reference = String::from_utf8_lossy(alleles[0]).to_string();

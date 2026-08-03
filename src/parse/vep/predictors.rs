@@ -1,5 +1,5 @@
-use mongodb::bson::{Bson, Document};
 use crate::HashMap;
+use mongodb::bson::{Bson, Document};
 
 /// Extract a prediction from VEP transcript annotations.
 ///
@@ -10,11 +10,7 @@ use crate::HashMap;
 pub fn get_prediction(entry: &HashMap<String, String>, fields: &[&str]) -> String {
     for field in fields {
         if let Some(value) = entry.get(*field).filter(|value| !value.is_empty()) {
-            return value
-                .split('(')
-                .next()
-                .unwrap_or("unknown")
-                .to_string();
+            return value.split('(').next().unwrap_or("unknown").to_string();
         }
     }
 
@@ -26,10 +22,7 @@ pub fn get_prediction(entry: &HashMap<String, String>, fields: &[&str]) -> Strin
 /// Extracts SpliceAI delta scores and positions from VEP CSQ fields.
 /// The maximum delta score is stored together with its corresponding
 /// position. Also stores a summary of all splice predictions.
-pub fn parse_transcripts_spliceai(
-    transcript: &mut Document,
-    entry: &HashMap<String, String>,
-) {
+pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &HashMap<String, String>) {
     let spliceai_positions = [
         ("SPLICEAI_PRED_DP_AG", "spliceai_dp_ag"),
         ("SPLICEAI_PRED_DP_AL", "spliceai_dp_al"),
@@ -47,10 +40,7 @@ pub fn parse_transcripts_spliceai(
     for (source, target) in spliceai_positions {
         if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
             if let Ok(position) = value.parse::<i32>() {
-                transcript.insert(
-                    target,
-                    Bson::Int32(position),
-                );
+                transcript.insert(target, Bson::Int32(position));
             }
         }
     }
@@ -58,10 +48,7 @@ pub fn parse_transcripts_spliceai(
     for (source, target) in spliceai_delta_scores {
         if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
             if let Ok(score) = value.parse::<f64>() {
-                transcript.insert(
-                    target,
-                    Bson::Double(score),
-                );
+                transcript.insert(target, Bson::Double(score));
             }
         }
     }
@@ -98,26 +85,15 @@ pub fn parse_transcripts_spliceai(
     }
 
     if let Some(score) = max_score {
-        transcript.insert(
-            "spliceai_score",
-            Bson::Double(score),
-        );
+        transcript.insert("spliceai_score", Bson::Double(score));
 
         if let Some(position) = max_position {
-            transcript.insert(
-                "spliceai_position",
-                Bson::Int32(position),
-            );
+            transcript.insert("spliceai_position", Bson::Int32(position));
         }
 
         transcript.insert(
             "spliceai_prediction",
-            Bson::Array(
-                predictions
-                    .into_iter()
-                    .map(Bson::String)
-                    .collect(),
-            ),
+            Bson::Array(predictions.into_iter().map(Bson::String).collect()),
         );
     }
 }

@@ -1,5 +1,5 @@
-use std::fmt;
 use serde::Serialize;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct Coordinates {
@@ -11,14 +11,13 @@ pub struct Coordinates {
     pub sub_category: String,
     pub mate_id: Option<String>,
     pub cytoband_start: Option<String>,
-    pub cytoband_end: Option<String>
-
+    pub cytoband_end: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VariantType {
     Clinical,
-    Research
+    Research,
 }
 
 impl VariantType {
@@ -28,7 +27,7 @@ impl VariantType {
             "research" => Ok(VariantType::Research),
             _ => Err(format!("Unknown variant type: {}", s)),
         }
-    }    
+    }
 }
 
 impl fmt::Display for VariantType {

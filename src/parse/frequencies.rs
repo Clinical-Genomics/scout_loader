@@ -1,15 +1,9 @@
 use mongodb::bson::{Bson, Document};
 use rust_htslib::bcf::Record;
 
-pub const EXAC_KEYS: &[&str] = &[
-    "EXACAF",
-];
+pub const EXAC_KEYS: &[&str] = &["EXACAF"];
 
-pub const EXAC_MAX_KEYS: &[&str] = &[
-    "EXACMAXAF",
-    "EXACMAX_AF",
-    "ExAC_MAX_AF",
-];
+pub const EXAC_MAX_KEYS: &[&str] = &["EXACMAXAF", "EXACMAX_AF", "ExAC_MAX_AF"];
 
 pub const GNOMAD_INFO_KEYS: &[&str] = &[
     "GNOMADAF",
@@ -19,11 +13,7 @@ pub const GNOMAD_INFO_KEYS: &[&str] = &[
     "gnomad_af",
 ];
 
-pub const SWEGEN_KEYS: &[&str] = &[
-    "SWEGENAF",
-    "swegenAF",
-    "swegen",
-];
+pub const SWEGEN_KEYS: &[&str] = &["SWEGENAF", "swegenAF", "swegen"];
 
 pub const GNOMAD_INFO_MAX_KEYS: &[&str] = &[
     "gnomADg_AF_POPMAX",
@@ -33,13 +23,9 @@ pub const GNOMAD_INFO_MAX_KEYS: &[&str] = &[
     "gnomad_popmax_af",
 ];
 
-pub const THOUSAND_GENOMES_KEYS: &[&str] = &[
-    "1000GAF",
-];
+pub const THOUSAND_GENOMES_KEYS: &[&str] = &["1000GAF"];
 
-pub const THOUSAND_GENOMES_MAX_KEYS: &[&str] = &[
-    "1000G_MAX_AF",
-];
+pub const THOUSAND_GENOMES_MAX_KEYS: &[&str] = &["1000G_MAX_AF"];
 
 /// Parse a frequency value from a VCF INFO field.
 ///
@@ -57,7 +43,6 @@ fn parse_frequency(record: &Record, key: &[u8]) -> Option<f64> {
         .filter(|v| *v != 0.0 && *v != -1.0)
         .map(|v| v as f64)
 }
-
 
 /// Update frequency document from VCF INFO fields.
 ///
@@ -78,10 +63,7 @@ pub fn update_frequency_from_vcf(
 ) {
     for key in key_list {
         if let Some(value) = parse_frequency(record, key.as_bytes()) {
-            frequency.insert(
-                new_key,
-                Bson::Double(value),
-            );
+            frequency.insert(new_key, Bson::Double(value));
             break;
         }
     }
@@ -93,10 +75,7 @@ pub fn update_frequency_from_vcf(
 /// transcript-level VEP annotations are used.
 ///
 /// Returns a BSON document containing available frequencies.
-pub fn parse_frequencies(
-    record: &Record,
-    transcripts: &[Document],
-) -> Document {
+pub fn parse_frequencies(record: &Record, transcripts: &[Document]) -> Document {
     let mut frequencies = Document::new();
 
     let frequency_fields = [
@@ -115,33 +94,21 @@ pub fn parse_frequencies(
     ];
 
     for (keys, name) in frequency_fields {
-        update_frequency_from_vcf(
-            &mut frequencies,
-            record,
-            keys,
-            name,
-        );
+        update_frequency_from_vcf(&mut frequencies, record, keys, name);
     }
 
     if frequencies.is_empty() {
-        update_frequency_from_transcript(
-            &mut frequencies,
-            transcripts,
-        );
+        update_frequency_from_transcript(&mut frequencies, transcripts);
     }
 
     frequencies
 }
 
-
 /// Update frequencies from VEP transcript annotations.
 ///
 /// Searches transcript-level annotations for population frequencies and adds
 /// them to the frequency document.
-pub fn update_frequency_from_transcript(
-    frequencies: &mut Document,
-    transcripts: &[Document],
-) {
+pub fn update_frequency_from_transcript(frequencies: &mut Document, transcripts: &[Document]) {
     for transcript in transcripts {
         let frequency_fields = [
             ("exac_maf", "exac"),
@@ -157,10 +124,7 @@ pub fn update_frequency_from_transcript(
         for (transcript_key, frequency_key) in frequency_fields {
             if let Some(value) = transcript.get(transcript_key) {
                 if !matches!(value, Bson::Null) {
-                    frequencies.insert(
-                        frequency_key,
-                        value.clone(),
-                    );
+                    frequencies.insert(frequency_key, value.clone());
                 }
             }
         }
@@ -210,28 +174,13 @@ pub fn add_frequencies(variant: &mut Document, frequencies: &Document) {
             "gnomad_mt_heteroplasmic",
             "gnomad_mt_heteroplasmic_frequency",
         ),
-        (
-            "gnomad_mt_homoplasmic",
-            "gnomad_mt_homoplasmic_frequency",
-        ),
+        ("gnomad_mt_homoplasmic", "gnomad_mt_homoplasmic_frequency"),
         ("exac_max", "max_exac_frequency"),
         ("gnomad_max", "max_gnomad_frequency"),
-        (
-            "thousand_g_max",
-            "max_thousand_genomes_frequency",
-        ),
-        (
-            "thousand_g",
-            "thousand_genomes_frequency",
-        ),
-        (
-            "thousand_g_left",
-            "thousand_genomes_frequency_left",
-        ),
-        (
-            "thousand_g_right",
-            "thousand_genomes_frequency_right",
-        ),
+        ("thousand_g_max", "max_thousand_genomes_frequency"),
+        ("thousand_g", "thousand_genomes_frequency"),
+        ("thousand_g_left", "thousand_genomes_frequency_left"),
+        ("thousand_g_right", "thousand_genomes_frequency_right"),
         ("colorsdb_af", "colorsdb_af"),
     ];
 

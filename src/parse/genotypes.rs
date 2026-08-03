@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use rust_htslib::bcf::header::HeaderView;
-use mongodb::bson::{doc, Bson, Document};
-use rust_htslib::bcf::Record;
-use rust_htslib::bcf::record::GenotypeAllele;
 use crate::models::variant::VariantCategory;
+use mongodb::bson::{Bson, Document, doc};
+use rust_htslib::bcf::Record;
+use rust_htslib::bcf::header::HeaderView;
+use rust_htslib::bcf::record::GenotypeAllele;
+use std::collections::HashMap;
 
 use crate::models::sample::SampleInfo;
 
@@ -19,32 +19,27 @@ pub fn validate_sample_mapping(
     for (sample_id, sample_info) in sample_mapping {
         let index = sample_info.vcf_index;
 
-        let vcf_sample = vcf_samples
-            .get(index)
-            .ok_or_else(|| {
-                format!(
-                    "Sample '{}' has VCF index {}, but the VCF contains only {} samples",
-                    sample_id,
-                    index,
-                    vcf_samples.len()
-                )
-            })?;
+        let vcf_sample = vcf_samples.get(index).ok_or_else(|| {
+            format!(
+                "Sample '{}' has VCF index {}, but the VCF contains only {} samples",
+                sample_id,
+                index,
+                vcf_samples.len()
+            )
+        })?;
 
         let vcf_sample = String::from_utf8_lossy(vcf_sample);
 
         if vcf_sample != *sample_id {
             return Err(format!(
                 "Sample mismatch: CLI sample '{}' is assigned to VCF index {}, but VCF contains '{}'",
-                sample_id,
-                index,
-                vcf_sample
+                sample_id, index, vcf_sample
             ));
         }
     }
 
     Ok(())
 }
-
 
 /// Parse genotype calls for selected samples.
 pub fn parse_genotypes(
@@ -62,7 +57,7 @@ pub fn parse_genotypes(
             sample_id,
             &sample_info.display_name,
             pos,
-            category
+            category,
         ));
     }
 
@@ -136,8 +131,7 @@ fn parse_genotype(
         let allele_2 = genotype_allele_to_string(genotype.get(1));
 
         let phase_sep = match genotype.get(1) {
-            Some(GenotypeAllele::Phased(_)) 
-            | Some(GenotypeAllele::PhasedMissing) => "|",
+            Some(GenotypeAllele::Phased(_)) | Some(GenotypeAllele::PhasedMissing) => "|",
             _ => "/",
         };
 
@@ -162,21 +156,17 @@ fn parse_genotype(
             gt_call.insert("so", so);
         }
 
-        (spanning_ref, spanning_alt) =
-            parse_format_entry(record, pos, b"ADSP");
+        (spanning_ref, spanning_alt) = parse_format_entry(record, pos, b"ADSP");
 
-        (flanking_ref, flanking_alt) =
-            parse_format_entry(record, pos, b"ADFL");
+        (flanking_ref, flanking_alt) = parse_format_entry(record, pos, b"ADFL");
 
-        (inrepeat_ref, inrepeat_alt) =
-            parse_format_entry(record, pos, b"ADIR");
+        (inrepeat_ref, inrepeat_alt) = parse_format_entry(record, pos, b"ADIR");
 
         // TRGT long read STR specific
         let (_, mc_alt) = parse_format_entry_trgt_mc(record, pos);
         gt_call.insert("alt_mc", mc_alt);
 
-        (sd_ref, sd_alt) =
-            parse_format_entry(record, pos, b"SD");
+        (sd_ref, sd_alt) = parse_format_entry(record, pos, b"SD");
 
         // STRdrop long read STR specific
         if let Some(sdp) = parse_format_entry_single_float(record, pos, b"SDP") {
@@ -255,7 +245,6 @@ fn parse_genotype(
         gt_call.insert("copy_number", copy_number);
     }
 
-
     let mut gt_obj = doc! {
         "sample_id": gt_call.get("sample_id"),
         "display_name": gt_call.get("display_name"),
@@ -271,7 +260,6 @@ fn parse_genotype(
             .unwrap_or(Bson::Int32(-1)),
         "genotype_quality": gt_call.get("genotype_quality"),
     };
-
 
     for format_tag in [
         "alt_mc",
@@ -299,9 +287,7 @@ fn genotype_allele_to_string(allele: Option<&GenotypeAllele>) -> &'static str {
     match allele {
         Some(GenotypeAllele::Unphased(0)) | Some(GenotypeAllele::Phased(0)) => "0",
         Some(GenotypeAllele::Unphased(1)) | Some(GenotypeAllele::Phased(1)) => "1",
-        Some(GenotypeAllele::UnphasedMissing)
-        | Some(GenotypeAllele::PhasedMissing)
-        | None => ".",
+        Some(GenotypeAllele::UnphasedMissing) | Some(GenotypeAllele::PhasedMissing) | None => ".",
         _ => ".",
     }
 }
@@ -396,10 +382,7 @@ fn get_pathologic_struc(record: &Record) -> Option<Vec<usize>> {
 /// A tuple containing:
 /// * reference motif count
 /// * alternative motif count
-fn parse_format_entry_trgt_mc(
-    record: &Record,
-    pos: usize,
-) -> (Option<i32>, Option<i32>) {
+fn parse_format_entry_trgt_mc(record: &Record, pos: usize) -> (Option<i32>, Option<i32>) {
     let mut mc_ref = None;
     let mut mc_alt = None;
 
@@ -421,9 +404,7 @@ fn parse_format_entry_trgt_mc(
     let genotype = genotypes.get(pos);
 
     // Find which genotype position corresponds to the reference allele (0)
-    let ref_idx = genotype
-        .iter()
-        .position(|allele| allele.index() == Some(0));
+    let ref_idx = genotype.iter().position(|allele| allele.index() == Some(0));
 
     let pathologic_struc = get_pathologic_struc(record);
 
@@ -506,10 +487,7 @@ fn parse_format_entry_single_float(
 /// * number of alternative 3' clipped reads (`CLIP3`)
 ///
 /// Missing fields or invalid/negative values are returned as `None`.
-fn get_mei_reads(
-    record: &Record,
-    pos: usize,
-) -> (Option<i32>, Option<i32>, Option<i32>) {
+fn get_mei_reads(record: &Record, pos: usize) -> (Option<i32>, Option<i32>, Option<i32>) {
     let spanning_ref = parse_format_entry_single_integer(record, pos, b"SP");
     let clip5_alt = parse_format_entry_single_integer(record, pos, b"CLIP5");
     let clip3_alt = parse_format_entry_single_integer(record, pos, b"CLIP3");
@@ -530,13 +508,8 @@ fn parse_format_entry_single_integer(
 
     let value = values.get(pos)?.first()?;
 
-    if *value >= 0 {
-        Some(*value)
-    } else {
-        None
-    }
+    if *value >= 0 { Some(*value) } else { None }
 }
-
 
 /// Get paired-end read support from SV FORMAT fields.
 ///
@@ -545,10 +518,7 @@ fn parse_format_entry_single_integer(
 /// * alternative paired-end support
 ///
 /// Values are extracted from PE, PR, DV, and DR FORMAT fields.
-fn get_paired_ends(
-    record: &Record,
-    pos: usize,
-) -> (Option<i32>, Option<i32>) {
+fn get_paired_ends(record: &Record, pos: usize) -> (Option<i32>, Option<i32>) {
     let mut paired_end_ref = None;
     let mut paired_end_alt = None;
 
@@ -606,10 +576,7 @@ fn get_paired_ends(
 /// * alternative split-read support
 ///
 /// Values are extracted from SR, RV, and RR FORMAT fields.
-fn get_split_reads(
-    record: &Record,
-    pos: usize,
-) -> (Option<i32>, Option<i32>) {
+fn get_split_reads(record: &Record, pos: usize) -> (Option<i32>, Option<i32>) {
     let mut split_read_ref = None;
     let mut split_read_alt = None;
 
@@ -663,11 +630,7 @@ fn get_split_reads(
 }
 
 /// Extract alternative allele depth from the AD FORMAT field.
-fn get_gt_allele_depth(
-    record: &Record,
-    pos: usize,
-    allele_index: usize,
-) -> Option<i32> {
+fn get_gt_allele_depth(record: &Record, pos: usize, allele_index: usize) -> Option<i32> {
     let depths = record.format(b"AD").integer().ok()?;
 
     depths
@@ -770,18 +733,12 @@ fn get_ref_depth(
     ref_depth
 }
 
-
 /// Get total read depth.
 ///
 /// First tries to use the genotype-derived read depth.
 /// If unavailable, falls back to DP, LC, or the sum of the
 /// reference and alternative depths.
-fn get_read_depth(
-    record: &Record,
-    pos: usize,
-    alt_depth: i32,
-    ref_depth: i32,
-) -> i32 {
+fn get_read_depth(record: &Record, pos: usize, alt_depth: i32, ref_depth: i32) -> i32 {
     let mut read_depth = -1;
 
     if let Ok(values) = record.format(b"DP").integer() {
@@ -824,10 +781,7 @@ fn get_read_depth(
 ///
 /// Prioritises the caller-provided AF FORMAT field if available.
 /// Otherwise calculates it from genotype allele depths.
-fn get_alt_frequency(
-    record: &Record,
-    pos: usize,
-) -> f32 {
+fn get_alt_frequency(record: &Record, pos: usize) -> f32 {
     // AF FORMAT field (caller-provided)
     if let Ok(values) = record.format(b"AF").float() {
         if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
@@ -855,10 +809,7 @@ fn get_alt_frequency(
 /// Get FFPM information from FORMAT tags.
 ///
 /// Returns the fusion fragments per million value if available.
-fn get_ffpm_info(
-    record: &Record,
-    pos: usize,
-) -> Option<i32> {
+fn get_ffpm_info(record: &Record, pos: usize) -> Option<i32> {
     if let Ok(values) = record.format(b"FFPM").integer() {
         if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
             return Some(*value);
@@ -871,10 +822,7 @@ fn get_ffpm_info(
 /// Get genotype quality (GQ) for a sample.
 ///
 /// Returns -1 if genotype quality is missing or unavailable.
-fn get_genotype_quality(
-    record: &Record,
-    pos: usize,
-) -> i32 {
+fn get_genotype_quality(record: &Record, pos: usize) -> i32 {
     if let Ok(values) = record.format(b"GQ").integer() {
         if let Some(value) = values.get(pos).and_then(|sample| sample.first()) {
             return *value;
@@ -887,15 +835,10 @@ fn get_genotype_quality(
 /// Get copy number from the CN FORMAT field.
 ///
 /// Returns None if CN is missing, invalid, or represents a missing value.
-fn get_copy_number(
-    record: &Record,
-    pos: usize,
-) -> Option<i32> {
+fn get_copy_number(record: &Record, pos: usize) -> Option<i32> {
     let values = record.format(b"CN").float().ok()?;
 
-    let cn_value = values
-        .get(pos)
-        .and_then(|sample| sample.first())?;
+    let cn_value = values.get(pos).and_then(|sample| sample.first())?;
 
     if cn_value.is_nan() || *cn_value < 0.0 {
         return None;

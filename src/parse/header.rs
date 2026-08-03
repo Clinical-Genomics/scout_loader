@@ -1,6 +1,6 @@
+use flate2::read::MultiGzDecoder;
 use mongodb::bson::Document;
 use rust_htslib::bcf::header::{HeaderRecord, HeaderView};
-use flate2::read::MultiGzDecoder;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
