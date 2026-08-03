@@ -1,19 +1,17 @@
-use rust_htslib::bcf::header::HeaderView;
-use rust_htslib::bcf::Record;
-use std::collections::HashMap;
 use crate::models::cytoband::Cytoband;
 use crate::models::variant::{Coordinates, VariantCategory};
 use crate::parse::info::parse_info_int;
 use lazy_static::lazy_static;
 use regex::Regex;
+use rust_htslib::bcf::Record;
+use rust_htslib::bcf::header::HeaderView;
+use std::collections::HashMap;
 
 lazy_static! {
-    static ref BND_ALT_PATTERN: Regex =
-        Regex::new(r".*[\],\[](.*?):(.*?)[\],\[]").unwrap();
+    static ref BND_ALT_PATTERN: Regex = Regex::new(r".*[\],\[](.*?):(.*?)[\],\[]").unwrap();
 }
 
 const SV_TYPES: &[&str] = &["ins", "del", "dup", "cnv", "inv", "bnd"];
-
 
 /// Finds the cytoband overlapping a genomic coordinate.
 ///
@@ -35,13 +33,12 @@ pub fn get_cytoband_coordinates(
     cytobands
         .get(chrom)
         .and_then(|bands| {
-            bands.iter().find(|band| {
-                pos >= band.start && pos < band.end
-            })
+            bands
+                .iter()
+                .find(|band| pos >= band.start && pos < band.end)
         })
         .map(|band| band.name.clone())
 }
-
 
 /// Normalizes a chromosome name by removing an optional "chr" prefix.
 ///
@@ -65,10 +62,10 @@ fn get_end_chrom(alt: &str, chrom: &str) -> String {
         return chrom.to_string();
     }
 
-    if let Some(bnd_match) = BND_ALT_PATTERN.captures(alt) {
-        if let Some(other_chrom) = bnd_match.get(1) {
-            return normalize_chromosome(other_chrom.as_str());
-        }
+    if let Some(bnd_match) = BND_ALT_PATTERN.captures(alt)
+        && let Some(other_chrom) = bnd_match.get(1)
+    {
+        return normalize_chromosome(other_chrom.as_str());
     }
 
     chrom.to_string()
@@ -80,16 +77,16 @@ fn get_end_chrom(alt: &str, chrom: &str) -> String {
 /// be present. If available, it is preferred. Otherwise, the type is
 /// inferred from the ALT allele.
 fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
-    if let Ok(Some(values)) = record.info(b"SVTYPE").string() {
-        if let Some(value) = values.first() {
-            let mut svtype = String::from_utf8_lossy(value).to_lowercase();
+    if let Ok(Some(values)) = record.info(b"SVTYPE").string()
+        && let Some(value) = values.first()
+    {
+        let mut svtype = String::from_utf8_lossy(value).to_lowercase();
 
-            if svtype == "sgl" {
-                svtype = "bnd".to_string();
-            }
-
-            return svtype;
+        if svtype == "sgl" {
+            svtype = "bnd".to_string();
         }
+
+        return svtype;
     }
 
     let alt_type = alt
@@ -116,28 +113,23 @@ fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
 ///
 /// Breakends (BNDs) require special handling because the end coordinate
 /// can be encoded in the ALT allele pattern.
-fn sv_end(
-    pos: u64,
-    alt: &str,
-    svend: Option<i64>,
-    svlen: Option<i64>,
-) -> u64 {
+fn sv_end(pos: u64, alt: &str, svend: Option<i64>, svlen: Option<i64>) -> u64 {
     let mut end = svend.map(|value| value as u64);
 
     if alt.contains(':') {
-        if let Some(captures) = BND_ALT_PATTERN.captures(alt) {
-            if let Some(position) = captures.get(2) {
-                end = position.as_str().parse::<u64>().ok();
-            }
+        if let Some(captures) = BND_ALT_PATTERN.captures(alt)
+            && let Some(position) = captures.get(2)
+        {
+            end = position.as_str().parse::<u64>().ok();
         }
     } else if alt.contains('.') && alt.len() > 1 {
         end = Some(pos);
     }
 
-    if end.is_none() {
-        if let Some(svlen) = svlen {
-            end = Some((pos as i64 + svlen) as u64);
-        }
+    if end.is_none()
+        && let Some(svlen) = svlen
+    {
+        end = Some((pos as i64 + svlen) as u64);
     }
 
     end.unwrap_or(pos)
@@ -147,13 +139,7 @@ fn sv_end(
 ///
 /// Returns a very large value for variants spanning different molecules.
 /// Uses SVLEN when available. If no length can be determined, returns -1.
-fn sv_length(
-    pos: u64,
-    end: u64,
-    chrom: &str,
-    end_chrom: &str,
-    svlen: Option<i64>,
-) -> i64 {
+fn sv_length(pos: u64, end: u64, chrom: &str, end_chrom: &str, svlen: Option<i64>) -> i64 {
     if chrom != end_chrom {
         return 100_000_000_000;
     }
@@ -168,7 +154,6 @@ fn sv_length(
 
     end as i64 - pos as i64
 }
-
 
 /// Parse genomic coordinates and variant classification information.
 ///
@@ -199,10 +184,8 @@ pub fn parse_coordinates(
 ) -> Coordinates {
     let rid = record.rid().expect("missing chromosome");
 
-    let chrom = String::from_utf8_lossy(
-        header.rid2name(rid).expect("unknown chromosome"),
-    )
-    .to_string();
+    let chrom =
+        String::from_utf8_lossy(header.rid2name(rid).expect("unknown chromosome")).to_string();
 
     let chrom = normalize_chromosome(&chrom);
 
@@ -253,7 +236,7 @@ pub fn parse_coordinates(
                     .flatten()
                     .and_then(|values| values.first().copied())
                     .map(|value| value as i64),
-                    );
+            );
         }
 
         VariantCategory::Mei => {
@@ -285,17 +268,9 @@ pub fn parse_coordinates(
                 .map(|value| String::from_utf8_lossy(value).to_string())
         });
 
-    let cytoband_start = get_cytoband_coordinates(
-        cytobands,
-        &chrom,
-        position,
-    );
+    let cytoband_start = get_cytoband_coordinates(cytobands, &chrom, position);
 
-    let cytoband_end = get_cytoband_coordinates(
-        cytobands,
-        &end_chrom,
-        end,
-    );
+    let cytoband_end = get_cytoband_coordinates(cytobands, &end_chrom, end);
 
     Coordinates {
         chromosome: chrom,

@@ -1,6 +1,6 @@
+use flate2::read::MultiGzDecoder;
 use mongodb::bson::Document;
 use rust_htslib::bcf::header::{HeaderRecord, HeaderView};
-use flate2::read::MultiGzDecoder;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -13,22 +13,19 @@ use std::io::{BufRead, BufReader};
 /// Returns an empty vector if no CSQ INFO header is found.
 pub fn parse_vep_header(header: &HeaderView) -> Vec<String> {
     for record in header.header_records() {
-        if let HeaderRecord::Info { values, .. } = record {
-            if let Some(id) = values.get("ID") {
-                if id == "CSQ" {
-                    if let Some(description) = values.get("Description") {
-                        if let Some(format) = description.split("Format:").nth(1) {
-                            return format
-                                .trim()
-                                .trim_matches('"')
-                                .trim_end_matches('>')
-                                .split('|')
-                                .map(|field| field.to_uppercase())
-                                .collect();
-                        }
-                    }
-                }
-            }
+        if let HeaderRecord::Info { values, .. } = record
+            && let Some(id) = values.get("ID")
+            && id == "CSQ"
+            && let Some(description) = values.get("Description")
+            && let Some(format) = description.split("Format:").nth(1)
+        {
+            return format
+                .trim()
+                .trim_matches('"')
+                .trim_end_matches('>')
+                .split('|')
+                .map(|field| field.to_uppercase())
+                .collect();
         }
     }
 
@@ -60,29 +57,26 @@ pub fn parse_local_archive_header(path: &str) -> Option<Document> {
 
     let mut local_archive_info = Document::new();
 
-    for line in reader.lines().flatten() {
-        if line.starts_with("##INFO=<ID=Obs") {
-            if let Some(description) = line.split("Description=\"").nth(1) {
-                if let Some(description) = description.split('"').next() {
-                    local_archive_info.insert("Description", description.to_string());
-                }
-            }
+    for line in reader.lines().map_while(Result::ok) {
+        if line.starts_with("##INFO=<ID=Obs")
+            && let Some(description) = line.split("Description=\"").nth(1)
+            && let Some(description) = description.split('"').next()
+        {
+            local_archive_info.insert("Description", description.to_string());
         }
 
-        if line.starts_with("##NrCases=") {
-            if let Some(value) = line.strip_prefix("##NrCases=") {
-                if let Ok(value) = value.parse::<i32>() {
-                    local_archive_info.insert("NrCases", value);
-                }
-            }
+        if line.starts_with("##NrCases=")
+            && let Some(value) = line.strip_prefix("##NrCases=")
+            && let Ok(value) = value.parse::<i32>()
+        {
+            local_archive_info.insert("NrCases", value);
         }
 
-        if line.starts_with("##Software=<ID=loqusdb") {
-            if let Some(date) = line.split("Date=\"").nth(1) {
-                if let Some(date) = date.split('"').next() {
-                    local_archive_info.insert("Date", date.to_string());
-                }
-            }
+        if line.starts_with("##Software=<ID=loqusdb")
+            && let Some(date) = line.split("Date=\"").nth(1)
+            && let Some(date) = date.split('"').next()
+        {
+            local_archive_info.insert("Date", date.to_string());
         }
 
         // Stop reading once the header is finished.

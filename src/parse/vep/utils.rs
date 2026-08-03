@@ -18,10 +18,7 @@ pub fn get_highest_float_score_in_string(value: &str) -> Option<f64> {
 /// `transcript:sequence`. This function returns only the sequence part.
 /// Returns `None` if the field is missing or does not contain `:`.
 pub fn get_sequence_aux(entry: &HashMap<String, String>, name: &str) -> Option<String> {
-    let sequence_entry = entry
-        .get(name)?
-        .split(':')
-        .collect::<Vec<&str>>();
+    let sequence_entry = entry.get(name)?.split(':').collect::<Vec<&str>>();
 
     if sequence_entry.len() > 1 {
         Some(sequence_entry.last()?.to_string())

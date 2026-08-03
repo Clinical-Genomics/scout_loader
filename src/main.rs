@@ -1,15 +1,14 @@
-mod parse;
 mod models;
+mod parse;
 mod utils;
-use clap::Parser;
-use std::collections::HashMap;
-use crate::models::variant::VariantCategory;
-use crate::models::variant::VariantType;
 use crate::models::build::GenomeBuild;
 use crate::models::sample::SampleInfo;
-use parse::vcf::process_vcf;
+use crate::models::variant::VariantCategory;
+use crate::models::variant::VariantType;
+use clap::Parser;
 use parse::cytobands::set_cytobands;
-
+use parse::vcf::process_vcf;
+use std::collections::HashMap;
 
 /// Parse command-line sample mappings in the format:
 ///
@@ -42,15 +41,12 @@ pub fn parse_sample_mapping(
         let sample_id = parts[0].to_string();
         let display_name = parts[1].to_string();
 
-        let vcf_index = parts[2]
-            .parse::<usize>()
-            .map_err(|_| {
-                format!(
-                    "Invalid VCF position '{}' for sample '{}'",
-                    parts[2],
-                    sample_id
-                )
-            })?;
+        let vcf_index = parts[2].parse::<usize>().map_err(|_| {
+            format!(
+                "Invalid VCF position '{}' for sample '{}'",
+                parts[2], sample_id
+            )
+        })?;
 
         mapping.insert(
             sample_id,
@@ -63,7 +59,6 @@ pub fn parse_sample_mapping(
 
     Ok(mapping)
 }
-
 
 #[derive(Parser)]
 struct Args {
@@ -79,7 +74,7 @@ struct Args {
     #[arg(long)]
     variant_type: String,
 
-    /// Case id 
+    /// Case id
     #[arg(long)]
     case_id: String,
 
@@ -118,12 +113,9 @@ fn main() {
         }
     };
 
-    let category = VariantCategory::from_str(&args.category)
-        .expect("Invalid category");
-    let variant_type = VariantType::from_str(&args.variant_type)
-        .expect("Invalid variant type");
-    let genome_build = GenomeBuild::from_str(&args.genome_build)
-        .expect("Invalid genome build");
+    let category = VariantCategory::from_str(&args.category).expect("Invalid category");
+    let variant_type = VariantType::from_str(&args.variant_type).expect("Invalid variant type");
+    let genome_build = GenomeBuild::from_str(&args.genome_build).expect("Invalid genome build");
 
     let cytobands = match set_cytobands(genome_build.cytoband_path()) {
         Ok(value) => value,
@@ -133,5 +125,12 @@ fn main() {
         }
     };
 
-    process_vcf(&args.vcf, category, variant_type, &args.case_id, &cytobands, &sample_mapping);
+    process_vcf(
+        &args.vcf,
+        category,
+        variant_type,
+        &args.case_id,
+        &cytobands,
+        &sample_mapping,
+    );
 }

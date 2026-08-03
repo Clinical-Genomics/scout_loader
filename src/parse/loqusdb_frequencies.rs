@@ -1,6 +1,6 @@
-use mongodb::bson::{Document};
+use crate::parse::info::{parse_info_float, parse_info_int};
+use mongodb::bson::Document;
 use rust_htslib::bcf::Record;
-use crate::parse::info::{parse_info_int, parse_info_float};
 
 /// Add LoqusDB archive observation frequencies, counts, and metadata to a variant.
 ///
@@ -49,14 +49,8 @@ pub fn add_loqus_archive_frequencies(
     // Germline observations (SNVs and SVs)
     let obs = parse_info_int(record, b"Obs")
         .filter(|&v| v != -1)
-        .or_else(|| {
-            parse_info_int(record, b"clinical_genomics_loqusObs")
-                .filter(|&v| v != -1)
-        })
-        .or_else(|| {
-            parse_info_int(record, b"clin_obs")
-                .filter(|&v| v != -1)
-        });
+        .or_else(|| parse_info_int(record, b"clinical_genomics_loqusObs").filter(|&v| v != -1))
+        .or_else(|| parse_info_int(record, b"clin_obs").filter(|&v| v != -1));
 
     if let Some(value) = obs {
         variant.insert("local_obs_old", value);
@@ -80,28 +74,19 @@ pub fn add_loqus_archive_frequencies(
     ];
 
     for (prefix, key) in cancer_sources {
-        if let Some(value) = parse_info_int(
-            record,
-            format!("{prefix}_Obs").as_bytes(),
-        )
-        .filter(|&v| v != -1)
+        if let Some(value) =
+            parse_info_int(record, format!("{prefix}_Obs").as_bytes()).filter(|&v| v != -1)
         {
             variant.insert(format!("local_obs_{key}_old"), value);
         }
 
-        if let Some(value) = parse_info_int(
-            record,
-            format!("{prefix}_Hom").as_bytes(),
-        )
-        .filter(|&v| v != -1)
+        if let Some(value) =
+            parse_info_int(record, format!("{prefix}_Hom").as_bytes()).filter(|&v| v != -1)
         {
             variant.insert(format!("local_obs_{key}_hom_old"), value);
         }
 
-        if let Some(value) = parse_info_float(
-            record,
-            format!("{prefix}_Frq").as_bytes(),
-        ) {
+        if let Some(value) = parse_info_float(record, format!("{prefix}_Frq").as_bytes()) {
             variant.insert(format!("local_obs_{key}_old_freq"), value);
         }
     }

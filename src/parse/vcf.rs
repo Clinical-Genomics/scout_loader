@@ -1,30 +1,30 @@
-use rust_htslib::bcf::{Read, Reader};
-use mongodb::bson::{Bson, doc, self};
-use std::collections::HashMap;
-use crate::parse::coordinates::parse_coordinates;
-use crate::parse::alleles::parse_alleles;
-use crate::parse::filters::parse_filters;
-use crate::parse::compounds::parse_compounds;
-use crate::parse::ids::parse_ids;
-use crate::parse::rank_scores::parse_rank_scores;
-use crate::parse::genetic_models::parse_genetic_models;
-use crate::parse::info::{parse_info_int, parse_info_string, parse_custom_data};
-use crate::parse::strs::set_str_info;
-use crate::parse::meis::set_mei_info;
-use crate::parse::fusions::set_fusion_info;
-use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
-use crate::parse::mt_annotations::{set_mitomap_associated_diseases, set_hmtvar};
-use crate::parse::header::{parse_vep_header, parse_local_archive_header};
-use crate::parse::vep::transcripts::parse_vep_transcripts;
-use crate::models::variant::VariantCategory;
-use crate::models::variant::VariantType;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
-use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
-use crate::parse::vep::clnsig::{parse_clnsig, build_clnsig};
-use crate::parse::onco_clnsig::parse_clnsig_onc;
-use crate::parse::frequencies::{parse_frequencies, add_frequencies};
+use crate::models::variant::VariantCategory;
+use crate::models::variant::VariantType;
+use crate::parse::alleles::parse_alleles;
+use crate::parse::compounds::parse_compounds;
+use crate::parse::coordinates::parse_coordinates;
+use crate::parse::filters::parse_filters;
+use crate::parse::frequencies::{add_frequencies, parse_frequencies};
+use crate::parse::fusions::set_fusion_info;
+use crate::parse::genetic_models::parse_genetic_models;
+use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
+use crate::parse::header::{parse_local_archive_header, parse_vep_header};
+use crate::parse::ids::parse_ids;
+use crate::parse::info::{parse_custom_data, parse_info_int, parse_info_string};
 use crate::parse::loqusdb_frequencies::add_loqus_archive_frequencies;
+use crate::parse::meis::set_mei_info;
+use crate::parse::mt_annotations::{set_hmtvar, set_mitomap_associated_diseases};
+use crate::parse::onco_clnsig::parse_clnsig_onc;
+use crate::parse::rank_scores::parse_rank_scores;
+use crate::parse::strs::set_str_info;
+use crate::parse::vep::clnsig::{build_clnsig, parse_clnsig};
+use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
+use crate::parse::vep::transcripts::parse_vep_transcripts;
+use mongodb::bson::{self, Bson, doc};
+use rust_htslib::bcf::{Read, Reader};
+use std::collections::HashMap;
 
 /// Processes a VCF file and parses each record according to the variant category.
 ///
@@ -44,10 +44,15 @@ use crate::parse::loqusdb_frequencies::add_loqus_archive_frequencies;
 /// # Panics
 ///
 /// Panics if the VCF file cannot be opened or if a record cannot be read.
-pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantType, case_id: &str, cytobands: &HashMap<String, Vec<Cytoband>>, sample_mapping: &HashMap<String, SampleInfo>) {
-
-    let mut vcf = Reader::from_path(path)
-        .expect("couldn't open input vcf");
+pub fn process_vcf(
+    path: &str,
+    category: VariantCategory,
+    variant_type: VariantType,
+    case_id: &str,
+    cytobands: &HashMap<String, Vec<Cytoband>>,
+    sample_mapping: &HashMap<String, SampleInfo>,
+) {
+    let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
 
     let header = vcf.header().clone();
 
@@ -56,8 +61,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
     let local_archive_info = parse_local_archive_header(path);
     println!("Local archive info: {:?}", local_archive_info);
 
-
-    if let Err(error) = validate_sample_mapping(vcf.header(), &sample_mapping) {
+    if let Err(error) = validate_sample_mapping(vcf.header(), sample_mapping) {
         eprintln!("Sample mapping validation failed: {}", error);
         return;
     }
@@ -68,28 +72,38 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let coordinates = parse_coordinates(&record, &header, cytobands, &category);
         let variant_type = variant_type.to_string();
         let (reference, alternative) = parse_alleles(&record, category);
-        let ids = parse_ids(&coordinates.chromosome, &coordinates.position, &reference, &alternative, &case_id, &variant_type);
-        
+        let ids = parse_ids(
+            &coordinates.chromosome,
+            &coordinates.position,
+            &reference,
+            &alternative,
+            &case_id,
+            &variant_type,
+        );
+
         /*
         if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
             continue;
         }
         */
-        
+
         let filters = parse_filters(&record, &header);
         let compound_info = record
             .info(b"Compounds")
             .string()
             .ok()
             .flatten()
-            .and_then(|values| values.first().map(|value| {
-                String::from_utf8_lossy(value).to_string()
-            }));
+            .and_then(|values| {
+                values
+                    .first()
+                    .map(|value| String::from_utf8_lossy(value).to_string())
+            });
         let compounds = parse_compounds(compound_info, &case_id, &variant_type);
-        let compounds_bson = bson::to_bson(&compounds).expect("Failed to convert compounds to BSON");
+        let compounds_bson =
+            bson::to_bson(&compounds).expect("Failed to convert compounds to BSON");
         let (rank_score, norm_rank_score) = parse_rank_scores(&record, &case_id);
         let genetic_models = parse_genetic_models(&record, &case_id);
-        let samples = parse_genotypes(&record, &sample_mapping, category);
+        let samples = parse_genotypes(&record, sample_mapping, category);
 
         // This structure contains fields common to all variants categories
         let mut variant = doc! {
@@ -129,23 +143,25 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
             "samples": samples,
         };
 
-        if coordinates.mate_id.is_some(){
+        if coordinates.mate_id.is_some() {
             variant.insert("mate_id", coordinates.mate_id);
         }
 
-        let azlength = parse_info_string(&record, b"AZLENGTH").and_then(|value| value.parse::<i32>().ok());
+        let azlength =
+            parse_info_string(&record, b"AZLENGTH").and_then(|value| value.parse::<i32>().ok());
         if let Some(value) = azlength {
             variant.insert("azlength", value);
         }
 
-        let azqual = parse_info_string(&record, b"AZQUAL").and_then(|value| value.parse::<f64>().ok());
+        let azqual =
+            parse_info_string(&record, b"AZQUAL").and_then(|value| value.parse::<f64>().ok());
         if let Some(value) = azqual {
             variant.insert("azqual", value);
         }
 
         if let Some(custom) = parse_custom_data(parse_info_string(&record, b"SCOUT_CUSTOM")) {
-                variant.insert("custom", custom);
-            }
+            variant.insert("custom", custom);
+        }
 
         let id = record.id();
         let variant_id = String::from_utf8_lossy(&id);
@@ -173,10 +189,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
 
             VariantCategory::Cancer | VariantCategory::CancerSv => {
                 if let Some(value) = parse_info_int(&record, b"SOMATICSCORE") {
-                    variant.insert(
-                        "somatic_score",
-                        bson::Bson::Int32(value),
-                    );
+                    variant.insert("somatic_score", bson::Bson::Int32(value));
                 }
             }
 
@@ -187,12 +200,7 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         let genes = parse_genes(&parsed_transcripts);
         variant.insert(
             "genes",
-            Bson::Array(
-                genes
-                    .into_iter()
-                    .map(Bson::Document)
-                    .collect(),
-            ),
+            Bson::Array(genes.into_iter().map(Bson::Document).collect()),
         );
         set_hgnc_ids(&mut variant);
 
@@ -231,7 +239,5 @@ pub fn process_vcf(path: &str, category: VariantCategory, variant_type: VariantT
         add_loqus_archive_frequencies(&record, &mut variant, local_archive_info.as_ref());
 
         println!("{:#?}\n", variant);
-            
     }
-
 }

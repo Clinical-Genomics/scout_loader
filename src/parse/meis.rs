@@ -1,4 +1,4 @@
-use mongodb::bson::{Document};
+use mongodb::bson::Document;
 use rust_htslib::bcf::Record;
 
 use crate::parse::info::parse_info_string_array;

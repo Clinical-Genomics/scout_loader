@@ -1,11 +1,7 @@
 use mongodb::bson::{Bson, Document};
 use rust_htslib::bcf::Record;
 
-use crate::parse::info::{
-    parse_info_float,
-    parse_info_int,
-    parse_info_string,
-};
+use crate::parse::info::{parse_info_float, parse_info_int, parse_info_string};
 
 /// Add fusion-specific information from VCF INFO fields.
 ///
@@ -76,31 +72,19 @@ fn set_fusion_genes(record: &Record, variant: &mut Document) {
     let mut hgnc_symbols = Vec::new();
 
     for suffix in ["A", "B"] {
-        let gene = parse_info_string(
-            record,
-            format!("GENE{suffix}").as_bytes(),
-        )
-        .unwrap_or_default();
+        let gene =
+            parse_info_string(record, format!("GENE{suffix}").as_bytes()).unwrap_or_default();
 
-        let hgnc_id = parse_info_float(
-            record,
-            format!("HGNC_ID_{suffix}").as_bytes(),
-        )
-        .map(|value| value as i32)
-        .filter(|value| *value > 0);
+        let hgnc_id = parse_info_float(record, format!("HGNC_ID_{suffix}").as_bytes())
+            .map(|value| value as i32)
+            .filter(|value| *value > 0);
 
-        let transcript_id = parse_info_string(
-            record,
-            format!("TRANSCRIPT_ID_{suffix}").as_bytes(),
-        )
-        .filter(|value| !value.is_empty() && value != "nan");
+        let transcript_id = parse_info_string(record, format!("TRANSCRIPT_ID_{suffix}").as_bytes())
+            .filter(|value| !value.is_empty() && value != "nan");
 
-        let exon_number = parse_info_float(
-            record,
-            format!("EXON_NUMBER_{suffix}").as_bytes(),
-        )
-        .map(|value| value as i32)
-        .filter(|value| *value > 0);
+        let exon_number = parse_info_float(record, format!("EXON_NUMBER_{suffix}").as_bytes())
+            .map(|value| value as i32)
+            .filter(|value| *value > 0);
 
         if gene.is_empty() && hgnc_id.is_none() {
             continue;

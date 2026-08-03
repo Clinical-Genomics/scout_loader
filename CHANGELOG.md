@@ -40,6 +40,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse oncogenicity clnsig from `ONC`, `ONCREVSTAT`, `ONCDN`, `CLNVID` INFO fields (#43)
 - Parse external databases' frequencies from INFO field and parsed VEP transcripts (#44)
 - Parse LoqusDB frequencies and metadata (#45)
+- Added GitHub Action for linting, tests and changelog enforcement (#47)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)

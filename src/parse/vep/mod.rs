@@ -1,9 +1,9 @@
-pub mod transcripts;
 pub mod annotations;
+pub mod clnsig;
+pub mod domains;
+pub mod frequencies;
 pub mod genes;
 pub mod predictors;
-pub mod utils;
-pub mod domains;
 pub mod scores;
-pub mod frequencies;
-pub mod clnsig;
+pub mod transcripts;
+pub mod utils;

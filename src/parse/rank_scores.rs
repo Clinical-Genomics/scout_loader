@@ -20,19 +20,16 @@ use rust_htslib::bcf::Record;
 ///
 /// * `rank_score` - The integer rank score for the case (`i32`).
 /// * `norm_rank_score` - The normalized rank score for the case (`f64`).
-pub fn parse_rank_scores(
-    record: &Record,
-    case_id: &str,
-) -> (i32, f64) {
+pub fn parse_rank_scores(record: &Record, case_id: &str) -> (i32, f64) {
     let rank_score_entry = record
         .info(b"RankScore")
         .string()
         .ok()
         .flatten()
         .and_then(|values| {
-            values.first().map(|value| {
-                String::from_utf8_lossy(value).to_string()
-            })
+            values
+                .first()
+                .map(|value| String::from_utf8_lossy(value).to_string())
         });
 
     let norm_rank_score_entry = record
@@ -41,24 +38,18 @@ pub fn parse_rank_scores(
         .ok()
         .flatten()
         .and_then(|values| {
-            values.first().map(|value| {
-                String::from_utf8_lossy(value).to_string()
-            })
+            values
+                .first()
+                .map(|value| String::from_utf8_lossy(value).to_string())
         });
 
-    let rank_score = parse_score_entry(
-        rank_score_entry.as_deref(),
-        case_id,
-    )
-    .and_then(|score| score.parse::<i32>().ok())
-    .unwrap_or(0);
+    let rank_score = parse_score_entry(rank_score_entry.as_deref(), case_id)
+        .and_then(|score| score.parse::<i32>().ok())
+        .unwrap_or(0);
 
-    let norm_rank_score = parse_score_entry(
-        norm_rank_score_entry.as_deref(),
-        case_id,
-    )
-    .and_then(|score| score.parse::<f64>().ok())
-    .unwrap_or(0.0);
+    let norm_rank_score = parse_score_entry(norm_rank_score_entry.as_deref(), case_id)
+        .and_then(|score| score.parse::<f64>().ok())
+        .unwrap_or(0.0);
 
     (rank_score, norm_rank_score)
 }
@@ -76,13 +67,8 @@ pub fn parse_rank_scores(
 /// # Returns
 ///
 /// The score value as a string slice if the case ID is found, otherwise `None`.
-pub fn parse_score_entry<'a>(
-    score_entry: Option<&'a str>,
-    case_id: &str,
-) -> Option<&'a str> {
-    let Some(score_entry) = score_entry else {
-        return None;
-    };
+pub fn parse_score_entry<'a>(score_entry: Option<&'a str>, case_id: &str) -> Option<&'a str> {
+    let score_entry = score_entry?;
 
     for family_info in score_entry.split(',') {
         let mut split_info = family_info.split(':');
@@ -102,7 +88,3 @@ pub fn parse_score_entry<'a>(
 
     None
 }
-
-
-
-

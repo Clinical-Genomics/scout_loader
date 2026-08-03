@@ -1,0 +1,11 @@
+##fileformat=VCFv4.2
+##contig=<ID=1,length=249250621>
+##INFO=<ID=SVTYPE,Number=1,Type=String,Description="Structural variant type">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position of the variant">
+##INFO=<ID=SVLEN,Number=1,Type=Integer,Description="Length of the variant">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=PR,Number=2,Type=Integer,Description="Paired-end support for ref and alt">
+##FORMAT=<ID=SR,Number=2,Type=Integer,Description="Split-read support for ref and alt">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype quality">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+1	123500	svTest	N	<DEL>	50	PASS	SVTYPE=DEL;END=123650;SVLEN=-150	GT:PR:SR:GQ	0/1:12,7:4,3:80

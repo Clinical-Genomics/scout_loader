@@ -1,0 +1,9 @@
+##fileformat=VCFv4.2
+##contig=<ID=1,length=249250621>
+##INFO=<ID=CSQ,Number=.,Type=String,Description="VEP annotations. Format: Allele|Consequence|Feature|SYMBOL|HGNC_ID|BIOTYPE|CANONICAL|HGVSC|HGVSP|ENSP">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype quality">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
+1	123460	rsVep	G	A	99	PASS	CSQ=A|missense_variant|ENST00000544455|BRCA2|HGNC:1101|protein_coding|YES|ENST00000544455.1:c.7007G>A|ENSP00000439902.1:p.Arg2336His|ENSP00000439902	GT:AD:DP:GQ	0/1:12,8:20:99

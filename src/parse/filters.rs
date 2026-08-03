@@ -1,4 +1,4 @@
-use rust_htslib::bcf::{Record};
+use rust_htslib::bcf::Record;
 use rust_htslib::bcf::header::HeaderView;
 
 /// Parses the FILTER field from a VCF record.
@@ -15,10 +15,7 @@ use rust_htslib::bcf::header::HeaderView;
 /// # Returns
 ///
 /// A vector of filter events associated with the variant.
-pub fn parse_filters(
-    record: &Record,
-    header: &HeaderView,
-) -> Vec<String> {
+pub fn parse_filters(record: &Record, header: &HeaderView) -> Vec<String> {
     let filters: Vec<String> = record
         .filters()
         .map(|id| {

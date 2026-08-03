@@ -1,12 +1,9 @@
 use mongodb::bson::Document;
-use rust_htslib::bcf::Record;
 use mongodb::bson::doc;
+use rust_htslib::bcf::Record;
 
 use crate::parse::info::{
-    insert_info_float,
-    insert_info_int,
-    insert_info_string,
-    parse_info_string
+    insert_info_float, insert_info_int, insert_info_string, parse_info_string,
 };
 
 /// Add STR-specific annotations from VCF INFO fields to a MongoDB variant document.

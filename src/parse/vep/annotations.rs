@@ -1,8 +1,7 @@
-use mongodb::bson::{Bson, Document};
 use crate::HashMap;
-use std::collections::HashSet;
 use crate::models::consequence::SO_TERMS;
-
+use mongodb::bson::{Bson, Document};
+use std::collections::HashSet;
 
 /// Get strand information from a VEP transcript entry.
 pub fn get_strand(entry: &HashMap<String, String>) -> Option<String> {
@@ -40,65 +39,44 @@ pub fn get_regional_annotation(functional_annotations: &[String]) -> Vec<String>
         .collect()
 }
 
-
 /// Parse MANE transcript annotations from a VEP transcript entry.
 ///
 /// Extracts MANE Select and MANE Plus Clinical transcript identifiers from
 /// VEP v103/MANE v0.92 annotations. Falls back to the older `MANE` field
 /// used by previous VEP versions.
-pub fn parse_mane_annotations(
-    transcript: &mut Document,
-    entry: &HashMap<String, String>,
-) {
+pub fn parse_mane_annotations(transcript: &mut Document, entry: &HashMap<String, String>) {
     if entry.contains_key("MANE_SELECT") {
         if let Some(mane_select) = entry.get("MANE_SELECT").filter(|v| !v.is_empty()) {
-            transcript.insert(
-                "mane_select_transcript",
-                Bson::String(mane_select.clone()),
-            );
+            transcript.insert("mane_select_transcript", Bson::String(mane_select.clone()));
         }
 
-        if let Some(mane_plus_clinical) = entry
-            .get("MANE_PLUS_CLINICAL")
-            .filter(|v| !v.is_empty())
+        if let Some(mane_plus_clinical) = entry.get("MANE_PLUS_CLINICAL").filter(|v| !v.is_empty())
         {
             transcript.insert(
                 "mane_plus_clinical_transcript",
                 Bson::String(mane_plus_clinical.clone()),
             );
         }
-    } else if entry.contains_key("MANE") {
-        if let Some(mane) = entry.get("MANE").filter(|v| !v.is_empty()) {
-            transcript.insert(
-                "mane_select_transcript",
-                Bson::String(mane.clone()),
-            );
-        }
+    } else if entry.contains_key("MANE")
+        && let Some(mane) = entry.get("MANE").filter(|v| !v.is_empty())
+    {
+        transcript.insert("mane_select_transcript", Bson::String(mane.clone()));
     }
 }
 
-
 /// Parse genomic superdups fractional match values from a VEP transcript entry.
-pub fn parse_superdups_fracmatch(
-    transcript: &mut Document,
-    entry: &HashMap<String, String>,
-) {
+pub fn parse_superdups_fracmatch(transcript: &mut Document, entry: &HashMap<String, String>) {
     if let Some(superdups_fractmatch) = entry
         .get("GENOMIC_SUPERDUPS_FRAC_MATCH")
         .filter(|value| !value.is_empty())
     {
         let values: Vec<Bson> = superdups_fractmatch
             .split('&')
-            .filter_map(|fractmatch| {
-                fractmatch.parse::<f64>().ok().map(Bson::Double)
-            })
+            .filter_map(|fractmatch| fractmatch.parse::<f64>().ok().map(Bson::Double))
             .collect();
 
         if !values.is_empty() {
-            transcript.insert(
-                "superdups_fracmatch",
-                Bson::Array(values),
-            );
+            transcript.insert("superdups_fracmatch", Bson::Array(values));
         }
     }
 }
@@ -107,32 +85,18 @@ pub fn parse_superdups_fracmatch(
 ///
 /// Extracts ClinVar variation identifiers, clinical significance, review
 /// status, and clinical significance terms when available.
-pub fn parse_clinvar_annotations(
-    transcript: &mut Document,
-    entry: &HashMap<String, String>,
-) {
-    let clinvar_id = entry
-        .get("CLINVAR_CLNVID")
-        .or_else(|| entry.get("CLINVAR"));
+pub fn parse_clinvar_annotations(transcript: &mut Document, entry: &HashMap<String, String>) {
+    let clinvar_id = entry.get("CLINVAR_CLNVID").or_else(|| entry.get("CLINVAR"));
 
     if let Some(clinvar_id) = clinvar_id {
-        transcript.insert(
-            "clinvar_clnvid",
-            Bson::String(clinvar_id.clone()),
-        );
+        transcript.insert("clinvar_clnvid", Bson::String(clinvar_id.clone()));
 
         if let Some(clnsig) = entry.get("CLINVAR_CLNSIG") {
-            transcript.insert(
-                "clinvar_clnsig",
-                Bson::String(clnsig.to_lowercase()),
-            );
+            transcript.insert("clinvar_clnsig", Bson::String(clnsig.to_lowercase()));
         }
 
         if let Some(revstat) = entry.get("CLINVAR_CLNREVSTAT") {
-            transcript.insert(
-                "clinvar_revstat",
-                Bson::String(revstat.to_lowercase()),
-            );
+            transcript.insert("clinvar_revstat", Bson::String(revstat.to_lowercase()));
         }
     }
 
@@ -158,15 +122,8 @@ pub fn parse_clinvar_annotations(
 /// Supports different VEP versions where dbSNP identifiers can be stored
 /// in `EXISTING_VARIATION`, `RS_DBSNP150`, or `RS_DBSNP`. Only identifiers
 /// starting with `rs` are retained.
-pub fn parse_dbsnp(
-    transcript: &mut Document,
-    entry: &HashMap<String, String>,
-) {
-    let dbsnp_keys = [
-        "EXISTING_VARIATION",
-        "RS_DBSNP150",
-        "RS_DBSNP",
-    ];
+pub fn parse_dbsnp(transcript: &mut Document, entry: &HashMap<String, String>) {
+    let dbsnp_keys = ["EXISTING_VARIATION", "RS_DBSNP150", "RS_DBSNP"];
 
     let mut dbsnp_ids: HashSet<String> = HashSet::new();
 
@@ -182,12 +139,7 @@ pub fn parse_dbsnp(
 
     transcript.insert(
         "dbsnp",
-        Bson::Array(
-            dbsnp_ids
-                .into_iter()
-                .map(Bson::String)
-                .collect(),
-        ),
+        Bson::Array(dbsnp_ids.into_iter().map(Bson::String).collect()),
     );
 }
 
@@ -195,10 +147,7 @@ pub fn parse_dbsnp(
 ///
 /// Extracts COSMIC identifiers from `EXISTING_VARIATION` (COSM/COSV
 /// prefixes) and from the dedicated `COSMIC` field when available.
-pub fn parse_cosmic(
-    transcript: &mut Document,
-    entry: &HashMap<String, String>,
-) {
+pub fn parse_cosmic(transcript: &mut Document, entry: &HashMap<String, String>) {
     let mut cosmic_ids: Vec<Bson> = Vec::new();
 
     if let Some(variant_ids) = entry.get("EXISTING_VARIATION") {
@@ -215,8 +164,5 @@ pub fn parse_cosmic(
         }
     }
 
-    transcript.insert(
-        "cosmic",
-        Bson::Array(cosmic_ids),
-    );
+    transcript.insert("cosmic", Bson::Array(cosmic_ids));
 }

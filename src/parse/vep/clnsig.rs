@@ -1,35 +1,34 @@
-use mongodb::bson::{doc, Bson, Document};
-use std::collections::HashSet;
-use std::collections::HashMap;
-use rust_htslib::bcf::Record;
 use crate::parse::info::parse_info_string;
+use mongodb::bson::{Bson, Document, doc};
+use rust_htslib::bcf::Record;
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 use std::sync::LazyLock;
 
-pub static REV_CLINSIG_MAP: LazyLock<HashMap<&'static str, i32>> =
-    LazyLock::new(|| {
-        HashMap::from([
-            ("other", 255),
-            ("not_provided", 1),
-            ("drug_response", 6),
-            ("association_not_found", 13),
-            ("risk_factor", 12),
-            ("protective", 11),
-            ("association", 10),
-            ("affects", 9),
-            ("histocompatibility", 7),
-            ("benign", 2),
-            ("likely_benign", 3),
-            ("conflicting_interpretations_of_pathogenicity", 8),
-            ("conflicting_interpretations", 8),
-            ("conflicting_classifications_of_pathogenicity", 8),
-            ("uncertain_significance", 0),
-            ("likely_pathogenic", 4),
-            ("likely_pathogenic,low_penetrance", 4),
-            ("pathogenic", 5),
-            ("pathogenic,low_penetrance", 5),
-        ])
-    });
+pub static REV_CLINSIG_MAP: LazyLock<HashMap<&'static str, i32>> = LazyLock::new(|| {
+    HashMap::from([
+        ("other", 255),
+        ("not_provided", 1),
+        ("drug_response", 6),
+        ("association_not_found", 13),
+        ("risk_factor", 12),
+        ("protective", 11),
+        ("association", 10),
+        ("affects", 9),
+        ("histocompatibility", 7),
+        ("benign", 2),
+        ("likely_benign", 3),
+        ("conflicting_interpretations_of_pathogenicity", 8),
+        ("conflicting_interpretations", 8),
+        ("conflicting_classifications_of_pathogenicity", 8),
+        ("uncertain_significance", 0),
+        ("likely_pathogenic", 4),
+        ("likely_pathogenic,low_penetrance", 4),
+        ("pathogenic", 5),
+        ("pathogenic,low_penetrance", 5),
+    ])
+});
 
 /// Parse ClinVar clinical significance annotations.
 ///
@@ -52,10 +51,7 @@ pub static REV_CLINSIG_MAP: LazyLock<HashMap<&'static str, i32>> =
 /// # Returns
 ///
 /// A vector of BSON documents containing ClinVar significance annotations.
-pub fn parse_clnsig(
-    record: &Record,
-    transcripts: &[Document],
-) -> Vec<Document> {
+pub fn parse_clnsig(record: &Record, transcripts: &[Document]) -> Vec<Document> {
     let mut acc = parse_info_string(record, b"CLNACC")
         .or_else(|| parse_info_string(record, b"CLNVID"))
         .unwrap_or_default();
@@ -71,45 +67,43 @@ pub fn parse_clnsig(
     let mut clnsig_accessions = Vec::new();
 
     // VEP transcript-level ClinVar annotations
-    if acc.is_empty() {
-        if let Some(first) = transcripts.first() {
-            if first.get_array("clnsig").is_ok() {
-                let mut values = HashSet::new();
+    if acc.is_empty()
+        && let Some(first) = transcripts.first()
+    {
+        if first.get_array("clnsig").is_ok() {
+            let mut values = HashSet::new();
 
-                for transcript in transcripts {
-                    if let Ok(annotations) = transcript.get_array("clnsig") {
-                        for annotation in annotations {
-                            let Some(annotation) = annotation.as_str() else {
-                                continue;
-                            };
+            for transcript in transcripts {
+                if let Ok(annotations) = transcript.get_array("clnsig") {
+                    for annotation in annotations {
+                        let Some(annotation) = annotation.as_str() else {
+                            continue;
+                        };
 
-                            for value in annotation.split('/') {
-                                values.insert(
-                                    value.trim_start_matches('_').to_string(),
-                                );
-                            }
+                        for value in annotation.split('/') {
+                            values.insert(value.trim_start_matches('_').to_string());
                         }
                     }
                 }
-
-                for value in values {
-                    clnsig_accessions.push(doc! {
-                        "value": value,
-                    });
-                }
             }
 
-            // VEP 97+ ClinVar annotations
-            if let Ok(clnvid) = first.get_str("clinvar_clnvid") {
-                acc = clnvid.to_string();
+            for value in values {
+                clnsig_accessions.push(doc! {
+                    "value": value,
+                });
+            }
+        }
 
-                if let Ok(value) = first.get_str("clinvar_clnsig") {
-                    sig = value.to_lowercase();
-                }
+        // VEP 97+ ClinVar annotations
+        if let Ok(clnvid) = first.get_str("clinvar_clnvid") {
+            acc = clnvid.to_string();
 
-                if let Ok(value) = first.get_str("clinvar_revstat") {
-                    revstat = value.to_lowercase();
-                }
+            if let Ok(value) = first.get_str("clinvar_clnsig") {
+                sig = value.to_lowercase();
+            }
+
+            if let Ok(value) = first.get_str("clinvar_revstat") {
+                revstat = value.to_lowercase();
             }
         }
     }
@@ -127,12 +121,7 @@ pub fn parse_clnsig(
 
         for significance in sig.replace('&', ",").split(',') {
             for term in significance.trim_start_matches('_').split('/') {
-                sig_groups.push(
-                    term
-                        .split_whitespace()
-                        .collect::<Vec<_>>()
-                        .join("_"),
-                );
+                sig_groups.push(term.split_whitespace().collect::<Vec<_>>().join("_"));
             }
         }
 
@@ -160,8 +149,7 @@ pub fn parse_clnsig(
             let significances = sig_group.split(',');
             let revstats = revstat_group.split(',');
 
-            for ((accession, significance), revstat) in
-                accessions.zip(significances).zip(revstats)
+            for ((accession, significance), revstat) in accessions.zip(significances).zip(revstats)
             {
                 if let Ok(value) = significance.parse::<i32>() {
                     clnsig_accessions.push(doc! {
@@ -191,9 +179,7 @@ pub fn parse_clnsig(
 ///
 /// A list of clinical significance terms where `low_penetrance` has been
 /// merged with the preceding term when applicable.
-pub fn parse_clnsig_low_penetrance(
-    sig_groups: Vec<String>,
-) -> Vec<String> {
+pub fn parse_clnsig_low_penetrance(sig_groups: Vec<String>) -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
 
     for sig in sig_groups {
@@ -210,7 +196,6 @@ pub fn parse_clnsig_low_penetrance(
     result
 }
 
-
 /// Convert raw ClinVar significance information into the internal format used
 /// by Scout.
 ///
@@ -223,12 +208,7 @@ pub fn build_clnsig(clnsig_info: Document) -> Document {
     let value = clnsig_info.get("value");
 
     let sign_number = match value {
-        Some(Bson::String(value)) => {
-            REV_CLINSIG_MAP
-                .get(value.as_str())
-                .copied()
-                .unwrap_or(255)
-        }
+        Some(Bson::String(value)) => REV_CLINSIG_MAP.get(value.as_str()).copied().unwrap_or(255),
         Some(Bson::Int32(value)) => *value,
         Some(Bson::Int64(value)) => *value as i32,
         _ => 255,
@@ -240,10 +220,10 @@ pub fn build_clnsig(clnsig_info: Document) -> Document {
         "revstat": clnsig_info.get("revstat").cloned(),
     };
 
-    if let Some(Bson::String(value)) = value {
-        if value.contains("low_penetrance") {
-            clnsig_obj.insert("low_penetrance", true);
-        }
+    if let Some(Bson::String(value)) = value
+        && value.contains("low_penetrance")
+    {
+        clnsig_obj.insert("low_penetrance", true);
     }
 
     clnsig_obj

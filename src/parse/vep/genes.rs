@@ -1,6 +1,6 @@
+use mongodb::bson::{Bson, Document, doc};
 use std::collections::HashMap;
 use std::collections::HashSet;
-use mongodb::bson::{doc, Bson, Document};
 
 use crate::models::consequence::SO_TERMS;
 
@@ -113,39 +113,28 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
 
                     most_severe_rank = so_term.rank;
 
-                    most_severe_consequence =
-                        Some(Bson::String(consequence.to_string()));
+                    most_severe_consequence = Some(Bson::String(consequence.to_string()));
 
-                    most_severe_region =
-                        Some(Bson::String(so_term.region.to_string()));
+                    most_severe_region = Some(Bson::String(so_term.region.to_string()));
 
-                    most_severe_sift =
-                        transcript.get("sift_prediction").cloned();
+                    most_severe_sift = transcript.get("sift_prediction").cloned();
 
-                    most_severe_polyphen =
-                        transcript.get("polyphen_prediction").cloned();
+                    most_severe_polyphen = transcript.get("polyphen_prediction").cloned();
 
-                    most_severe_spliceai_score =
-                        transcript.get("spliceai_delta_score").cloned();
+                    most_severe_spliceai_score = transcript.get("spliceai_delta_score").cloned();
 
                     most_severe_spliceai_position =
                         transcript.get("spliceai_delta_position").cloned();
 
-                    spliceai_prediction =
-                        transcript.get("spliceai_prediction").cloned();
+                    spliceai_prediction = transcript.get("spliceai_prediction").cloned();
                 }
             }
 
-            if transcript
-                .get_bool("is_canonical")
-                .unwrap_or(false)
-            {
-                canonical_transcript =
-                    transcript.get("transcript_id").cloned();
+            if transcript.get_bool("is_canonical").unwrap_or(false) {
+                canonical_transcript = transcript.get("transcript_id").cloned();
 
                 if transcript.get("coding_sequence_name").is_some() {
-                    hgvs_identifier =
-                        transcript.get("coding_sequence_name").cloned();
+                    hgvs_identifier = transcript.get("coding_sequence_name").cloned();
 
                     exon = transcript.get("exon").cloned();
                 }
@@ -176,7 +165,6 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
 
     genes
 }
-
 
 /// Collect HGNC identifiers from parsed genes and variant annotations.
 ///
@@ -223,11 +211,9 @@ pub fn set_hgnc_ids(variant: &mut Document) {
         if !has_genes {
             variant.insert(
                 "genes",
-                Bson::Array(vec![
-                    Bson::Document(doc! {
-                        "hgnc_id": str_hgnc_id,
-                    })
-                ]),
+                Bson::Array(vec![Bson::Document(doc! {
+                    "hgnc_id": str_hgnc_id,
+                })]),
             );
         }
     }
@@ -235,12 +221,7 @@ pub fn set_hgnc_ids(variant: &mut Document) {
     if !hgnc_ids.is_empty() {
         variant.insert(
             "hgnc_ids",
-            Bson::Array(
-                hgnc_ids
-                    .into_iter()
-                    .map(Bson::String)
-                    .collect(),
-            ),
+            Bson::Array(hgnc_ids.into_iter().map(Bson::String).collect()),
         );
     }
 }

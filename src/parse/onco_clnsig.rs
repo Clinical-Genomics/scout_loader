@@ -1,6 +1,6 @@
-use rust_htslib::bcf::Record;
-use mongodb::bson::{doc, Document};
 use crate::parse::info::parse_info_string;
+use mongodb::bson::{Document, doc};
+use rust_htslib::bcf::Record;
 
 pub const ONC_CLNSIG: &[&str] = &[
     "Oncogenic",
@@ -28,10 +28,7 @@ pub fn split_groups(value: &str) -> Vec<String> {
         .replace('&', ",")
         .split(',')
         .flat_map(|group| group.split('/'))
-        .map(|item| {
-            item.trim_start_matches('_')
-                .replace(' ', "_")
-        })
+        .map(|item| item.trim_start_matches('_').replace(' ', "_"))
         .collect()
 }
 
@@ -42,9 +39,7 @@ fn capitalize(value: &str) -> String {
     let mut chars = value.chars();
 
     match chars.next() {
-        Some(first) => {
-            first.to_uppercase().collect::<String>() + chars.as_str()
-        }
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
         None => String::new(),
     }
 }
@@ -79,10 +74,7 @@ pub fn parse_clnsig_onc(record: &Record) -> Vec<Document> {
     )
     .join(",");
 
-    let onc_dn_groups = split_groups(
-        &parse_info_string(record, b"ONCDN")
-            .unwrap_or_default(),
-    );
+    let onc_dn_groups = split_groups(&parse_info_string(record, b"ONCDN").unwrap_or_default());
 
     let mut onc_clnsig_accessions = Vec::new();
 

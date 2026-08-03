@@ -21,10 +21,7 @@ use rust_htslib::bcf::Record;
 ///
 /// A vector containing the genetic models for the specified case. Returns an
 /// empty vector if no models are found or the INFO field is missing.
-pub fn parse_genetic_models(
-    record: &Record,
-    case_id: &str,
-) -> Vec<String> {
+pub fn parse_genetic_models(record: &Record, case_id: &str) -> Vec<String> {
     let models_info = record
         .info(b"GeneticModels")
         .string()

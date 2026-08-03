@@ -13,3 +13,8 @@ regex = "1"
 rust-htslib = "*"
 serde = { version = "1", features = ["derive"] }
 
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
