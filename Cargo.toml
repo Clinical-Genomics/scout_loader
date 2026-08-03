@@ -13,3 +13,6 @@ regex = "1"
 rust-htslib = "*"
 serde = { version = "1", features = ["derive"] }
 
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
