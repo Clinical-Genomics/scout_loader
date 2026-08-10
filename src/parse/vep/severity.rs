@@ -1,7 +1,7 @@
 use mongodb::bson::Document;
 use rust_htslib::bcf::Record;
 
-use crate::parse::info::parse_info_float;
+use crate::parse::info::{parse_info_float, parse_info_int};
 
 /// Get the highest score for a field across parsed transcripts.
 ///
@@ -15,13 +15,19 @@ fn get_highest_transcript_score(transcripts: &[Document], key: &str) -> Option<f
 
 /// Parse the CADD score from a VCF record and parsed transcripts.
 ///
-/// Checks the `CADD` and `CADD_PHRED` INFO fields first. If neither is
-/// available, returns the highest CADD score found in the transcripts.
+/// Checks the variant-level `CADD` and `CADD_PHRED` INFO fields first,
+/// accepting either integer or float values. If neither is available,
+/// returns the highest CADD score found in the transcripts.
+///
 /// Returns `0.0` if no CADD score is available.
 fn parse_cadd(record: &Record, transcripts: &[Document]) -> f64 {
     for key in [b"CADD".as_slice(), b"CADD_PHRED".as_slice()] {
         if let Some(value) = parse_info_float(record, key) {
             return value;
+        }
+
+        if let Some(value) = parse_info_int(record, key) {
+            return value as f64;
         }
     }
 
