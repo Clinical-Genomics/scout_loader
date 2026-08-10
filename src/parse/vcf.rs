@@ -22,6 +22,7 @@ use crate::parse::strs::set_str_info;
 use crate::parse::vep::clnsig::{build_clnsig, parse_clnsig};
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::transcripts::parse_vep_transcripts;
+use crate::parse::vep::severity::set_severity_predictions;
 use mongodb::bson::{self, Bson, doc};
 use rust_htslib::bcf::{Read, Reader};
 use std::collections::HashMap;
@@ -237,6 +238,11 @@ pub fn process_vcf(
         }
 
         add_loqus_archive_frequencies(&record, &mut variant, local_archive_info.as_ref());
+        set_severity_predictions(
+            &mut parsed_variant,
+            record,
+            &parsed_transcripts,
+        );
 
         println!("{:#?}\n", variant);
     }

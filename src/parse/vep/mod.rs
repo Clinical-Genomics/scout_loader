@@ -7,3 +7,4 @@ pub mod predictors;
 pub mod scores;
 pub mod transcripts;
 pub mod utils;
+pub mod severity;
