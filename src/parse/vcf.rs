@@ -239,8 +239,8 @@ pub fn process_vcf(
 
         add_loqus_archive_frequencies(&record, &mut variant, local_archive_info.as_ref());
         set_severity_predictions(
-            &mut parsed_variant,
-            record,
+            &mut variant,
+            &record,
             &parsed_transcripts,
         );
 
