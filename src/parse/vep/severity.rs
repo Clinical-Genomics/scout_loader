@@ -6,10 +6,7 @@ use crate::parse::info::parse_info_float;
 /// Get the highest score for a field across parsed transcripts.
 ///
 /// Returns `None` if no transcript contains a valid numeric value.
-fn get_highest_transcript_score(
-    transcripts: &[Document],
-    key: &str,
-) -> Option<f64> {
+fn get_highest_transcript_score(transcripts: &[Document], key: &str) -> Option<f64> {
     transcripts
         .iter()
         .filter_map(|tx| tx.get_f64(key).ok())
@@ -51,25 +48,18 @@ pub fn set_severity_predictions(
     record: &Record,
     parsed_transcripts: &[Document],
 ) {
-    variant.insert(
-        "cadd_score",
-        parse_cadd(record, parsed_transcripts),
-    );
+    variant.insert("cadd_score", parse_cadd(record, parsed_transcripts));
 
     if let Some(value) = parse_info_float(record, b"SPIDEX") {
         variant.insert("spidex", value);
     }
 
     if !parsed_transcripts.is_empty() {
-        if let Some(value) =
-            get_highest_transcript_score(parsed_transcripts, "revel_rankscore")
-        {
+        if let Some(value) = get_highest_transcript_score(parsed_transcripts, "revel_rankscore") {
             variant.insert("revel_score", value);
         }
 
-        if let Some(value) =
-            get_highest_transcript_score(parsed_transcripts, "revel_raw_score")
-        {
+        if let Some(value) = get_highest_transcript_score(parsed_transcripts, "revel_raw_score") {
             variant.insert("revel", value);
         }
     }
