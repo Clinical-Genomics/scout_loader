@@ -42,7 +42,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse LoqusDB frequencies and metadata (#45)
 - Added GitHub Action for linting, tests and changelog enforcement (#47)
 - Parse severity predictions keys/values: CADD, Spidex and Revel scores (#53)
-- Parse conservation: Gerp, Phast and Phylop (#54)
+- Parse conservation: GERP, PhastCons and PhyloP (#54)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)

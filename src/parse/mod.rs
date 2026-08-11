@@ -1,5 +1,6 @@
 pub mod alleles;
 pub mod compounds;
+pub mod conservations;
 pub mod coordinates;
 pub mod cytobands;
 pub mod filters;
