@@ -12,14 +12,16 @@ use crate::parse::frequencies::{add_frequencies, parse_frequencies};
 use crate::parse::fusions::set_fusion_info;
 use crate::parse::genetic_models::parse_genetic_models;
 use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
-use crate::parse::header::{parse_local_archive_header, parse_vep_header};
+use crate::parse::header::{
+    parse_local_archive_header, parse_rank_results_header, parse_vep_header,
+};
 use crate::parse::ids::parse_ids;
 use crate::parse::info::{parse_custom_data, parse_info_int, parse_info_string};
 use crate::parse::loqusdb_frequencies::add_loqus_archive_frequencies;
 use crate::parse::meis::set_mei_info;
 use crate::parse::mt_annotations::{set_hmtvar, set_mitomap_associated_diseases};
 use crate::parse::onco_clnsig::parse_clnsig_onc;
-use crate::parse::rank_scores::parse_rank_scores;
+use crate::parse::rank_scores::{parse_rank_result, parse_rank_scores};
 use crate::parse::severity::set_severity_predictions;
 use crate::parse::strs::set_str_info;
 use crate::parse::vep::clnsig::{build_clnsig, parse_clnsig};
@@ -58,11 +60,10 @@ pub fn process_vcf(
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
 
     let header = vcf.header().clone();
-
     let vep_header = parse_vep_header(&header);
+    let rank_results_header = parse_rank_results_header(&header);
 
     let local_archive_info = parse_local_archive_header(path);
-    println!("Local archive info: {:?}", local_archive_info);
 
     if let Err(error) = validate_sample_mapping(vcf.header(), sample_mapping) {
         eprintln!("Sample mapping validation failed: {}", error);
@@ -244,6 +245,10 @@ pub fn process_vcf(
         set_severity_predictions(&mut variant, &record, &parsed_transcripts);
         parse_conservations(&record, &parsed_transcripts, &mut variant);
         variant.extend(callers);
+
+        if let Some(rank_result) = parse_rank_result(&record, &rank_results_header) {
+            variant.insert("rank_result", rank_result);
+        }
 
         println!("{:#?}\n", variant);
     }

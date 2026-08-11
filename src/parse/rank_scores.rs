@@ -1,3 +1,5 @@
+use crate::parse::info::parse_info_string;
+use mongodb::bson::{Bson, Document};
 use rust_htslib::bcf::Record;
 
 /// Parses the rank score annotations for a variant from a VCF record.
@@ -87,4 +89,31 @@ pub fn parse_score_entry<'a>(score_entry: Option<&'a str>, case_id: &str) -> Opt
     }
 
     None
+}
+
+/// Parse the `RankResult` INFO field and map its values to the fields
+/// defined in the `RankResult` header.
+///
+/// Returns a BSON document where each rank result header is associated with
+/// its corresponding integer value. Returns `None` if the `RankResult` INFO
+/// field is not present or cannot be parsed.
+pub fn parse_rank_result(record: &Record, rank_results_header: &[String]) -> Option<Document> {
+    let rank_result = parse_info_string(record, b"RankResult")?;
+
+    let values: Vec<i32> = rank_result
+        .split('|')
+        .filter_map(|value| value.parse::<i32>().ok())
+        .collect();
+
+    if values.len() != rank_results_header.len() {
+        return None;
+    }
+
+    let mut result = Document::new();
+
+    for (field, value) in rank_results_header.iter().zip(values) {
+        result.insert(field, Bson::Int32(value));
+    }
+
+    Some(result)
 }
