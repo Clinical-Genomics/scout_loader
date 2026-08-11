@@ -32,10 +32,10 @@ pub fn parse_conservations(
     for (field_key, info_key) in conservation_keys {
         let mut conservation = parse_conservation_info(record, info_key, field_key);
 
-        if conservation.is_empty() {
-            if let Some(transcript) = parsed_transcripts.first() {
-                conservation = parse_conservation_csq(transcript, field_key);
-            }
+        if conservation.is_empty()
+            && let Some(transcript) = parsed_transcripts.first()
+        {
+            conservation = parse_conservation_csq(transcript, field_key);
         }
 
         variant.insert(
