@@ -213,8 +213,6 @@ pub fn parse_callers(record: &Record, category: VariantCategory, filters: &[Stri
     let relevant_callers = callers_for_category(category);
     let mut callers = Document::new();
 
-    // Initialize all relevant callers so the helper functions can
-    // determine whether a caller belongs to this category.
     for caller in relevant_callers {
         callers.insert(*caller, Bson::Null);
     }
@@ -235,7 +233,6 @@ pub fn parse_callers(record: &Record, category: VariantCategory, filters: &[Stri
         get_callers_gatk_snv_fallback(&mut callers, filter_status.as_deref());
     }
 
-    // Remove callers for which no status was assigned.
     let null_callers: Vec<String> = callers
         .iter()
         .filter(|(_, value)| matches!(value, Bson::Null))
