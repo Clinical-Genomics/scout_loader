@@ -4,6 +4,7 @@ use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::parse::alleles::parse_alleles;
 use crate::parse::compounds::parse_compounds;
+use crate::parse::conservations::parse_conservations;
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::filters::parse_filters;
 use crate::parse::frequencies::{add_frequencies, parse_frequencies};
@@ -18,10 +19,10 @@ use crate::parse::meis::set_mei_info;
 use crate::parse::mt_annotations::{set_hmtvar, set_mitomap_associated_diseases};
 use crate::parse::onco_clnsig::parse_clnsig_onc;
 use crate::parse::rank_scores::parse_rank_scores;
+use crate::parse::severity::set_severity_predictions;
 use crate::parse::strs::set_str_info;
 use crate::parse::vep::clnsig::{build_clnsig, parse_clnsig};
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
-use crate::parse::vep::severity::set_severity_predictions;
 use crate::parse::vep::transcripts::parse_vep_transcripts;
 use mongodb::bson::{self, Bson, doc};
 use rust_htslib::bcf::{Read, Reader};
@@ -239,6 +240,7 @@ pub fn process_vcf(
 
         add_loqus_archive_frequencies(&record, &mut variant, local_archive_info.as_ref());
         set_severity_predictions(&mut variant, &record, &parsed_transcripts);
+        parse_conservations(&record, &parsed_transcripts, &mut variant);
 
         println!("{:#?}\n", variant);
     }
