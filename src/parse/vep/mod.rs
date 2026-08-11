@@ -5,5 +5,6 @@ pub mod frequencies;
 pub mod genes;
 pub mod predictors;
 pub mod scores;
+pub mod severity;
 pub mod transcripts;
 pub mod utils;
