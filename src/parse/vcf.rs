@@ -85,11 +85,9 @@ pub fn process_vcf(
             &variant_type,
         );
 
-        /*
         if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
             continue;
         }
-        */
 
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
@@ -246,8 +244,8 @@ pub fn process_vcf(
         parse_conservations(&record, &parsed_transcripts, &mut variant);
         variant.extend(callers);
 
-        if let Some(rank_result) = parse_rank_result(&record, &rank_results_header) {
-            variant.insert("rank_result", rank_result);
+        if let Some(rank_score_results) = parse_rank_result(&record, &rank_results_header) {
+            variant.insert("rank_score_results", Bson::Array(rank_score_results));
         }
 
         println!("{:#?}\n", variant);
