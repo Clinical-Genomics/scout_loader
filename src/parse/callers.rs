@@ -200,22 +200,21 @@ fn get_callers_gatk_snv_fallback(callers: &mut Document, filter_status: Option<&
     callers.clone()
 }
 
-/// Parse variant caller information from VCF INFO annotations.
+/// Parse variant caller statuses from VCF INFO annotations.
 ///
-/// Caller information is resolved in the following order:
-/// 1. `FOUND_IN`, with comma-separated callers.
-/// 2. `svdb_origin`, with pipe-separated callers.
-/// 3. `set`, with dash-separated caller information.
-/// 4. GATK fallback for SNV variants.
+/// Caller information is checked in the following order:
+/// 1. `FOUND_IN`
+/// 2. `svdb_origin`
+/// 3. `set`
+/// 4. GATK fallback for SNV variants
 ///
-/// Caller status is `Pass` when the caller is present. If the variant has a
-/// filter status, a single caller is marked `Filtered - <status>`, while
-/// multiple callers are marked `Filtered`.
+/// Only callers with an assigned status are included in the returned document.
 pub fn parse_callers(record: &Record, category: VariantCategory, filters: &[String]) -> Document {
     let relevant_callers = callers_for_category(category);
-
     let mut callers = Document::new();
 
+    // Initialize all relevant callers so the helper functions can
+    // determine whether a caller belongs to this category.
     for caller in relevant_callers {
         callers.insert(*caller, Bson::Null);
     }
@@ -227,19 +226,24 @@ pub fn parse_callers(record: &Record, category: VariantCategory, filters: &[Stri
     };
 
     if let Some(found_in) = parse_info_string(record, b"FOUND_IN") {
-        return get_callers_from_found_in(&mut callers, &found_in, filter_status.as_deref());
+        get_callers_from_found_in(&mut callers, &found_in, filter_status.as_deref());
+    } else if let Some(svdb_origin) = parse_info_string(record, b"svdb_origin") {
+        get_callers_from_svdb_origin(&mut callers, &svdb_origin, filter_status.as_deref());
+    } else if let Some(info_set) = parse_info_string(record, b"set") {
+        get_callers_from_set(&mut callers, &info_set, filter_status.as_deref());
+    } else if category == VariantCategory::Snv {
+        get_callers_gatk_snv_fallback(&mut callers, filter_status.as_deref());
     }
 
-    if let Some(svdb_origin) = parse_info_string(record, b"svdb_origin") {
-        return get_callers_from_svdb_origin(&mut callers, &svdb_origin, filter_status.as_deref());
-    }
+    // Remove callers for which no status was assigned.
+    let null_callers: Vec<String> = callers
+        .iter()
+        .filter(|(_, value)| matches!(value, Bson::Null))
+        .map(|(key, _)| key.to_string())
+        .collect();
 
-    if let Some(info_set) = parse_info_string(record, b"set") {
-        return get_callers_from_set(&mut callers, &info_set, filter_status.as_deref());
-    }
-
-    if category == VariantCategory::Snv {
-        return get_callers_gatk_snv_fallback(&mut callers, filter_status.as_deref());
+    for caller in null_callers {
+        callers.remove(&caller);
     }
 
     callers

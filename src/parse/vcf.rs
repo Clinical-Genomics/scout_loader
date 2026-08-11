@@ -84,11 +84,9 @@ pub fn process_vcf(
             &variant_type,
         );
 
-        /*
         if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
             continue;
         }
-        */
 
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
@@ -243,7 +241,7 @@ pub fn process_vcf(
         add_loqus_archive_frequencies(&record, &mut variant, local_archive_info.as_ref());
         set_severity_predictions(&mut variant, &record, &parsed_transcripts);
         parse_conservations(&record, &parsed_transcripts, &mut variant);
-        variant.insert("callers", callers);
+        variant.extend(callers);
 
         println!("{:#?}\n", variant);
     }
