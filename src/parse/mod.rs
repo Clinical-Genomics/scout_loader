@@ -1,4 +1,5 @@
 pub mod alleles;
+pub mod callers;
 pub mod compounds;
 pub mod conservations;
 pub mod coordinates;

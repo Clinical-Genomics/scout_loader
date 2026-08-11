@@ -3,6 +3,7 @@ use crate::models::sample::SampleInfo;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::parse::alleles::parse_alleles;
+use crate::parse::callers::parse_callers;
 use crate::parse::compounds::parse_compounds;
 use crate::parse::conservations::parse_conservations;
 use crate::parse::coordinates::parse_coordinates;
@@ -90,6 +91,7 @@ pub fn process_vcf(
         */
 
         let filters = parse_filters(&record, &header);
+        let callers = parse_callers(&record, category, &filters);
         let compound_info = record
             .info(b"Compounds")
             .string()
@@ -241,6 +243,7 @@ pub fn process_vcf(
         add_loqus_archive_frequencies(&record, &mut variant, local_archive_info.as_ref());
         set_severity_predictions(&mut variant, &record, &parsed_transcripts);
         parse_conservations(&record, &parsed_transcripts, &mut variant);
+        variant.insert("callers", callers);
 
         println!("{:#?}\n", variant);
     }
