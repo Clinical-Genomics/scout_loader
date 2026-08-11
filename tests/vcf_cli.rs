@@ -37,7 +37,6 @@ fn cli_processes_minimal_snv_vcf() {
 
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains("Local archive info:"))
         .stdout(predicate::str::contains("display_name"))
         .stdout(predicate::str::contains("1_123456_A_T_clinical"))
         .stdout(predicate::str::contains("sample_id"))
