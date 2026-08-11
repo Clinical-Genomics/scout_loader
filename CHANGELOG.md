@@ -43,6 +43,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Added GitHub Action for linting, tests and changelog enforcement (#47)
 - Parse severity predictions keys/values: CADD, Spidex and Revel scores (#53)
 - Parse conservation: GERP, PhastCons and PhyloP (#54)
+- Parse callers (#55)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)
