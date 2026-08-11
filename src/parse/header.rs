@@ -98,16 +98,16 @@ pub fn parse_rank_results_header(header: &HeaderView) -> Vec<String> {
         .header_records()
         .into_iter()
         .find_map(|record| {
-            if let HeaderRecord::Info { values, .. } = record {
-                if values.get("ID") == Some(&"RankResult".to_string()) {
-                    return values.get("Description").map(|description| {
-                        description
-                            .trim_matches('"')
-                            .split('|')
-                            .map(str::to_string)
-                            .collect()
-                    });
-                }
+            if let HeaderRecord::Info { values, .. } = record
+                && values.get("ID").map(String::as_str) == Some("RankResult")
+            {
+                return values.get("Description").map(|description| {
+                    description
+                        .trim_matches('"')
+                        .split('|')
+                        .map(str::to_string)
+                        .collect()
+                });
             }
 
             None
