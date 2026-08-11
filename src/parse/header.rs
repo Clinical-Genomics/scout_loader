@@ -87,3 +87,30 @@ pub fn parse_local_archive_header(path: &str) -> Option<Document> {
 
     (!local_archive_info.is_empty()).then_some(local_archive_info)
 }
+
+/// Parse the field names defined in the `RankResult` INFO header.
+///
+/// The `RankResult` INFO field contains a pipe-separated list of field names
+/// in its `Description`. Returns an empty vector if `RankResult` is not
+/// present in the VCF header.
+pub fn parse_rank_results_header(header: &HeaderView) -> Vec<String> {
+    header
+        .header_records()
+        .into_iter()
+        .find_map(|record| {
+            if let HeaderRecord::Info { values, .. } = record
+                && values.get("ID").map(String::as_str) == Some("RankResult")
+            {
+                return values.get("Description").map(|description| {
+                    description
+                        .trim_matches('"')
+                        .split('|')
+                        .map(str::to_string)
+                        .collect()
+                });
+            }
+
+            None
+        })
+        .unwrap_or_default()
+}
