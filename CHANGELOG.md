@@ -45,6 +45,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse conservation: GERP, PhastCons and PhyloP (#54)
 - Parse callers (#55)
 - Parse RankResult INFO field (#56)
+- Parse SV-specific frequencies key/values (#57)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)
