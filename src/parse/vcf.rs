@@ -8,7 +8,9 @@ use crate::parse::compounds::parse_compounds;
 use crate::parse::conservations::parse_conservations;
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::filters::parse_filters;
-use crate::parse::frequencies::{add_frequencies, parse_frequencies, parse_sv_frequencies};
+use crate::parse::frequencies::{
+    add_frequencies, parse_frequencies, parse_mei_frequencies, parse_sv_frequencies,
+};
 use crate::parse::fusions::set_fusion_info;
 use crate::parse::genetic_models::parse_genetic_models;
 use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
@@ -187,6 +189,7 @@ pub fn process_vcf(
 
             VariantCategory::Mei => {
                 set_mei_info(&record, &mut variant);
+                frequencies.extend(parse_mei_frequencies(&record));
             }
 
             VariantCategory::Fusion => {

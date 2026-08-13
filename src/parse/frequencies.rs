@@ -1,4 +1,3 @@
-use crate::parse::info::parse_info_string;
 use mongodb::bson::{Bson, Document};
 use rust_htslib::bcf::Record;
 
@@ -45,6 +44,14 @@ pub const CLINGEN_NGI_KEYS: &[&str] = &["clingen_ngi", "clingen_ngiAF", "clingen
 pub const DECIPHER_KEYS: &[&str] = &["decipherAF", "decipher"];
 
 pub const CG_KEYS: &[&str] = &["clinical_genomics_mipAF", "clinical_genomics_mipOCC"];
+
+pub const SWEGEN_ALU_KEYS: &[&str] = &["swegen_alu_FRQ", "swegen_alu_OCC"];
+
+pub const SWEGEN_HERV_KEYS: &[&str] = &["swegen_herv_FRQ", "swegen_herv_OCC"];
+
+pub const SWEGEN_L1_KEYS: &[&str] = &["swegen_l1_FRQ", "swegen_l1_OCC"];
+
+pub const SWEGEN_SVA_KEYS: &[&str] = &["swegen_sva_FRQ", "swegen_sva_OCC"];
 
 /// Parse a frequency value from a VCF INFO field.
 ///
@@ -231,36 +238,39 @@ pub fn add_frequencies(variant: &mut Document, frequencies: &Document) {
     }
 }
 
-/// Parse an SV-specific frequency or occurrence value from an INFO field.
+/// Parse a structural-variant or MEI frequency/occurrence value from a VCF record.
 ///
-/// INFO fields containing `AF` or `FRQ` are interpreted as floating-point
-/// frequencies. Other fields are interpreted as integer occurrence counts.
-/// Values representing missing or invalid data (`.`, `-1`, `0`) are ignored,
-/// as are non-positive values.
+/// Fields ending in `AF`, `FRQ`, or similar frequency identifiers are parsed
+/// as floating-point values. Other fields are parsed as integer occurrence
+/// counts. Zero, negative, missing, and placeholder values are ignored.
+///
+/// Returns the parsed value as BSON, or `None` if no valid value is found.
 pub fn parse_sv_frequency(record: &Record, info_key: &str) -> Option<Bson> {
     let key = info_key.as_bytes();
 
-    if let Some(value) = parse_info_string(record, key) {
-        if value == "." || value == "-1" || value == "0" {
-            return None;
-        }
+    if info_key.to_uppercase().contains("AF") || info_key.to_uppercase().contains("FRQ") {
+        let value = record.info(key).float().ok().flatten()?.first().copied()?;
 
-        if info_key.to_uppercase().contains("AF") || info_key.to_uppercase().contains("FRQ") {
-            return value
-                .parse::<f64>()
-                .ok()
-                .filter(|value| *value > 0.0)
-                .map(Bson::Double);
+        if value > 0.0 {
+            Some(Bson::Double(value as f64))
+        } else {
+            None
         }
-
-        return value
-            .parse::<i32>()
+    } else {
+        let value = record
+            .info(key)
+            .integer()
             .ok()
-            .filter(|value| *value > 0)
-            .map(Bson::Int32);
-    }
+            .flatten()?
+            .first()
+            .copied()?;
 
-    None
+        if value > 0 {
+            Some(Bson::Int32(value))
+        } else {
+            None
+        }
+    }
 }
 
 /// Update an SV frequency document with the first available value from a
@@ -303,6 +313,41 @@ pub fn parse_sv_frequencies(record: &Record) -> Document {
     update_sv_frequency_from_vcf(&mut frequencies, record, DECIPHER_KEYS, "decipher");
     update_sv_frequency_from_vcf(&mut frequencies, record, CG_KEYS, "clingen_mip");
     update_sv_frequency_from_vcf(&mut frequencies, record, &["colorsdb_af"], "colorsdb_af");
+
+    frequencies
+}
+
+/// Parse MEI-specific frequency annotations from a VCF record.
+///
+/// Extracts SWEGEN frequencies for ALU, HERV, L1, and SVA insertions.
+/// If any frequencies are found, also stores the maximum frequency as
+/// `swegen_mei_max`.
+///
+/// Returns an empty document if no MEI frequencies are available.
+pub fn parse_mei_frequencies(record: &Record) -> Document {
+    let mut frequencies = Document::new();
+
+    update_sv_frequency_from_vcf(&mut frequencies, record, SWEGEN_ALU_KEYS, "swegen_alu");
+
+    update_sv_frequency_from_vcf(&mut frequencies, record, SWEGEN_HERV_KEYS, "swegen_herv");
+
+    update_sv_frequency_from_vcf(&mut frequencies, record, SWEGEN_L1_KEYS, "swegen_l1");
+
+    update_sv_frequency_from_vcf(&mut frequencies, record, SWEGEN_SVA_KEYS, "swegen_sva");
+
+    let max_frequency = frequencies
+        .values()
+        .filter_map(|value| match value {
+            Bson::Double(value) => Some(*value),
+            Bson::Int32(value) => Some(*value as f64),
+            Bson::Int64(value) => Some(*value as f64),
+            _ => None,
+        })
+        .max_by(|a, b| a.partial_cmp(b).unwrap());
+
+    if let Some(max_frequency) = max_frequency {
+        frequencies.insert("swegen_mei_max", max_frequency);
+    }
 
     frequencies
 }
