@@ -178,6 +178,8 @@ pub fn process_vcf(
         set_mitomap_associated_diseases(&record, &mut variant);
         set_hmtvar(&record, &mut variant);
 
+        let mut frequencies = bson::Document::new();
+
         match category {
             VariantCategory::Str => {
                 set_str_info(&record, &mut variant);
@@ -201,12 +203,9 @@ pub fn process_vcf(
             _ => {}
         }
 
+        // Add SV-specific frequencies from the INFO field
         if matches!(category, VariantCategory::Sv | VariantCategory::CancerSv) {
-            let sv_frequencies = parse_sv_frequencies(&record);
-
-            if let Ok(frequencies) = variant.get_document_mut("frequencies") {
-                frequencies.extend(sv_frequencies);
-            }
+            frequencies.extend(parse_sv_frequencies(&record));
         }
 
         let parsed_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
@@ -244,7 +243,9 @@ pub fn process_vcf(
             );
         }
 
-        let frequencies = parse_frequencies(&record, &parsed_transcripts);
+        // Add eventual VEP frequencies
+        frequencies.extend(parse_frequencies(&record, &parsed_transcripts));
+
         if !frequencies.is_empty() {
             add_frequencies(&mut variant, &frequencies);
         }

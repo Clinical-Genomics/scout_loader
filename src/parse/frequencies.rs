@@ -208,8 +208,8 @@ pub fn add_frequencies(variant: &mut Document, frequencies: &Document) {
     }
 
     let sv_fields = [
-        ("clingen_benign", "clingen_cgh_benign"),
-        ("clingen_pathogenic", "clingen_cgh_pathogenic"),
+        ("clingen_cgh_benign", "clingen_cgh_benign"),
+        ("clingen_cgh_pathogenic", "clingen_cgh_pathogenic"),
         ("clingen_mip", "clingen_mip"),
         ("clingen_ngi", "clingen_ngi"),
         ("swegen", "swegen"),
