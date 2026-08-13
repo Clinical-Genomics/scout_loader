@@ -47,6 +47,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse RankResult INFO field (#56)
 - Parse SV-specific frequencies key/values (#57)
 - Parse MEI-specific frequencies key/values (#58)
+- Parse cancer MSK_MVL as mvl_tag (#59)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)

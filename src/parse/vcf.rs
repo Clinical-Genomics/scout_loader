@@ -88,9 +88,9 @@ pub fn process_vcf(
         );
 
         /*
-        if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
-            continue;
-        }
+            if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
+                continue;
+            }
         */
 
         let filters = parse_filters(&record, &header);
@@ -200,6 +200,9 @@ pub fn process_vcf(
             VariantCategory::Cancer | VariantCategory::CancerSv => {
                 if let Some(value) = parse_info_int(&record, b"SOMATICSCORE") {
                     variant.insert("somatic_score", bson::Bson::Int32(value));
+                }
+                if parse_info_string(&record, b"MSK_MVL").is_some() {
+                    variant.insert("mvl_tag", true);
                 }
             }
 
