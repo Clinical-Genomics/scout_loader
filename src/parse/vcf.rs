@@ -201,6 +201,9 @@ pub fn process_vcf(
                 if let Some(value) = parse_info_int(&record, b"SOMATICSCORE") {
                     variant.insert("somatic_score", bson::Bson::Int32(value));
                 }
+                if parse_info_string(&record, b"MSK_MVL").is_some() {
+                    variant.insert("mvl_tag", true);
+                }
             }
 
             _ => {}
