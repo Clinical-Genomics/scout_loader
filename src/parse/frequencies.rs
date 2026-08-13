@@ -1,3 +1,4 @@
+use crate::parse::info::parse_info_string;
 use mongodb::bson::{Bson, Document};
 use rust_htslib::bcf::Record;
 
@@ -26,6 +27,24 @@ pub const GNOMAD_INFO_MAX_KEYS: &[&str] = &[
 pub const THOUSAND_GENOMES_KEYS: &[&str] = &["1000GAF"];
 
 pub const THOUSAND_GENOMES_MAX_KEYS: &[&str] = &["1000G_MAX_AF"];
+
+pub const CLINGEN_BENIGN_KEYS: &[&str] = &[
+    "clingen_cgh_benignAF",
+    "clingen_cgh_benign",
+    "clingen_cgh_benignOCC",
+];
+
+pub const CLINGEN_PATHOGENIC_KEYS: &[&str] = &[
+    "clingen_cgh_pathogenicAF",
+    "clingen_cgh_pathogenic",
+    "clingen_cgh_pathogenicOCC",
+];
+
+pub const CLINGEN_NGI_KEYS: &[&str] = &["clingen_ngi", "clingen_ngiAF", "clingen_ngiOCC"];
+
+pub const DECIPHER_KEYS: &[&str] = &["decipherAF", "decipher"];
+
+pub const CG_KEYS: &[&str] = &["clinical_genomics_mipAF", "clinical_genomics_mipOCC"];
 
 /// Parse a frequency value from a VCF INFO field.
 ///
@@ -189,8 +208,8 @@ pub fn add_frequencies(variant: &mut Document, frequencies: &Document) {
     }
 
     let sv_fields = [
-        ("clingen_benign", "clingen_cgh_benign"),
-        ("clingen_pathogenic", "clingen_cgh_pathogenic"),
+        ("clingen_cgh_benign", "clingen_cgh_benign"),
+        ("clingen_cgh_pathogenic", "clingen_cgh_pathogenic"),
         ("clingen_mip", "clingen_mip"),
         ("clingen_ngi", "clingen_ngi"),
         ("swegen", "swegen"),
@@ -210,4 +229,80 @@ pub fn add_frequencies(variant: &mut Document, frequencies: &Document) {
     ] {
         add_frequency_field(variant, frequencies, key, key);
     }
+}
+
+/// Parse an SV-specific frequency or occurrence value from an INFO field.
+///
+/// INFO fields containing `AF` or `FRQ` are interpreted as floating-point
+/// frequencies. Other fields are interpreted as integer occurrence counts.
+/// Values representing missing or invalid data (`.`, `-1`, `0`) are ignored,
+/// as are non-positive values.
+pub fn parse_sv_frequency(record: &Record, info_key: &str) -> Option<Bson> {
+    let key = info_key.as_bytes();
+
+    if let Some(value) = parse_info_string(record, key) {
+        if value == "." || value == "-1" || value == "0" {
+            return None;
+        }
+
+        if info_key.to_uppercase().contains("AF") || info_key.to_uppercase().contains("FRQ") {
+            return value
+                .parse::<f64>()
+                .ok()
+                .filter(|value| *value > 0.0)
+                .map(Bson::Double);
+        }
+
+        return value
+            .parse::<i32>()
+            .ok()
+            .filter(|value| *value > 0)
+            .map(Bson::Int32);
+    }
+
+    None
+}
+
+/// Update an SV frequency document with the first available value from a
+/// list of INFO keys.
+///
+/// The first key that contains a valid frequency or occurrence value is
+/// stored under `new_key`. If none of the keys contain a valid value, the
+/// document is left unchanged.
+pub fn update_sv_frequency_from_vcf(
+    frequencies: &mut Document,
+    record: &Record,
+    key_list: &[&str],
+    new_key: &str,
+) {
+    for key in key_list {
+        if let Some(value) = parse_sv_frequency(record, key) {
+            frequencies.insert(new_key, value);
+            break;
+        }
+    }
+}
+
+pub fn parse_sv_frequencies(record: &Record) -> Document {
+    let mut frequencies = Document::new();
+
+    update_sv_frequency_from_vcf(
+        &mut frequencies,
+        record,
+        CLINGEN_BENIGN_KEYS,
+        "clingen_cgh_benign",
+    );
+    update_sv_frequency_from_vcf(
+        &mut frequencies,
+        record,
+        CLINGEN_PATHOGENIC_KEYS,
+        "clingen_cgh_pathogenic",
+    );
+    update_sv_frequency_from_vcf(&mut frequencies, record, CLINGEN_NGI_KEYS, "clingen_ngi");
+    update_sv_frequency_from_vcf(&mut frequencies, record, SWEGEN_KEYS, "swegen");
+    update_sv_frequency_from_vcf(&mut frequencies, record, DECIPHER_KEYS, "decipher");
+    update_sv_frequency_from_vcf(&mut frequencies, record, CG_KEYS, "clingen_mip");
+    update_sv_frequency_from_vcf(&mut frequencies, record, &["colorsdb_af"], "colorsdb_af");
+
+    frequencies
 }

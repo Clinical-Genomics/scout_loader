@@ -8,7 +8,7 @@ use crate::parse::compounds::parse_compounds;
 use crate::parse::conservations::parse_conservations;
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::filters::parse_filters;
-use crate::parse::frequencies::{add_frequencies, parse_frequencies};
+use crate::parse::frequencies::{add_frequencies, parse_frequencies, parse_sv_frequencies};
 use crate::parse::fusions::set_fusion_info;
 use crate::parse::genetic_models::parse_genetic_models;
 use crate::parse::genotypes::{parse_genotypes, validate_sample_mapping};
@@ -178,6 +178,8 @@ pub fn process_vcf(
         set_mitomap_associated_diseases(&record, &mut variant);
         set_hmtvar(&record, &mut variant);
 
+        let mut frequencies = bson::Document::new();
+
         match category {
             VariantCategory::Str => {
                 set_str_info(&record, &mut variant);
@@ -199,6 +201,11 @@ pub fn process_vcf(
             }
 
             _ => {}
+        }
+
+        // Add SV-specific frequencies from the INFO field
+        if matches!(category, VariantCategory::Sv | VariantCategory::CancerSv) {
+            frequencies.extend(parse_sv_frequencies(&record));
         }
 
         let parsed_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
@@ -236,7 +243,9 @@ pub fn process_vcf(
             );
         }
 
-        let frequencies = parse_frequencies(&record, &parsed_transcripts);
+        // Add eventual VEP frequencies
+        frequencies.extend(parse_frequencies(&record, &parsed_transcripts));
+
         if !frequencies.is_empty() {
             add_frequencies(&mut variant, &frequencies);
         }
