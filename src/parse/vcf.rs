@@ -23,7 +23,7 @@ use crate::parse::loqusdb_frequencies::add_loqus_archive_frequencies;
 use crate::parse::meis::set_mei_info;
 use crate::parse::mt_annotations::{set_hmtvar, set_mitomap_associated_diseases};
 use crate::parse::onco_clnsig::parse_clnsig_onc;
-use crate::parse::rank_scores::{parse_rank_result, parse_rank_scores};
+use crate::parse::rank_scores::{parse_rank_result, parse_rank_score_other, parse_rank_scores};
 use crate::parse::severity::set_severity_predictions;
 use crate::parse::strs::set_str_info;
 use crate::parse::vep::clnsig::{build_clnsig, parse_clnsig};
@@ -183,6 +183,12 @@ pub fn process_vcf(
         let mut frequencies = bson::Document::new();
 
         match category {
+            VariantCategory::Snv => {
+                if let Some(rank_score_other) = parse_rank_score_other(&record) {
+                    variant.insert("rank_score_other", rank_score_other);
+                }
+            }
+
             VariantCategory::Str => {
                 set_str_info(&record, &mut variant);
             }
