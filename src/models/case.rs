@@ -10,8 +10,6 @@ use std::path::PathBuf;
 pub struct CaseConfig {
     pub family: String,
 
-    pub family_name: String,
-
     pub human_genome_build: String,
 
     pub samples: Vec<SampleConfig>,

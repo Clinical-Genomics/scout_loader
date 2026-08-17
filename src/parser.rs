@@ -39,7 +39,6 @@ pub fn parse(config: &CaseConfig) -> Result<(), Box<dyn std::error::Error>> {
                 category,
                 variant_type,
                 &config.family,
-                &config.family_name,
                 &cytobands,
                 &config.samples,
             );

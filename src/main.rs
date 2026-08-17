@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let yaml = fs::read_to_string(&args.case_config)?;
     let config: CaseConfig = serde_yaml::from_str(&yaml)?;
 
-    println!("Case: {}", config.family_name);
+    println!("Case: {}", config.family);
     println!("Genome build: {}", config.human_genome_build);
 
     for sample in &config.samples {

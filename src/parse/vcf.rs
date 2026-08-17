@@ -81,7 +81,6 @@ pub fn parse_sample_mapping(
 /// * `category` - Variant category used to select the appropriate parser.
 /// * `variant_type` - Variant type for the VCF.
 /// * `case_id` - ID of the case.
-/// * `case_name` - Human-readable name of the case.
 /// * `cytobands` - Parsed cytobands corresponding to the case genome build.
 /// * `samples` - Samples configured for the case.
 ///
@@ -94,7 +93,6 @@ pub fn process_vcf(
     category: VariantCategory,
     variant_type: VariantType,
     case_id: &str,
-    case_name: &str,
     cytobands: &HashMap<String, Vec<Cytoband>>,
     samples: &[SampleConfig],
 ) {
@@ -173,7 +171,6 @@ pub fn process_vcf(
             "display_name": ids.display_name,
             "document_id": ids.document_id,
             "case_id": case_id,
-            "case_name": case_name,
 
             "compounds": compounds_bson,
 
