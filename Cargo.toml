@@ -12,6 +12,7 @@ mongodb = { version = "3", features = ["sync"] }
 regex = "1"
 rust-htslib = "*"
 serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
 toml = "0.8"
 
 [dev-dependencies]
