@@ -1,8 +1,10 @@
 use clap::Parser;
 use std::collections::HashMap;
-use std::path::PathBuf;
 
+use crate::models::case::CaseConfig;
+use crate::parser::parse;
 use loader::Loader;
+use std::fs;
 
 mod config;
 mod loader;
@@ -12,64 +14,29 @@ mod parser;
 mod utils;
 
 #[derive(Parser, Debug)]
-#[command(author, version, about)]
-pub struct Args {
-    /// Case ID.
-    #[arg(long)]
-    pub case_id: String,
-
-    /// Sample mappings in the format SAMPLE_ID:DISPLAY_NAME:VCF_POSITION.
-    ///
-    /// Example: SAMPLE1:NA12877:0 SAMPLE2:NA12878:1
-    #[arg(short, long, num_args = 1..)]
-    pub samples: Option<Vec<String>>,
-
-    /// Variant type, e.g. clinical or research.
-    #[arg(long)]
-    pub variant_type: String,
-
-    /// Genome build, e.g. 37 or 38.
-    #[arg(long)]
-    pub genome_build: String,
-
-    /// SNV VCF.
-    #[arg(long)]
-    pub snv: Option<PathBuf>,
-
-    /// Cancer VCF.
-    #[arg(long)]
-    pub cancer: Option<PathBuf>,
-
-    /// Structural variant VCF.
-    #[arg(long)]
-    pub sv: Option<PathBuf>,
-
-    /// Cancer structural variant VCF.
-    #[arg(long = "cancer-sv")]
-    pub cancer_sv: Option<PathBuf>,
-
-    /// Fusion VCF.
-    #[arg(long)]
-    pub fusion: Option<PathBuf>,
-
-    /// Mobile element insertion VCF.
-    #[arg(long)]
-    pub mei: Option<PathBuf>,
-
-    /// STR VCF.
-    #[arg(long)]
-    pub str: Option<PathBuf>,
+struct Args {
+    /// Path to the case configuration YAML file.
+    #[arg(long = "case-config")]
+    case_config: String,
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
-    let _loader = Loader::new("config.toml")?;
+    let yaml = fs::read_to_string(&args.case_config)?;
+    let config: CaseConfig = serde_yaml::from_str(&yaml)?;
 
+    println!("Case: {}", config.family);
+    println!("Genome build: {}", config.human_genome_build);
+
+    for sample in &config.samples {
+        println!("Sample: {} ({:?})", sample.sample_id, sample.sample_name);
+    }
+
+    let _loader = Loader::new("config.toml")?;
     // Connect to the database and retrieve gene_to_panels and hgncid_to_gene
 
-    // Orchestrate loading
-    parser::parse(args)?;
+    parse(&config)?;
 
     Ok(())
 }

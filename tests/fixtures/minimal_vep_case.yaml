@@ -1,0 +1,10 @@
+family: 'case_123'
+family_name: 'case_123'
+
+samples:
+  - sample_id: SAMPLE1
+    sample_name: sample-one
+
+vcf_snv: tests/fixtures/minimal_vep_snv.vcf
+
+human_genome_build: '37'
