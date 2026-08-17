@@ -64,7 +64,7 @@ pub struct Args {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
-    let loader = Loader::new("config.toml")?;
+    let _loader = Loader::new("config.toml")?;
 
     // Connect to the database and retrieve gene_to_panels and hgncid_to_gene
 

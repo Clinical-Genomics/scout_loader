@@ -4,7 +4,7 @@ use crate::config::Config;
 
 /// Handles loading cases and manages the MongoDB connection.
 pub struct Loader {
-    db: Database,
+    _db: Database,
 }
 
 impl Loader {
@@ -15,8 +15,8 @@ impl Loader {
         let config = Config::from_file(config_path)?;
 
         let client = mongodb::sync::Client::with_uri_str(&config.mongo_uri)?;
-        let db = client.database(&config.mongo_dbname);
+        let _db = client.database(&config.mongo_dbname);
 
-        Ok(Self { db })
+        Ok(Self { _db })
     }
 }
