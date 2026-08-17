@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let panel_ids = config.gene_panels.as_deref().unwrap_or_default();
 
-    let gene_to_panels = loader.gene_to_panels(panel_ids)?;
+    let _gene_to_panels = loader.gene_to_panels(panel_ids)?;
 
     parse(&config)?;
 
