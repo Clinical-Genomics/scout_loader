@@ -58,21 +58,23 @@ async fn mongodb_smoke_roundtrip() {
     let expected_value = 42;
 
     collection
-        .insert_one(doc! { "_id": expected_id, "value": expected_value }, None)
+        .insert_one(doc! {
+            "_id": expected_id,
+            "value": expected_value
+        })
         .await
         .expect("failed to insert smoke document");
 
     let fetched = collection
-        .find_one(doc! { "_id": expected_id }, None)
+        .find_one(doc! { "_id": expected_id })
         .await
         .expect("failed to query smoke document")
         .expect("expected smoke document to exist");
 
     assert_eq!(fetched.get_i32("value").ok(), Some(expected_value));
 
-    // Cleanup keeps the test idempotent and avoids collection growth over time.
     collection
-        .drop(None)
+        .drop()
         .await
         .expect("failed to drop smoke test collection");
 }
@@ -117,12 +119,12 @@ async fn mongodb_parsed_variant_roundtrip() {
     };
 
     collection
-        .insert_one(variant.clone(), None)
+        .insert_one(variant.clone())
         .await
         .expect("failed to insert parsed variant document");
 
     let fetched = collection
-        .find_one(doc! { "document_id": &variant["document_id"] }, None)
+        .find_one(doc! { "document_id": &variant["document_id"] })
         .await
         .expect("failed to query parsed variant document")
         .expect("expected parsed variant document to exist");
@@ -144,7 +146,7 @@ async fn mongodb_parsed_variant_roundtrip() {
     assert_eq!(fetched.get_i64("position").ok(), Some(pos as i64));
 
     collection
-        .drop(None)
+        .drop()
         .await
         .expect("failed to drop parsed variant test collection");
 }
