@@ -34,8 +34,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Sample: {} ({:?})", sample.sample_id, sample.sample_name);
     }
 
-    let _loader = Loader::new("config.toml")?;
-    // Connect to the database and retrieve gene_to_panels and hgncid_to_gene
+    let loader = Loader::new("config.toml")?;
+
+    let panel_ids = config.gene_panels.as_deref().unwrap_or_default();
+
+    let gene_to_panels = loader.gene_to_panels(panel_ids)?;
 
     parse(&config)?;
 
