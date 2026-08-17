@@ -10,15 +10,15 @@ fn fixture_path(name: &str) -> PathBuf {
     repo_root().join("tests").join("fixtures").join(name)
 }
 
-fn base_command(fixture_name: &str, category: &str) -> Command {
-    let fixture = fixture_path(fixture_name);
+#[test]
+fn cli_processes_minimal_snv_vcf() {
+    let fixture = fixture_path("minimal_snv.vcf");
 
     let mut cmd = Command::cargo_bin("scout_loader").expect("binary should build");
+
     cmd.current_dir(repo_root())
-        .arg("--vcf")
+        .arg("--snv")
         .arg(&fixture)
-        .arg("--category")
-        .arg(category)
         .arg("--variant-type")
         .arg("clinical")
         .arg("--case-id")
@@ -27,13 +27,6 @@ fn base_command(fixture_name: &str, category: &str) -> Command {
         .arg("GRCh37")
         .arg("--samples")
         .arg("SAMPLE1:sample-one:0");
-
-    cmd
-}
-
-#[test]
-fn cli_processes_minimal_snv_vcf() {
-    let mut cmd = base_command("minimal_snv.vcf", "snv");
 
     cmd.assert()
         .success()
@@ -47,7 +40,21 @@ fn cli_processes_minimal_snv_vcf() {
 
 #[test]
 fn cli_processes_minimal_vep_snv_vcf() {
-    let mut cmd = base_command("minimal_vep_snv.vcf", "snv");
+    let fixture = fixture_path("minimal_vep_snv.vcf");
+
+    let mut cmd = Command::cargo_bin("scout_loader").expect("binary should build");
+
+    cmd.current_dir(repo_root())
+        .arg("--snv")
+        .arg(&fixture)
+        .arg("--variant-type")
+        .arg("clinical")
+        .arg("--case-id")
+        .arg("case_123")
+        .arg("--genome-build")
+        .arg("GRCh37")
+        .arg("--samples")
+        .arg("SAMPLE1:sample-one:0");
 
     cmd.assert()
         .success()
@@ -61,7 +68,21 @@ fn cli_processes_minimal_vep_snv_vcf() {
 
 #[test]
 fn cli_processes_minimal_sv_vcf() {
-    let mut cmd = base_command("minimal_sv.vcf", "sv");
+    let fixture = fixture_path("minimal_sv.vcf");
+
+    let mut cmd = Command::cargo_bin("scout_loader").expect("binary should build");
+
+    cmd.current_dir(repo_root())
+        .arg("--sv")
+        .arg(&fixture)
+        .arg("--variant-type")
+        .arg("clinical")
+        .arg("--case-id")
+        .arg("case_123")
+        .arg("--genome-build")
+        .arg("GRCh37")
+        .arg("--samples")
+        .arg("SAMPLE1:sample-one:0");
 
     cmd.assert()
         .success()
@@ -72,4 +93,31 @@ fn cli_processes_minimal_sv_vcf() {
         .stdout(predicate::str::contains("123650"))
         .stdout(predicate::str::contains("sample_id"))
         .stdout(predicate::str::contains("0/1"));
+}
+
+#[test]
+fn cli_processes_multiple_vcfs() {
+    let snv_fixture = fixture_path("minimal_snv.vcf");
+    let sv_fixture = fixture_path("minimal_sv.vcf");
+
+    let mut cmd = Command::cargo_bin("scout_loader").expect("binary should build");
+
+    cmd.current_dir(repo_root())
+        .arg("--snv")
+        .arg(&snv_fixture)
+        .arg("--sv")
+        .arg(&sv_fixture)
+        .arg("--variant-type")
+        .arg("clinical")
+        .arg("--case-id")
+        .arg("case_123")
+        .arg("--genome-build")
+        .arg("GRCh37")
+        .arg("--samples")
+        .arg("SAMPLE1:sample-one:0");
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("1_123456_A_T_clinical"))
+        .stdout(predicate::str::contains("1_123500_N_<DEL>_clinical"));
 }

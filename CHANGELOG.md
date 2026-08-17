@@ -49,6 +49,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse MEI-specific frequencies key/values (#58)
 - Parse cancer-specific `MSK_MVL` as `mvl_tag` (#59)
 - Parse Mivmir and Gicam scores for SNVs (#60)
+- Introduce a loading orchestrator which is responsible to load all types of variants for a case (#62)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)

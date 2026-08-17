@@ -8,10 +8,11 @@ clap = { version = "4", features = ["derive"] }
 flate2 = "1.0"
 lazy_static = "1"
 md5 = "0.8"
-mongodb = "2"
+mongodb = { version = "3", features = ["sync"] }
 regex = "1"
 rust-htslib = "*"
 serde = { version = "1", features = ["derive"] }
+toml = "0.8"
 
 [dev-dependencies]
 assert_cmd = "2"

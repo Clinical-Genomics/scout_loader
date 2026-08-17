@@ -51,19 +51,6 @@ pub enum VariantCategory {
 }
 
 impl VariantCategory {
-    pub fn from_str(s: &str) -> Result<Self, String> {
-        match s {
-            "snv" => Ok(VariantCategory::Snv),
-            "cancer" => Ok(VariantCategory::Cancer),
-            "sv" => Ok(VariantCategory::Sv),
-            "cancer_sv" => Ok(VariantCategory::CancerSv),
-            "fusion" => Ok(VariantCategory::Fusion),
-            "mei" => Ok(VariantCategory::Mei),
-            "str" => Ok(VariantCategory::Str),
-            _ => Err(format!("Unknown variant category: {}", s)),
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             VariantCategory::Snv => "snv",
