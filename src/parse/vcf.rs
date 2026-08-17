@@ -121,6 +121,8 @@ pub fn process_vcf(
         return;
     }
 
+    let mut variant_count = 0;
+
     for result in vcf.records() {
         let record = result.unwrap();
 
@@ -332,6 +334,9 @@ pub fn process_vcf(
             variant.insert("rank_score_results", Bson::Array(rank_score_results));
         }
 
-        println!("{:#?}\n", variant);
+        // println!("{:#?}\n", variant);
+        variant_count += 1;
     }
+
+    println!("Parsed {} variants from {}", variant_count, path);
 }
