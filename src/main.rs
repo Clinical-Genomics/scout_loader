@@ -28,6 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Case: {}", config.family);
     println!("Genome build: {}", config.human_genome_build);
+    println!("Gene panels: {:?}", config.gene_panels);
 
     for sample in &config.samples {
         println!("Sample: {} ({:?})", sample.sample_id, sample.sample_name);

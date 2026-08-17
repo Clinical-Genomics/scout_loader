@@ -12,6 +12,8 @@ pub struct CaseConfig {
 
     pub human_genome_build: String,
 
+    pub gene_panels: Option<Vec<String>>,
+
     pub samples: Vec<SampleConfig>,
 
     pub vcf_snv: Option<PathBuf>,
