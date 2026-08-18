@@ -334,7 +334,7 @@ pub fn process_vcf(
             variant.insert("rank_score_results", Bson::Array(rank_score_results));
         }
 
-        println!("{:#?}\n", variant);
+        //println!("{:#?}\n", variant);
         variant_count += 1;
     }
 

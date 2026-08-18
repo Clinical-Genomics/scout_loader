@@ -23,6 +23,34 @@ impl Loader {
         Ok(Self { db })
     }
 
+    /// Build a mapping from HGNC ID to the corresponding gene document.
+    ///
+    /// Fetches genes from MongoDB for the specified genome build and uses the
+    /// HGNC ID as the key.
+    pub fn hgncid_to_gene(
+        &self,
+        build: &str,
+    ) -> Result<HashMap<i32, Document>, Box<dyn std::error::Error>> {
+        let collection = self.db.collection::<Document>("hgnc_gene");
+
+        let filter = doc! {
+            "build": build
+        };
+
+        let genes = collection.find(filter).run()?;
+
+        let mut hgnc_dict = HashMap::new();
+
+        for gene in genes {
+            let gene = gene?;
+            let hgnc_id = gene.get_i32("hgnc_id")?;
+
+            hgnc_dict.insert(hgnc_id, gene);
+        }
+
+        Ok(hgnc_dict)
+    }
+
     /// Build a mapping of HGNC IDs to the gene panels containing each gene.
     ///
     /// Fetches the requested gene panels from MongoDB and collects the panel
