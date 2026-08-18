@@ -79,7 +79,9 @@ async fn hgncid_to_gene() {
         .await
         .expect("failed to connect to MongoDB");
 
-    let db = client.database("scout_loader_test");
+    let config = config::Config::from_file("config.toml").expect("failed to load config");
+
+    let db = client.database(&config.mongo_dbname);
     let collection = db.collection::<Document>("hgnc_gene");
 
     collection
@@ -133,7 +135,9 @@ async fn gene_to_panels() {
         .await
         .expect("failed to connect to MongoDB");
 
-    let db = client.database("scout_loader_test");
+    let config = config::Config::from_file("config.toml").expect("failed to load config");
+
+    let db = client.database(&config.mongo_dbname);
     let collection = db.collection::<Document>("gene_panel");
 
     collection
