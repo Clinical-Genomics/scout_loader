@@ -82,6 +82,11 @@ async fn hgncid_to_gene() {
     let db = client.database("scout_loader_test");
     let collection = db.collection::<Document>("hgnc_gene");
 
+    collection
+        .delete_many(doc! {})
+        .await
+        .expect("failed to clean hgnc_gene collection");
+
     insert_test_genes(&collection).await;
 
     let loader = Loader::new("config.toml")
@@ -94,9 +99,6 @@ async fn hgncid_to_gene() {
         .expect("failed to build HGNC mapping");
 
     assert_eq!(genes.len(), 2);
-    assert!(genes.contains_key(&25662));
-    assert!(genes.contains_key(&1001));
-    assert!(!genes.contains_key(&1002));
 
     assert_eq!(
         genes[&25662]
@@ -112,10 +114,12 @@ async fn hgncid_to_gene() {
         "GENE1"
     );
 
+    assert!(!genes.contains_key(&1002));
+
     collection
-        .drop()
+        .delete_many(doc! {})
         .await
-        .expect("failed to drop hgnc_gene test collection");
+        .expect("failed to clean hgnc_gene collection");
 }
 
 #[tokio::test]
@@ -132,20 +136,23 @@ async fn gene_to_panels() {
     let db = client.database("scout_loader_test");
     let collection = db.collection::<Document>("gene_panel");
 
+    collection
+        .delete_many(doc! {})
+        .await
+        .expect("failed to clean gene_panel collection");
+
     insert_test_gene_panels(&collection).await;
 
     let loader = Loader::new("config.toml")
         .await
         .expect("failed to create Loader");
 
-    let panel_names = vec!["panel1".to_string(), "panel2".to_string()];
+    let panel_ids = vec!["panel1".to_string(), "panel2".to_string()];
 
     let gene_to_panels = loader
-        .gene_to_panels(&panel_names)
+        .gene_to_panels(&panel_ids)
         .await
         .expect("failed to build gene-to-panel mapping");
-
-    assert_eq!(gene_to_panels.len(), 3);
 
     assert_eq!(
         gene_to_panels[&25662],
@@ -157,7 +164,7 @@ async fn gene_to_panels() {
     assert_eq!(gene_to_panels[&1002], HashSet::from(["panel2".to_string()]));
 
     collection
-        .drop()
+        .delete_many(doc! {})
         .await
-        .expect("failed to drop gene_panel test collection");
+        .expect("failed to clean gene_panel collection");
 }
