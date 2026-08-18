@@ -30,9 +30,9 @@ use crate::parse::strs::set_str_info;
 use crate::parse::vep::clnsig::{build_clnsig, parse_clnsig};
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::transcripts::parse_vep_transcripts;
-use mongodb::bson::{self, Bson, doc};
+use mongodb::bson::{self, Bson, Document, doc};
 use rust_htslib::bcf::{Read, Reader};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Builds a mapping between configured samples and their positions in a VCF.
 ///
@@ -68,6 +68,30 @@ pub fn parse_sample_mapping(
     Ok(sample_mapping)
 }
 
+/// Adds gene panel information to a parsed variant.
+///
+/// Collects all gene panels associated with the variant's HGNC IDs and adds
+/// the unique panel names to the `panels` field when any are found.
+pub fn link_gene_panels(variant: &mut Document, gene_to_panels: &HashMap<i32, HashSet<String>>) {
+    let Some(hgnc_ids) = variant.get_array("hgnc_ids").ok() else {
+        return;
+    };
+
+    let mut panel_names = HashSet::new();
+
+    for hgnc_id in hgnc_ids {
+        if let Some(hgnc_id) = hgnc_id.as_i32()
+            && let Some(gene_panels) = gene_to_panels.get(&hgnc_id)
+        {
+            panel_names.extend(gene_panels.iter().cloned());
+        }
+    }
+
+    if !panel_names.is_empty() {
+        variant.insert("panels", panel_names.into_iter().collect::<Vec<_>>());
+    }
+}
+
 /// Processes a VCF file and parses each record according to the variant category.
 ///
 /// The function reads the VCF file at the provided path, determines the sample
@@ -95,6 +119,7 @@ pub fn process_vcf(
     case_id: &str,
     cytobands: &HashMap<String, Vec<Cytoband>>,
     samples: &[SampleConfig],
+    gene_to_panels: &HashMap<i32, HashSet<String>>,
 ) {
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
 
@@ -333,6 +358,8 @@ pub fn process_vcf(
         if let Some(rank_score_results) = parse_rank_result(&record, &rank_results_header) {
             variant.insert("rank_score_results", Bson::Array(rank_score_results));
         }
+
+        link_gene_panels(&mut variant, gene_to_panels);
 
         println!("{:#?}\n", variant);
         variant_count += 1;

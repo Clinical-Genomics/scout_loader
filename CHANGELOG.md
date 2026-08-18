@@ -53,6 +53,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Collect gene_to_panels from database, based on case panels found on case config file (#65)
 - Build an HGNC ID → gene document mapping reflecting genes in genome build provided on case loading config file (#67)
 - Tests for `loader.hgncid_to_gene` and `loader.gene_to_panels` (#69)
+- Add gene panel info to parsed variants (#70)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)
