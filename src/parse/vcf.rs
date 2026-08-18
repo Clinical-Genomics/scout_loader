@@ -109,7 +109,7 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
         };
 
         if let Some(gene) = hgncid_to_gene.get(&hgnc_id) {
-            if let Some(symbol) = gene.get_str("hgnc_symbol").ok() {
+            if let Ok(symbol) = gene.get_str("hgnc_symbol") {
                 hgnc_symbols.push(symbol.to_string());
             }
         } else {
@@ -197,6 +197,12 @@ pub fn process_vcf(
             case_id,
             &variant_type,
         );
+
+        /*
+        if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
+            continue;
+        }
+        */
 
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
