@@ -176,7 +176,7 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
 ///
 /// The collected identifiers are stored in the variant as `hgnc_ids`.
 pub fn set_hgnc_ids(variant: &mut Document) {
-    let mut hgnc_ids: HashSet<String> = HashSet::new();
+    let mut hgnc_ids: HashSet<i32> = HashSet::new();
 
     // Collect HGNC IDs from parsed genes
     if let Some(Bson::Array(genes)) = variant.get("genes") {
@@ -185,43 +185,46 @@ pub fn set_hgnc_ids(variant: &mut Document) {
                 continue;
             };
 
-            if let Some(Bson::Int64(hgnc_id)) = gene.get("hgnc_id") {
-                hgnc_ids.insert(hgnc_id.to_string());
-            }
+            if let Some(hgnc_id) = gene.get("hgnc_id") {
+                let hgnc_id = match hgnc_id {
+                    Bson::Int32(id) => Some(*id),
+                    Bson::Int64(id) => i32::try_from(*id).ok(),
+                    Bson::String(id) => id.parse::<i32>().ok(),
+                    _ => None,
+                };
 
-            if let Some(Bson::Int32(hgnc_id)) = gene.get("hgnc_id") {
-                hgnc_ids.insert(hgnc_id.to_string());
-            }
-
-            if let Some(Bson::String(hgnc_id)) = gene.get("hgnc_id") {
-                hgnc_ids.insert(hgnc_id.clone());
+                if let Some(hgnc_id) = hgnc_id {
+                    hgnc_ids.insert(hgnc_id);
+                }
             }
         }
     }
 
     // STR HGNC IDs are annotated by Stranger
     if let Some(Bson::String(str_hgnc_id)) = variant.get("HGNCId") {
-        hgnc_ids.insert(str_hgnc_id.clone());
+        if let Ok(hgnc_id) = str_hgnc_id.parse::<i32>() {
+            hgnc_ids.insert(hgnc_id);
 
-        let has_genes = matches!(
-            variant.get("genes"),
-            Some(Bson::Array(genes)) if !genes.is_empty()
-        );
-
-        if !has_genes {
-            variant.insert(
-                "genes",
-                Bson::Array(vec![Bson::Document(doc! {
-                    "hgnc_id": str_hgnc_id,
-                })]),
+            let has_genes = matches!(
+                variant.get("genes"),
+                Some(Bson::Array(genes)) if !genes.is_empty()
             );
+
+            if !has_genes {
+                variant.insert(
+                    "genes",
+                    Bson::Array(vec![Bson::Document(doc! {
+                        "hgnc_id": hgnc_id,
+                    })]),
+                );
+            }
         }
     }
 
     if !hgnc_ids.is_empty() {
         variant.insert(
             "hgnc_ids",
-            Bson::Array(hgnc_ids.into_iter().map(Bson::String).collect()),
+            Bson::Array(hgnc_ids.into_iter().map(Bson::Int32).collect()),
         );
     }
 }

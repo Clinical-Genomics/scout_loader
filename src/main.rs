@@ -39,7 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let panel_ids = config.gene_panels.as_deref().unwrap_or_default();
 
-    let _gene_to_panels = loader.gene_to_panels(panel_ids).await?;
+    let gene_to_panels = loader.gene_to_panels(panel_ids).await?;
 
     let _hgnc_to_gene = loader.hgncid_to_gene(&config.human_genome_build).await?;
 
@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         _hgnc_to_gene.len()
     );
 
-    parse(&config)?;
+    parse(&config, &gene_to_panels)?;
 
     Ok(())
 }
