@@ -57,6 +57,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Improved and simplified code (#22)
 - Refactored VEP annotations parsing module (#38)
 - Refactor and simplify main function to accept and parse case config file (#64)
+- Switch to async Loader (#68)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
 - Parsing of end chromosome (#29)

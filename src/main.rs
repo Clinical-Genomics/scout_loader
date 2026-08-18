@@ -20,7 +20,8 @@ struct Args {
     case_config: String,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     let yaml = fs::read_to_string(&args.case_config)?;
@@ -34,13 +35,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Sample: {} ({:?})", sample.sample_id, sample.sample_name);
     }
 
-    let loader = Loader::new("config.toml")?;
+    let loader = Loader::new("config.toml").await?;
 
     let panel_ids = config.gene_panels.as_deref().unwrap_or_default();
 
-    let _gene_to_panels = loader.gene_to_panels(panel_ids)?;
+    let _gene_to_panels = loader.gene_to_panels(panel_ids).await?;
 
-    let _hgnc_to_gene = loader.hgncid_to_gene(&config.human_genome_build)?;
+    let _hgnc_to_gene = loader.hgncid_to_gene(&config.human_genome_build).await?;
+
     println!(
         "Number of genes for genome build {}: {}",
         config.human_genome_build,

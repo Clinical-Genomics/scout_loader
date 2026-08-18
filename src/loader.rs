@@ -1,7 +1,7 @@
+use futures::TryStreamExt;
+use mongodb::Database;
 use mongodb::bson::{Document, doc};
-use mongodb::sync::Database;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::config::Config;
 
@@ -14,10 +14,10 @@ impl Loader {
     /// Creates a new loader from the given configuration file.
     ///
     /// Reads the MongoDB configuration and establishes a database connection.
-    pub fn new(config_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn new(config_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
         let config = Config::from_file(config_path)?;
 
-        let client = mongodb::sync::Client::with_uri_str(&config.mongo_uri)?;
+        let client = mongodb::Client::with_uri_str(&config.mongo_uri).await?;
         let db = client.database(&config.mongo_dbname);
 
         Ok(Self { db })
@@ -27,7 +27,7 @@ impl Loader {
     ///
     /// Fetches genes from MongoDB for the specified genome build and uses the
     /// HGNC ID as the key.
-    pub fn hgncid_to_gene(
+    pub async fn hgncid_to_gene(
         &self,
         build: &str,
     ) -> Result<HashMap<i32, Document>, Box<dyn std::error::Error>> {
@@ -37,14 +37,12 @@ impl Loader {
             "build": build
         };
 
-        let genes = collection.find(filter).run()?;
+        let mut genes = collection.find(filter).await?;
 
         let mut hgnc_dict = HashMap::new();
 
-        for gene in genes {
-            let gene = gene?;
+        while let Some(gene) = genes.try_next().await? {
             let hgnc_id = gene.get_i32("hgnc_id")?;
-
             hgnc_dict.insert(hgnc_id, gene);
         }
 
@@ -63,7 +61,7 @@ impl Loader {
     /// # Returns
     ///
     /// A mapping from HGNC ID to the set of panel names containing that gene.
-    pub fn gene_to_panels(
+    pub async fn gene_to_panels(
         &self,
         panel_ids: &[String],
     ) -> Result<HashMap<i32, HashSet<String>>, Box<dyn std::error::Error>> {
@@ -75,13 +73,11 @@ impl Loader {
             }
         };
 
-        let panels = collection.find(filter).run()?;
+        let mut panels = collection.find(filter).await?;
 
         let mut gene_dict: HashMap<i32, HashSet<String>> = HashMap::new();
 
-        for panel in panels {
-            let panel = panel?;
-
+        while let Some(panel) = panels.try_next().await? {
             let panel_name = panel.get_str("panel_name")?;
             let genes = panel.get_array("genes")?;
 
