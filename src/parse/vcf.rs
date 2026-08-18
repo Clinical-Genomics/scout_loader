@@ -92,6 +92,37 @@ pub fn link_gene_panels(variant: &mut Document, gene_to_panels: &HashMap<i32, Ha
     }
 }
 
+/// Add HGNC symbols to a parsed variant using the HGNC ID-to-gene mapping.
+///
+/// Adds the symbols for all HGNC IDs found in the variant. Logs a warning
+/// when an HGNC ID has no corresponding gene in the mapping.
+pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Document>) {
+    let Some(Bson::Array(hgnc_ids)) = variant.get("hgnc_ids") else {
+        return;
+    };
+
+    let mut hgnc_symbols = Vec::new();
+
+    for hgnc_id in hgnc_ids {
+        let Some(hgnc_id) = hgnc_id.as_i32() else {
+            continue;
+        };
+
+        if let Some(gene) = hgncid_to_gene.get(&hgnc_id) {
+            if let Some(symbol) = gene.get_str("hgnc_symbol").ok() {
+                hgnc_symbols.push(symbol.to_string());
+            }
+        } else {
+            eprintln!("missing HGNC symbol for: {hgnc_id}");
+        }
+    }
+
+    variant.insert(
+        "hgnc_symbols",
+        Bson::Array(hgnc_symbols.into_iter().map(Bson::String).collect()),
+    );
+}
+
 /// Processes a VCF file and parses each record according to the variant category.
 ///
 /// The function reads the VCF file at the provided path, determines the sample
@@ -120,6 +151,7 @@ pub fn process_vcf(
     cytobands: &HashMap<String, Vec<Cytoband>>,
     samples: &[SampleConfig],
     gene_to_panels: &HashMap<i32, HashSet<String>>,
+    hgncid_to_gene: &HashMap<i32, Document>,
 ) {
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
 
@@ -360,6 +392,7 @@ pub fn process_vcf(
         }
 
         link_gene_panels(&mut variant, gene_to_panels);
+        add_hgnc_symbols(&mut variant, hgncid_to_gene);
 
         println!("{:#?}\n", variant);
         variant_count += 1;

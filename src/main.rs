@@ -41,15 +41,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let gene_to_panels = loader.gene_to_panels(panel_ids).await?;
 
-    let _hgnc_to_gene = loader.hgncid_to_gene(&config.human_genome_build).await?;
+    let hgncid_to_gene = loader.hgncid_to_gene(&config.human_genome_build).await?;
 
     println!(
         "Number of genes for genome build {}: {}",
         config.human_genome_build,
-        _hgnc_to_gene.len()
+        hgncid_to_gene.len()
     );
 
-    parse(&config, &gene_to_panels)?;
+    parse(&config, &gene_to_panels, &hgncid_to_gene)?;
 
     Ok(())
 }
