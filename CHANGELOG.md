@@ -51,6 +51,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse Mivmir and Gicam scores for SNVs (#60)
 - Introduce a loading orchestrator which is responsible to load all types of variants for a case (#62)
 - Collect gene_to_panels from database, based on case panels found on case config file (#65)
+- Build an HGNC ID → gene document mapping reflecting genes in genome build provided on case loading config file (#67)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)

@@ -40,6 +40,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _gene_to_panels = loader.gene_to_panels(panel_ids)?;
 
+    let _hgnc_to_gene = loader.hgncid_to_gene(&config.human_genome_build)?;
+    println!(
+        "Number of genes for genome build {}: {}",
+        config.human_genome_build,
+        _hgnc_to_gene.len()
+    );
+
     parse(&config)?;
 
     Ok(())
