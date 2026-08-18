@@ -46,7 +46,7 @@ pub fn parse(
                 &config.family,
                 &cytobands,
                 &config.samples,
-                &gene_to_panels,
+                gene_to_panels,
             );
         }
     }

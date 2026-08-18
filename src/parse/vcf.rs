@@ -80,10 +80,10 @@ pub fn link_gene_panels(variant: &mut Document, gene_to_panels: &HashMap<i32, Ha
     let mut panel_names = HashSet::new();
 
     for hgnc_id in hgnc_ids {
-        if let Some(hgnc_id) = hgnc_id.as_i32() {
-            if let Some(gene_panels) = gene_to_panels.get(&hgnc_id) {
-                panel_names.extend(gene_panels.iter().cloned());
-            }
+        if let Some(hgnc_id) = hgnc_id.as_i32()
+            && let Some(gene_panels) = gene_to_panels.get(&hgnc_id)
+        {
+            panel_names.extend(gene_panels.iter().cloned());
         }
     }
 

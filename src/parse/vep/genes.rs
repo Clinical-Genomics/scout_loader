@@ -201,23 +201,23 @@ pub fn set_hgnc_ids(variant: &mut Document) {
     }
 
     // STR HGNC IDs are annotated by Stranger
-    if let Some(Bson::String(str_hgnc_id)) = variant.get("HGNCId") {
-        if let Ok(hgnc_id) = str_hgnc_id.parse::<i32>() {
-            hgnc_ids.insert(hgnc_id);
+    if let Some(Bson::String(str_hgnc_id)) = variant.get("HGNCId")
+        && let Ok(hgnc_id) = str_hgnc_id.parse::<i32>()
+    {
+        hgnc_ids.insert(hgnc_id);
 
-            let has_genes = matches!(
-                variant.get("genes"),
-                Some(Bson::Array(genes)) if !genes.is_empty()
+        let has_genes = matches!(
+            variant.get("genes"),
+            Some(Bson::Array(genes)) if !genes.is_empty()
+        );
+
+        if !has_genes {
+            variant.insert(
+                "genes",
+                Bson::Array(vec![Bson::Document(doc! {
+                    "hgnc_id": hgnc_id,
+                })]),
             );
-
-            if !has_genes {
-                variant.insert(
-                    "genes",
-                    Bson::Array(vec![Bson::Document(doc! {
-                        "hgnc_id": hgnc_id,
-                    })]),
-                );
-            }
         }
     }
 
