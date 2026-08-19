@@ -1,9 +1,9 @@
-use clap::Parser;
-use std::collections::HashMap;
-
 use crate::models::case::CaseConfig;
 use crate::parser::parse;
+use clap::Parser;
 use loader::Loader;
+use mongodb::bson::Document;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 
 mod config;
@@ -12,6 +12,11 @@ mod models;
 mod parse;
 mod parser;
 mod utils;
+
+pub struct VariantAnnotations<'a> {
+    pub gene_to_panels: &'a HashMap<i32, HashSet<String>>,
+    pub hgncid_to_gene: &'a HashMap<i32, Document>,
+}
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -41,15 +46,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let gene_to_panels = loader.gene_to_panels(panel_ids).await?;
 
-    let _hgnc_to_gene = loader.hgncid_to_gene(&config.human_genome_build).await?;
+    let hgncid_to_gene = loader.hgncid_to_gene(&config.human_genome_build).await?;
 
     println!(
         "Number of genes for genome build {}: {}",
         config.human_genome_build,
-        _hgnc_to_gene.len()
+        hgncid_to_gene.len()
     );
 
-    parse(&config, &gene_to_panels)?;
+    parse(
+        &config,
+        VariantAnnotations {
+            gene_to_panels: &gene_to_panels,
+            hgncid_to_gene: &hgncid_to_gene,
+        },
+    )?;
 
     Ok(())
 }
