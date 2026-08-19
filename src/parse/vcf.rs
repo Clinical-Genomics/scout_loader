@@ -313,7 +313,9 @@ pub fn process_vcf(
 
             VariantCategory::Fusion => {
                 set_fusion_info(&record, &mut variant);
-                return;
+                variant_count += 1;
+                print_variant(&variant);
+                continue;
             }
 
             VariantCategory::Cancer | VariantCategory::CancerSv => {
@@ -394,9 +396,14 @@ pub fn process_vcf(
         link_gene_panels(&mut variant, annotations.gene_to_panels);
         add_hgnc_symbols(&mut variant, annotations.hgncid_to_gene);
 
-        println!("{:#?}\n", variant);
+        print_variant(&variant);
         variant_count += 1;
     }
 
     println!("Parsed {} variants from {}", variant_count, path);
+}
+
+/// Print a parsed variant for debugging.
+fn print_variant(variant: &Document) {
+    println!("Parsed variant: {variant:?}\n");
 }
