@@ -1,3 +1,4 @@
+use crate::VariantAnnotations;
 use crate::models::case::SampleConfig;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
@@ -150,8 +151,7 @@ pub fn process_vcf(
     case_id: &str,
     cytobands: &HashMap<String, Vec<Cytoband>>,
     samples: &[SampleConfig],
-    gene_to_panels: &HashMap<i32, HashSet<String>>,
-    hgncid_to_gene: &HashMap<i32, Document>,
+    annotations: &VariantAnnotations<'_>,
 ) {
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
 
@@ -397,8 +397,8 @@ pub fn process_vcf(
             variant.insert("rank_score_results", Bson::Array(rank_score_results));
         }
 
-        link_gene_panels(&mut variant, gene_to_panels);
-        add_hgnc_symbols(&mut variant, hgncid_to_gene);
+        link_gene_panels(&mut variant, annotations.gene_to_panels);
+        add_hgnc_symbols(&mut variant, annotations.hgncid_to_gene);
 
         println!("{:#?}\n", variant);
         variant_count += 1;
