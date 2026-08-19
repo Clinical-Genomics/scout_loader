@@ -61,6 +61,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Refactored VEP annotations parsing module (#38)
 - Refactor and simplify main function to accept and parse case config file (#64)
 - Switch to async Loader (#68)
+- Set the same value for `rank_score` and `fusion_score` for fusion variants (#74)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
 - Parsing of end chromosome (#29)
