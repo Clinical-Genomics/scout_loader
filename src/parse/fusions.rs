@@ -42,7 +42,7 @@ pub fn set_fusion_info(record: &Record, variant: &mut Document) {
     }
 
     if let Some(value) = parse_info_float(record, b"SCORE") {
-        variant.insert("fusion_score", value);
+        variant.insert("rank_score", value);
     }
 
     variant.insert(
