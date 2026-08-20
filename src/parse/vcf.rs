@@ -110,10 +110,10 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
             continue;
         };
 
-        if let Some(gene) = hgncid_to_gene.get(&hgnc_id) {
-            if let Ok(symbol) = gene.get_str("hgnc_symbol") {
-                hgnc_symbols.push(symbol.to_string());
-            }
+        if let Some(gene) = hgncid_to_gene.get(&hgnc_id)
+            && let Ok(symbol) = gene.get_str("hgnc_symbol")
+        {
+            hgnc_symbols.push(symbol.to_string());
         }
     }
 
