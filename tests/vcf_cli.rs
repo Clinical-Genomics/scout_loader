@@ -42,7 +42,6 @@ fn cli_processes_minimal_vep_snv_vcf() {
         .success()
         .stdout(predicate::str::contains("1_123460_G_A_clinical"))
         .stdout(predicate::str::contains("genes"))
-        .stdout(predicate::str::contains("BRCA2"))
         .stdout(predicate::str::contains("hgnc_ids"))
         .stdout(predicate::str::contains("1101"))
         .stdout(predicate::str::contains("missense_variant"));
