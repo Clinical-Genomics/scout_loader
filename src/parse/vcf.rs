@@ -197,9 +197,11 @@ pub fn process_vcf(
             &variant_type,
         );
 
+        /*
         if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
             continue;
         }
+        */
 
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
