@@ -197,7 +197,7 @@ pub fn process_vcf(
             &variant_type,
         );
 
-        if ids.document_id != "4c7d5c70d955875504db72ef8e1abe77" {
+        if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
             continue;
         }
 
