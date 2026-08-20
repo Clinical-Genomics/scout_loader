@@ -114,8 +114,6 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
             if let Ok(symbol) = gene.get_str("hgnc_symbol") {
                 hgnc_symbols.push(symbol.to_string());
             }
-        } else {
-            eprintln!("missing HGNC symbol for: {hgnc_id}");
         }
     }
 
@@ -199,11 +197,9 @@ pub fn process_vcf(
             &variant_type,
         );
 
-        /*
         if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
             continue;
         }
-        */
 
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
