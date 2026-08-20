@@ -6,6 +6,7 @@ use mongodb::bson::Document;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 
+mod build;
 mod config;
 mod loader;
 mod models;

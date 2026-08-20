@@ -1,4 +1,5 @@
 use crate::VariantAnnotations;
+use crate::build::gene::add_genes;
 use crate::models::case::SampleConfig;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
@@ -198,6 +199,12 @@ pub fn process_vcf(
             &variant_type,
         );
 
+        /*
+        if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
+            continue;
+        }
+        */
+
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
 
@@ -395,6 +402,12 @@ pub fn process_vcf(
 
         link_gene_panels(&mut variant, annotations.gene_to_panels);
         add_hgnc_symbols(&mut variant, annotations.hgncid_to_gene);
+
+        if let Ok(genes) = variant.get_array("genes") {
+            let genes = genes.to_vec();
+
+            add_genes(&mut variant, &genes, annotations.hgncid_to_gene);
+        }
 
         print_variant(&variant);
         variant_count += 1;
