@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use crate::models::consequence::SO_TERMS;
 
-//// Parse gene information from transcript annotations.
+/// Parse gene information from transcript annotations.
 ///
 /// Transcripts are grouped by gene using the HGNC identifier when available,
 /// falling back to the HGNC symbol if the identifier is missing.
