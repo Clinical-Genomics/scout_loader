@@ -64,7 +64,8 @@ fn insert_optional_gene_field(
 /// The gene is enriched with information from the HGNC database, including
 /// symbol, Ensembl ID, description, inheritance models, and phenotypes.
 /// Transcript annotations and variant-level gene annotations are also added
-/// when available.
+/// when available. If the gene is not found in the HGNC database, the
+/// annotations available from the VCF are still returned.
 pub fn build_gene(gene: &Document, hgncid_to_gene: &HashMap<i32, Document>) -> Document {
     let mut gene_obj = Document::new();
 
@@ -72,7 +73,7 @@ pub fn build_gene(gene: &Document, hgncid_to_gene: &HashMap<i32, Document>) -> D
 
     gene_obj.insert("hgnc_id", hgnc_id);
 
-    // Get gene information from the database.
+    // Get gene information from the database, if available.
     if let Some(hgnc_gene) = hgncid_to_gene.get(&hgnc_id) {
         if let Ok(value) = hgnc_gene.get_str("hgnc_symbol") {
             gene_obj.insert("hgnc_symbol", value);
