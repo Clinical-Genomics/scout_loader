@@ -76,12 +76,17 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
         let mut exon: Option<Bson> = None;
         let mut canonical_transcript: Option<Bson> = None;
 
-        let mut hgnc_id: Option<Bson> = None;
+        let mut hgnc_id: Option<i32> = None;
         let mut hgnc_symbol: Option<Bson> = None;
 
         for transcript in &gene_transcripts {
             if hgnc_id.is_none() {
-                hgnc_id = transcript.get("hgnc_id").cloned();
+                hgnc_id = match transcript.get("hgnc_id") {
+                    Some(Bson::Int32(value)) => Some(*value),
+                    Some(Bson::Int64(value)) => i32::try_from(*value).ok(),
+                    Some(Bson::String(value)) => value.parse::<i32>().ok(),
+                    _ => None,
+                };
             }
 
             if hgnc_symbol.is_none() {
@@ -154,7 +159,7 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
             "most_severe_spliceai_score": most_severe_spliceai_score,
             "most_severe_spliceai_position": most_severe_spliceai_position,
             "spliceai_prediction": spliceai_prediction,
-            "hgnc_id": hgnc_id,
+            "hgnc_id": hgnc_id.map(Bson::Int32),
             "hgnc_symbol": hgnc_symbol,
             "region_annotation": most_severe_region,
             "hgvs_identifier": hgvs_identifier,

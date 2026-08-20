@@ -318,3 +318,30 @@ pub static SO_TERMS: LazyLock<HashMap<&'static str, SoTerm>> = LazyLock::new(|| 
         ),
     ])
 });
+
+pub const FEATURE_TYPES: &[&str] = &[
+    "exonic",
+    "splicing",
+    "ncRNA_exonic",
+    "intronic",
+    "ncRNA",
+    "upstream",
+    "5UTR",
+    "3UTR",
+    "downstream",
+    "TFBS",
+    "regulatory_region",
+    "genomic_feature",
+    "intergenic_variant",
+];
+
+pub const CONSEQUENCE: &[&str] = &[
+    "deleterious",
+    "deleterious_low_confidence",
+    "probably_damaging",
+    "possibly_damaging",
+    "tolerated",
+    "tolerated_low_confidence",
+    "benign",
+    "unknown",
+];

@@ -55,6 +55,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Tests for `loader.hgncid_to_gene` and `loader.gene_to_panels` (#69)
 - Add gene panel info to parsed variants (#70)
 - Add gene symbols info to parsed variants (#71)
+- Complete gene and transcript variant info using gene DB collection (#77)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)

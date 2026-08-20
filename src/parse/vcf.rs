@@ -1,4 +1,5 @@
 use crate::VariantAnnotations;
+use crate::build::gene::add_genes;
 use crate::models::case::SampleConfig;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
@@ -109,12 +110,10 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
             continue;
         };
 
-        if let Some(gene) = hgncid_to_gene.get(&hgnc_id) {
-            if let Ok(symbol) = gene.get_str("hgnc_symbol") {
-                hgnc_symbols.push(symbol.to_string());
-            }
-        } else {
-            eprintln!("missing HGNC symbol for: {hgnc_id}");
+        if let Some(gene) = hgncid_to_gene.get(&hgnc_id)
+            && let Ok(symbol) = gene.get_str("hgnc_symbol")
+        {
+            hgnc_symbols.push(symbol.to_string());
         }
     }
 
@@ -197,6 +196,12 @@ pub fn process_vcf(
             case_id,
             &variant_type,
         );
+
+        /*
+        if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
+            continue;
+        }
+        */
 
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
@@ -395,6 +400,12 @@ pub fn process_vcf(
 
         link_gene_panels(&mut variant, annotations.gene_to_panels);
         add_hgnc_symbols(&mut variant, annotations.hgncid_to_gene);
+
+        if let Ok(genes) = variant.get_array("genes") {
+            let genes = genes.to_vec();
+
+            add_genes(&mut variant, &genes, annotations.hgncid_to_gene);
+        }
 
         print_variant(&variant);
         variant_count += 1;
