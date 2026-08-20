@@ -82,5 +82,5 @@ pub struct VariantIds {
 pub struct Compound {
     pub display_name: String,
     pub variant: String,
-    pub score: f64,
+    pub combined_score: f64,
 }

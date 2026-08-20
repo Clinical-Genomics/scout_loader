@@ -68,7 +68,7 @@ pub fn parse_compounds(
                     .collect::<Vec<_>>(),
             );
 
-            let score = split_compound
+            let combined_score = split_compound
                 .get(1)
                 .and_then(|value| value.parse::<f64>().ok())
                 .unwrap_or(0.0);
@@ -76,7 +76,7 @@ pub fn parse_compounds(
             compounds.push(Compound {
                 display_name: compound_name.to_string(),
                 variant: variant_id,
-                score,
+                combined_score,
             });
         }
     }
