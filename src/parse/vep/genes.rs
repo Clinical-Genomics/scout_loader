@@ -4,28 +4,11 @@ use std::collections::HashSet;
 
 use crate::models::consequence::SO_TERMS;
 
-/// Parse gene information from transcript annotations.
+/// Group parsed transcripts by HGNC gene and build gene-level annotations.
 ///
-/// Transcripts are grouped by gene using the HGNC identifier when available,
-/// falling back to the HGNC symbol if the identifier is missing.
-///
-/// For each gene, all associated transcripts are stored and the transcript
-/// with the most severe consequence is selected according to the SO_TERMS
-/// consequence ranking. Gene-level annotations such as the most severe
-/// consequence, region, SIFT/PolyPhen predictions, SpliceAI information,
-/// canonical transcript and HGVS identifier are extracted from the selected
-/// transcript.
-///
-/// Transcripts without a valid gene identifier are skipped.
-///
-/// # Arguments
-///
-/// * `transcripts` - A slice of parsed VEP transcript BSON documents.
-///
-/// # Returns
-///
-/// A vector of BSON documents, where each document represents a gene and
-/// contains its transcripts and gene-level annotations.
+/// Transcripts are grouped by HGNC ID, or by HGNC symbol when no HGNC ID is
+/// available. For each gene, the most severe functional, SIFT, PolyPhen, and
+/// SpliceAI annotations are collected together with transcript-level data.
 pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
     let mut genes_to_transcripts: HashMap<String, Vec<Document>> = HashMap::new();
 
@@ -76,12 +59,17 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
         let mut exon: Option<Bson> = None;
         let mut canonical_transcript: Option<Bson> = None;
 
-        let mut hgnc_id: Option<Bson> = None;
+        let mut hgnc_id: Option<i32> = None;
         let mut hgnc_symbol: Option<Bson> = None;
 
         for transcript in &gene_transcripts {
             if hgnc_id.is_none() {
-                hgnc_id = transcript.get("hgnc_id").cloned();
+                hgnc_id = match transcript.get("hgnc_id") {
+                    Some(Bson::Int32(value)) => Some(*value),
+                    Some(Bson::Int64(value)) => i32::try_from(*value).ok(),
+                    Some(Bson::String(value)) => value.parse::<i32>().ok(),
+                    _ => None,
+                };
             }
 
             if hgnc_symbol.is_none() {
@@ -154,7 +142,7 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
             "most_severe_spliceai_score": most_severe_spliceai_score,
             "most_severe_spliceai_position": most_severe_spliceai_position,
             "spliceai_prediction": spliceai_prediction,
-            "hgnc_id": hgnc_id,
+            "hgnc_id": hgnc_id.map(Bson::Int32),
             "hgnc_symbol": hgnc_symbol,
             "region_annotation": most_severe_region,
             "hgvs_identifier": hgvs_identifier,
