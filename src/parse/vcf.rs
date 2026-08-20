@@ -407,16 +407,7 @@ pub fn process_vcf(
             add_genes(&mut variant, &genes, annotations.hgncid_to_gene);
         }
 
-        if let Ok(compounds) = variant.get_array("compounds") {
-            let compounds = compounds.to_vec();
-
-            println!("Compounds before:");
-            for compound in &compounds {
-                println!("  {compound:?}");
-            }
-        }
-
-        //print_variant(&variant);
+        print_variant(&variant);
         variant_count += 1;
     }
 
