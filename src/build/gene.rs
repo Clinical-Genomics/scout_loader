@@ -59,24 +59,20 @@ fn insert_optional_gene_field(
     }
 }
 
-/// Build a complete gene annotation for a parsed variant.
+/// Build a complete gene annotation from parsed VCF information.
 ///
-/// Enriches the parsed gene with information from the HGNC gene mapping,
-/// builds all transcript annotations, and adds the most severe functional,
-/// regional, SIFT, PolyPhen, and SpliceAI annotations.
-///
-/// If the HGNC ID is not found in the database mapping, the gene is still
-/// returned with the annotations available from the VCF.
+/// The gene is enriched with information from the HGNC database, including
+/// symbol, Ensembl ID, description, inheritance models, and phenotypes.
+/// Transcript annotations and variant-level gene annotations are also added
+/// when available.
 pub fn build_gene(gene: &Document, hgncid_to_gene: &HashMap<i32, Document>) -> Document {
     let mut gene_obj = Document::new();
 
-    let Some(hgnc_id) = gene.get_i32("hgnc_id").ok() else {
-        return gene_obj;
-    };
+    let hgnc_id = gene.get_i32("hgnc_id").expect("Gene must have an hgnc_id");
 
     gene_obj.insert("hgnc_id", hgnc_id);
 
-    // Enrich from HGNC database
+    // Get gene information from the database.
     if let Some(hgnc_gene) = hgncid_to_gene.get(&hgnc_id) {
         if let Ok(value) = hgnc_gene.get_str("hgnc_symbol") {
             gene_obj.insert("hgnc_symbol", value);
@@ -90,20 +86,20 @@ pub fn build_gene(gene: &Document, hgncid_to_gene: &HashMap<i32, Document>) -> D
             gene_obj.insert("description", value);
         }
 
-        if let Ok(value) = hgnc_gene.get_array("inheritance_models") {
-            if !value.is_empty() {
-                gene_obj.insert("inheritance", value.clone());
-            }
+        if let Ok(value) = hgnc_gene.get_array("inheritance_models")
+            && !value.is_empty()
+        {
+            gene_obj.insert("inheritance", value.clone());
         }
 
-        if let Ok(value) = hgnc_gene.get_array("phenotypes") {
-            if !value.is_empty() {
-                gene_obj.insert("phenotypes", value.clone());
-            }
+        if let Ok(value) = hgnc_gene.get_array("phenotypes")
+            && !value.is_empty()
+        {
+            gene_obj.insert("phenotypes", value.clone());
         }
     }
 
-    // Build transcripts
+    // Build transcripts.
     let transcripts = gene
         .get_array("transcripts")
         .ok()
@@ -119,7 +115,7 @@ pub fn build_gene(gene: &Document, hgncid_to_gene: &HashMap<i32, Document>) -> D
 
     gene_obj.insert("transcripts", Bson::Array(transcripts));
 
-    // Functional annotation
+    // Functional annotation.
     if let Ok(value) = gene.get_str("most_severe_consequence") {
         if SO_TERMS.contains_key(value) {
             gene_obj.insert("functional_annotation", value);
@@ -128,7 +124,7 @@ pub fn build_gene(gene: &Document, hgncid_to_gene: &HashMap<i32, Document>) -> D
         }
     }
 
-    // Region annotation
+    // Region annotation.
     if let Ok(value) = gene.get_str("region_annotation") {
         if FEATURE_TYPES.contains(&value) {
             gene_obj.insert("region_annotation", value);
@@ -137,7 +133,7 @@ pub fn build_gene(gene: &Document, hgncid_to_gene: &HashMap<i32, Document>) -> D
         }
     }
 
-    // SIFT
+    // SIFT prediction.
     if let Ok(value) = gene.get_str("most_severe_sift") {
         if CONSEQUENCE.contains(&value) {
             gene_obj.insert("sift_prediction", value);
@@ -146,7 +142,7 @@ pub fn build_gene(gene: &Document, hgncid_to_gene: &HashMap<i32, Document>) -> D
         }
     }
 
-    // PolyPhen
+    // PolyPhen prediction.
     if let Ok(value) = gene.get_str("most_severe_polyphen") {
         if CONSEQUENCE.contains(&value) {
             gene_obj.insert("polyphen_prediction", value);
@@ -155,38 +151,31 @@ pub fn build_gene(gene: &Document, hgncid_to_gene: &HashMap<i32, Document>) -> D
         }
     }
 
-    // SpliceAI
     insert_optional_gene_field(
         &mut gene_obj,
         gene,
         "most_severe_spliceai_score",
         "spliceai_score",
     );
-
     insert_optional_gene_field(
         &mut gene_obj,
         gene,
         "most_severe_spliceai_position",
         "spliceai_position",
     );
-
     insert_optional_gene_field(
         &mut gene_obj,
         gene,
         "spliceai_prediction",
         "spliceai_prediction",
     );
-
-    // Other gene annotations
     insert_optional_gene_field(&mut gene_obj, gene, "hgvs_identifier", "hgvs_identifier");
-
     insert_optional_gene_field(
         &mut gene_obj,
         gene,
         "canonical_transcript",
         "canonical_transcript",
     );
-
     insert_optional_gene_field(&mut gene_obj, gene, "exon", "exon");
 
     gene_obj

@@ -45,10 +45,10 @@ pub fn build_transcript(transcript: &Document) -> Document {
     transcript_obj.insert("hgnc_id", hgnc_id.clone());
 
     for key in BUILD_TRANSCRIPT_OPTIONAL_KEYS {
-        if let Some(value) = transcript.get(*key) {
-            if !matches!(value, Bson::Null) {
-                transcript_obj.insert(*key, value.clone());
-            }
+        if let Some(value) = transcript.get(*key)
+            && !matches!(value, Bson::Null)
+        {
+            transcript_obj.insert(*key, value.clone());
         }
     }
 
