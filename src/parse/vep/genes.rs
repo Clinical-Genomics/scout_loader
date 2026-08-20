@@ -4,11 +4,28 @@ use std::collections::HashSet;
 
 use crate::models::consequence::SO_TERMS;
 
-/// Group parsed transcripts by HGNC gene and build gene-level annotations.
+//// Parse gene information from transcript annotations.
 ///
-/// Transcripts are grouped by HGNC ID, or by HGNC symbol when no HGNC ID is
-/// available. For each gene, the most severe functional, SIFT, PolyPhen, and
-/// SpliceAI annotations are collected together with transcript-level data.
+/// Transcripts are grouped by gene using the HGNC identifier when available,
+/// falling back to the HGNC symbol if the identifier is missing.
+///
+/// For each gene, all associated transcripts are stored and the transcript
+/// with the most severe consequence is selected according to the SO_TERMS
+/// consequence ranking. Gene-level annotations such as the most severe
+/// consequence, region, SIFT/PolyPhen predictions, SpliceAI information,
+/// canonical transcript and HGVS identifier are extracted from the selected
+/// transcript.
+///
+/// Transcripts without a valid gene identifier are skipped.
+///
+/// # Arguments
+///
+/// * `transcripts` - A slice of parsed VEP transcript BSON documents.
+///
+/// # Returns
+///
+/// A vector of BSON documents, where each document represents a gene and
+/// contains its transcripts and gene-level annotations.
 pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
     let mut genes_to_transcripts: HashMap<String, Vec<Document>> = HashMap::new();
 
