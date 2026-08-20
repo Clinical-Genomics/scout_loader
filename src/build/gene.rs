@@ -69,7 +69,9 @@ fn insert_optional_gene_field(
 pub fn build_gene(gene: &Document, hgncid_to_gene: &HashMap<i32, Document>) -> Document {
     let mut gene_obj = Document::new();
 
-    let hgnc_id = gene.get_i32("hgnc_id").expect("Gene must have an hgnc_id");
+    let Some(hgnc_id) = gene.get_i32("hgnc_id").ok() else {
+        return gene_obj;
+    };
 
     gene_obj.insert("hgnc_id", hgnc_id);
 
