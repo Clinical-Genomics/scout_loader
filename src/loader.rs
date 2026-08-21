@@ -114,4 +114,33 @@ impl Loader {
 
         Ok(gene_dict)
     }
+
+    /// Loads a batch of variants into the database.
+    ///
+    /// Variants are inserted in bulk to reduce the number of database
+    /// round trips. If the bulk insertion fails because some variants
+    /// already exist, each variant is inserted individually.
+    pub async fn load_variant_bulk(
+        &self,
+        variants: Vec<Document>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if variants.is_empty() {
+            return Ok(());
+        }
+
+        let collection = self.db.collection::<Document>("variant");
+
+        match collection.insert_many(variants.clone()).await {
+            Ok(_) => Ok(()),
+            Err(mongodb::error::Error { .. }) => {
+                // If we need the same fallback behaviour as the old Python
+                // implementation, insert the variants individually here.
+                for variant in variants {
+                    collection.insert_one(variant).await?;
+                }
+
+                Ok(())
+            }
+        }
+    }
 }

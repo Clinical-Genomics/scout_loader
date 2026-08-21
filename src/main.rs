@@ -64,7 +64,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             gene_to_panels: &gene_to_panels,
             hgncid_to_gene: &hgncid_to_gene,
         },
-    )?;
+        &loader,
+    )
+    .await?;
 
     Ok(())
 }
