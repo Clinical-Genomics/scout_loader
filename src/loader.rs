@@ -115,6 +115,12 @@ impl Loader {
         Ok(gene_dict)
     }
 
+    pub async fn count_variants(&self) -> Result<u64, mongodb::error::Error> {
+        let collection = self.db.collection::<Document>("variant");
+
+        collection.count_documents(doc! {}).await
+    }
+
     /// Loads a batch of variants into the database.
     ///
     /// Variants are inserted in bulk to reduce the number of database

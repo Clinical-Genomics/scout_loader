@@ -58,6 +58,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         hgncid_to_gene.len()
     );
 
+    let before = loader.count_variants().await?;
+    println!("Variants before loading: {}", before);
+
     parse(
         &config,
         VariantAnnotations {
@@ -67,6 +70,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         &loader,
     )
     .await?;
+
+    let after = loader.count_variants().await?;
+    println!("Variants after loading: {}", after);
+    println!("Variants added: {}", after - before);
 
     Ok(())
 }
