@@ -57,6 +57,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Add gene symbols info to parsed variants (#71)
 - Complete gene and transcript variant info using gene DB collection (#77)
 - Retain `panther_domain` when parsing variant transcripts (#78)
+- Check that provided institute exists in database prior to the parsing and loading of variants (#)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)

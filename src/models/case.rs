@@ -8,6 +8,8 @@ use std::path::PathBuf;
 /// intentionally excluded and will not be loaded.
 #[derive(Debug, Deserialize)]
 pub struct CaseConfig {
+    pub owner: String,
+
     pub family: String,
 
     pub human_genome_build: String,

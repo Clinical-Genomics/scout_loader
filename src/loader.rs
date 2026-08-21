@@ -49,6 +49,25 @@ impl Loader {
         Ok(hgnc_dict)
     }
 
+    /// Check whether an institute exists in the database.
+    ///
+    /// # Arguments
+    ///
+    /// * `institute_id` - Identifier of the institute to look up.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(true)` if the institute exists, `Ok(false)` if it does not,
+    /// or a MongoDB error if the database query fails.
+    pub async fn institute_exists(&self, institute_id: &str) -> mongodb::error::Result<bool> {
+        let collection = self.db.collection::<Document>("institute");
+
+        Ok(collection
+            .find_one(doc! { "_id": institute_id })
+            .await?
+            .is_some())
+    }
+
     /// Build a mapping of HGNC IDs to the gene panels containing each gene.
     ///
     /// Fetches the requested gene panels from MongoDB and collects the panel

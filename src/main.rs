@@ -28,6 +28,8 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let loader = Loader::new("config.toml").await?;
+
     let args = Args::parse();
 
     let yaml = fs::read_to_string(&args.case_config)?;
@@ -36,12 +38,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Case: {}", config.family);
     println!("Genome build: {}", config.human_genome_build);
     println!("Gene panels: {:?}", config.gene_panels);
+    println!("Institute: {:?}", config.owner);
+
+    if !loader.institute_exists(&config.owner).await? {
+        return Err(format!("Institute '{}' does not exist in database", config.owner).into());
+    }
 
     for sample in &config.samples {
         println!("Sample: {} ({:?})", sample.sample_id, sample.sample_name);
     }
-
-    let loader = Loader::new("config.toml").await?;
 
     let panel_ids = config.gene_panels.as_deref().unwrap_or_default();
 
