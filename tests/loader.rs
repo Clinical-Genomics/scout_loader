@@ -11,6 +11,20 @@ use mongodb::Client;
 use mongodb::bson::{Document, doc};
 use std::collections::HashSet;
 
+const TEST_CONFIG: &str = "tests/fixtures/test_config.toml";
+
+/// Returns a MongoDB client connected to the test MongoDB instance.
+async fn test_client() -> Option<Client> {
+    let uri = std::env::var("MONGODB_URI").ok()?;
+
+    Some(
+        Client::with_uri_str(&uri)
+            .await
+            .expect("failed to connect to MongoDB"),
+    )
+}
+
+/// Inserts test genes for the HGNC mapping tests.
 async fn insert_test_genes(collection: &mongodb::Collection<Document>) {
     collection
         .insert_many([
@@ -34,6 +48,7 @@ async fn insert_test_genes(collection: &mongodb::Collection<Document>) {
         .expect("failed to insert test genes");
 }
 
+/// Inserts test gene panels for the gene-to-panel mapping tests.
 async fn insert_test_gene_panels(collection: &mongodb::Collection<Document>) {
     collection
         .insert_many([
@@ -68,20 +83,15 @@ async fn insert_test_gene_panels(collection: &mongodb::Collection<Document>) {
         .expect("failed to insert test gene panels");
 }
 
+/// Tests that HGNC IDs are mapped to genes for the requested genome build.
 #[tokio::test]
 async fn hgncid_to_gene() {
-    let Some(uri) = std::env::var("MONGODB_URI").ok() else {
+    let Some(client) = test_client().await else {
         eprintln!("Skipping MongoDB Loader test: MONGODB_URI is not set");
         return;
     };
 
-    let client = Client::with_uri_str(&uri)
-        .await
-        .expect("failed to connect to MongoDB");
-
-    let config = config::Config::from_file("config.toml").expect("failed to load config");
-
-    let db = client.database(&config.mongo_dbname);
+    let db = client.database("scout_loader_test");
     let collection = db.collection::<Document>("hgnc_gene");
 
     collection
@@ -91,7 +101,7 @@ async fn hgncid_to_gene() {
 
     insert_test_genes(&collection).await;
 
-    let loader = Loader::new("config.toml")
+    let loader = Loader::new(TEST_CONFIG)
         .await
         .expect("failed to create Loader");
 
@@ -124,20 +134,15 @@ async fn hgncid_to_gene() {
         .expect("failed to clean hgnc_gene collection");
 }
 
+/// Tests that genes are mapped to all gene panels containing them.
 #[tokio::test]
 async fn gene_to_panels() {
-    let Some(uri) = std::env::var("MONGODB_URI").ok() else {
+    let Some(client) = test_client().await else {
         eprintln!("Skipping MongoDB Loader test: MONGODB_URI is not set");
         return;
     };
 
-    let client = Client::with_uri_str(&uri)
-        .await
-        .expect("failed to connect to MongoDB");
-
-    let config = config::Config::from_file("config.toml").expect("failed to load config");
-
-    let db = client.database(&config.mongo_dbname);
+    let db = client.database("scout_loader_test");
     let collection = db.collection::<Document>("gene_panel");
 
     collection
@@ -147,7 +152,7 @@ async fn gene_to_panels() {
 
     insert_test_gene_panels(&collection).await;
 
-    let loader = Loader::new("config.toml")
+    let loader = Loader::new(TEST_CONFIG)
         .await
         .expect("failed to create Loader");
 
@@ -171,4 +176,52 @@ async fn gene_to_panels() {
         .delete_many(doc! {})
         .await
         .expect("failed to clean gene_panel collection");
+}
+
+/// Tests that institute_exists returns true for an existing institute
+/// and false for an institute that does not exist.
+#[tokio::test]
+async fn institute_exists() {
+    let Some(client) = test_client().await else {
+        eprintln!("Skipping MongoDB Loader test: MONGODB_URI is not set");
+        return;
+    };
+
+    let db = client.database("scout_loader_test");
+    let collection = db.collection::<Document>("institute");
+
+    collection
+        .delete_many(doc! {})
+        .await
+        .expect("failed to clean institute collection");
+
+    collection
+        .insert_one(doc! {
+            "_id": "test_institute",
+        })
+        .await
+        .expect("failed to insert test institute");
+
+    let loader = Loader::new(TEST_CONFIG)
+        .await
+        .expect("failed to create Loader");
+
+    assert!(
+        loader
+            .institute_exists("test_institute")
+            .await
+            .expect("failed to check existing institute")
+    );
+
+    assert!(
+        !loader
+            .institute_exists("does_not_exist")
+            .await
+            .expect("failed to check nonexistent institute")
+    );
+
+    collection
+        .delete_many(doc! {})
+        .await
+        .expect("failed to clean institute collection");
 }
