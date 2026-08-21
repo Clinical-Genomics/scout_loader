@@ -3,6 +3,7 @@ mod config {
 }
 
 mod loader {
+    #![allow(dead_code)]
     include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/loader.rs"));
 }
 

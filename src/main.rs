@@ -59,7 +59,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let before = loader.count_variants().await?;
-    println!("Variants before loading: {}", before);
 
     parse(
         &config,
@@ -72,6 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     let after = loader.count_variants().await?;
+    println!("Variants before loading: {}", before);
     println!("Variants after loading: {}", after);
     println!("Variants added: {}", after - before);
 
