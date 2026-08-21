@@ -28,6 +28,8 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let loader = Loader::new("config.toml").await?;
+
     let args = Args::parse();
 
     let yaml = fs::read_to_string(&args.case_config)?;
@@ -36,12 +38,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Case: {}", config.family);
     println!("Genome build: {}", config.human_genome_build);
     println!("Gene panels: {:?}", config.gene_panels);
+    println!("Institute: {:?}", config.owner);
+
+    validate_institute(&loader, &config.owner).await?;
 
     for sample in &config.samples {
         println!("Sample: {} ({:?})", sample.sample_id, sample.sample_name);
     }
-
-    let loader = Loader::new("config.toml").await?;
 
     let panel_ids = config.gene_panels.as_deref().unwrap_or_default();
 
@@ -62,6 +65,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             hgncid_to_gene: &hgncid_to_gene,
         },
     )?;
+
+    Ok(())
+}
+
+/// Validates that the specified institute exists in the database.
+///
+/// In the test environment (`TEST_ENV`), the database check is skipped.
+/// Returns an error if the institute does not exist.
+async fn validate_institute(
+    loader: &Loader,
+    institute_id: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if std::env::var("TEST_ENV").is_ok() {
+        return Ok(());
+    }
+
+    if !loader.institute_exists(institute_id).await? {
+        return Err(format!("Institute '{}' does not exist in database", institute_id).into());
+    }
 
     Ok(())
 }

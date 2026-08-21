@@ -14,6 +14,7 @@ fn run_with_config(config: &str) -> Command {
     let mut cmd = Command::cargo_bin("scout_loader").expect("binary should build");
 
     cmd.current_dir(repo_root())
+        .env("TEST_ENV", "1")
         .arg("--case-config")
         .arg(fixture_path(config));
 
