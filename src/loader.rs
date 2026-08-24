@@ -114,4 +114,48 @@ impl Loader {
 
         Ok(gene_dict)
     }
+
+    pub async fn count_variants(&self) -> Result<u64, mongodb::error::Error> {
+        let collection = self.db.collection::<Document>("variant");
+
+        collection.count_documents(doc! {}).await
+    }
+
+    /// Loads a batch of variants into the database.
+    ///
+    /// Variants are inserted in bulk to reduce the number of database
+    /// round trips. If the bulk insertion encounters a duplicate key,
+    /// the variants are retried individually and existing variants are
+    /// skipped.
+    pub async fn load_variant_bulk(
+        &self,
+        variants: Vec<Document>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if variants.is_empty() {
+            return Ok(());
+        }
+
+        let collection = self.db.collection::<Document>("variant");
+
+        match collection.insert_many(variants.clone()).await {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                if !err.to_string().contains("E11000") {
+                    return Err(err.into());
+                }
+
+                for variant in variants {
+                    match collection.insert_one(variant).await {
+                        Ok(_) => {}
+                        Err(err) if err.to_string().contains("E11000") => {
+                            // Variant already exists; skip it.
+                        }
+                        Err(err) => return Err(err.into()),
+                    }
+                }
+
+                Ok(())
+            }
+        }
+    }
 }

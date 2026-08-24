@@ -1,5 +1,8 @@
+use mongodb::bson::Document;
 use serde::Serialize;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub struct Coordinates {
@@ -20,12 +23,14 @@ pub enum VariantType {
     Research,
 }
 
-impl VariantType {
-    pub fn from_str(s: &str) -> Result<Self, String> {
+impl FromStr for VariantType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "clinical" => Ok(VariantType::Clinical),
             "research" => Ok(VariantType::Research),
-            _ => Err(format!("Unknown variant type: {}", s)),
+            _ => Err(format!("Unknown variant type: {s}")),
         }
     }
 }
@@ -83,4 +88,9 @@ pub struct Compound {
     pub display_name: String,
     pub variant: String,
     pub combined_score: f64,
+}
+
+pub struct VariantAnnotations<'a> {
+    pub gene_to_panels: &'a HashMap<i32, HashSet<String>>,
+    pub hgncid_to_gene: &'a HashMap<i32, Document>,
 }

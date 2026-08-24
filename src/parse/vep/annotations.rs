@@ -1,6 +1,6 @@
-use crate::HashMap;
 use crate::models::consequence::SO_TERMS;
 use mongodb::bson::{Bson, Document};
+use std::collections::HashMap;
 use std::collections::HashSet;
 
 /// Get strand information from a VEP transcript entry.

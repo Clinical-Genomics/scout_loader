@@ -1,8 +1,9 @@
-use crate::VariantAnnotations;
 use crate::build::gene::add_genes;
+use crate::loader::Loader;
 use crate::models::case::SampleConfig;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
+use crate::models::variant::VariantAnnotations;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::parse::alleles::parse_alleles;
@@ -35,6 +36,8 @@ use crate::parse::vep::transcripts::parse_vep_transcripts;
 use mongodb::bson::{self, Bson, Document, doc};
 use rust_htslib::bcf::{Read, Reader};
 use std::collections::{HashMap, HashSet};
+
+const BATCH_SIZE: usize = 1_000;
 
 /// Builds a mapping between configured samples and their positions in a VCF.
 ///
@@ -123,12 +126,16 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
     );
 }
 
-/// Processes a VCF file and parses each record according to the variant category.
+/// Processes a VCF file and loads parsed variants in batches.
 ///
 /// The function reads the VCF file at the provided path, determines the sample
 /// order from the VCF header, and builds a sample mapping using the samples
 /// configured for the case. The mapping is created separately for each VCF
 /// because sample order may differ between VCF files.
+///
+/// Parsed variants are accumulated into batches of `BATCH_SIZE` and passed to
+/// the loader for insertion. This keeps memory usage bounded while still
+/// avoiding a database operation for every individual variant.
 ///
 /// # Arguments
 ///
@@ -138,12 +145,20 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
 /// * `case_id` - ID of the case.
 /// * `cytobands` - Parsed cytobands corresponding to the case genome build.
 /// * `samples` - Samples configured for the case.
+/// * `annotations` - Gene and gene-panel annotations used when building
+///   variants.
+/// * `loader` - Loader used to persist batches of parsed variants.
+///
+/// # Errors
+///
+/// Returns an error if a batch cannot be loaded into the database.
 ///
 /// # Panics
 ///
 /// Panics if the VCF file cannot be opened, if the sample mapping cannot be
 /// created, or if a record cannot be read.
-pub fn process_vcf(
+#[allow(clippy::too_many_arguments)]
+pub async fn process_vcf(
     path: &str,
     category: VariantCategory,
     variant_type: VariantType,
@@ -151,7 +166,8 @@ pub fn process_vcf(
     cytobands: &HashMap<String, Vec<Cytoband>>,
     samples: &[SampleConfig],
     annotations: &VariantAnnotations<'_>,
-) {
+    loader: &Loader,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
 
     let header = vcf.header().clone();
@@ -174,10 +190,11 @@ pub fn process_vcf(
 
     if let Err(error) = validate_sample_mapping(vcf.header(), &sample_mapping) {
         eprintln!("Sample mapping validation failed: {}", error);
-        return;
+        return Err(error.into());
     }
 
     let mut variant_count = 0;
+    let mut batch = Vec::with_capacity(BATCH_SIZE);
 
     for result in vcf.records() {
         let record = result.unwrap();
@@ -228,8 +245,9 @@ pub fn process_vcf(
 
         let samples = parse_genotypes(&record, &sample_mapping, category);
 
-        // This structure contains fields common to all variant categories.
+        // This structure contains fields common to all variant categories
         let mut variant = doc! {
+            "_id": ids.document_id.clone(),
             "simple_id": ids.simple_id,
             "variant_id": ids.variant_id,
             "display_name": ids.display_name,
@@ -241,7 +259,7 @@ pub fn process_vcf(
             "rank_score": rank_score,
             "norm_rank_score": norm_rank_score,
 
-            "type": variant_type,
+            "variant_type": variant_type,
 
             "chromosome": coordinates.chromosome,
             "end_chrom": coordinates.end_chrom,
@@ -407,11 +425,21 @@ pub fn process_vcf(
             add_genes(&mut variant, &genes, annotations.hgncid_to_gene);
         }
 
-        print_variant(&variant);
+        // print_variant(&variant);
         variant_count += 1;
+        batch.push(variant);
+        if batch.len() >= BATCH_SIZE {
+            loader.load_variant_bulk(batch).await?;
+            batch = Vec::with_capacity(BATCH_SIZE);
+        }
+    }
+    if !batch.is_empty() {
+        loader.load_variant_bulk(batch).await?;
     }
 
     println!("Parsed {} variants from {}", variant_count, path);
+
+    Ok(())
 }
 
 /// Print a parsed variant for debugging.

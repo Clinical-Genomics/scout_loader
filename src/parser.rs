@@ -1,9 +1,11 @@
-use crate::VariantAnnotations;
+use crate::loader::Loader;
 use crate::models::build::GenomeBuild;
 use crate::models::case::CaseConfig;
+use crate::models::variant::VariantAnnotations;
 use crate::models::variant::{VariantCategory, VariantType};
 use crate::parse::cytobands::set_cytobands;
 use crate::parse::vcf::process_vcf;
+use std::str::FromStr;
 
 /// Parses and processes all clinical VCFs provided for a case.
 ///
@@ -13,9 +15,10 @@ use crate::parse::vcf::process_vcf;
 ///
 /// The variant type is derived from the corresponding VCF key in the case
 /// configuration. Research VCFs are intentionally excluded.
-pub fn parse(
+pub async fn parse(
     config: &CaseConfig,
     annotations: VariantAnnotations<'_>,
+    loader: &Loader,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let genome_build = GenomeBuild::from_str(&config.human_genome_build)
         .map_err(|_| format!("Invalid genome build: {}", config.human_genome_build))?;
@@ -47,7 +50,9 @@ pub fn parse(
                 &cytobands,
                 &config.samples,
                 &annotations,
-            );
+                loader,
+            )
+            .await?;
         }
     }
 

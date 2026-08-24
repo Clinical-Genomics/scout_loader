@@ -1,4 +1,3 @@
-use crate::HashMap;
 use crate::parse::info::parse_info_string;
 use crate::parse::vep::annotations::{
     get_regional_annotation, get_strand, parse_clinvar_annotations, parse_cosmic, parse_dbsnp,
@@ -11,6 +10,7 @@ use crate::parse::vep::scores::parse_cadd;
 use crate::parse::vep::utils::{get_highest_float_score_in_string, get_sequence_aux};
 use mongodb::bson::{Bson, Document};
 use rust_htslib::bcf::Record;
+use std::collections::HashMap;
 use std::collections::HashSet;
 
 /// Parse VEP CSQ annotations from a VCF record.

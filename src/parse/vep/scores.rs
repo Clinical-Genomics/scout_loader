@@ -1,5 +1,5 @@
-use crate::HashMap;
 use mongodb::bson::{Bson, Document};
+use std::collections::HashMap;
 
 /// Parse transcript-level CADD Phred score.
 pub fn parse_cadd(transcript: &mut Document, entry: &HashMap<String, String>) {
