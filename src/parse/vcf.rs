@@ -259,7 +259,7 @@ pub async fn process_vcf(
             "rank_score": rank_score,
             "norm_rank_score": norm_rank_score,
 
-            "type": variant_type,
+            "variant_type": variant_type,
 
             "chromosome": coordinates.chromosome,
             "end_chrom": coordinates.end_chrom,
