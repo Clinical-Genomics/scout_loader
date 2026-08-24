@@ -157,7 +157,7 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
 ///
 /// Panics if the VCF file cannot be opened, if the sample mapping cannot be
 /// created, or if a record cannot be read.
-#[allow(clippy::too_many_arguments)]
+
 pub async fn process_vcf(
     path: &str,
     category: VariantCategory,
@@ -247,6 +247,7 @@ pub async fn process_vcf(
 
         // This structure contains fields common to all variant categories.
         let mut variant = doc! {
+            "_id": ids.document_id.clone(),
             "simple_id": ids.simple_id,
             "variant_id": ids.variant_id,
             "display_name": ids.display_name,
@@ -424,7 +425,7 @@ pub async fn process_vcf(
             add_genes(&mut variant, &genes, annotations.hgncid_to_gene);
         }
 
-        print_variant(&variant);
+        // print_variant(&variant);
         variant_count += 1;
         batch.push(variant);
         if batch.len() >= BATCH_SIZE {
@@ -433,6 +434,7 @@ pub async fn process_vcf(
         }
     }
     if !batch.is_empty() {
+        println!("Loading final batch of {} variants", batch.len());
         loader.load_variant_bulk(batch).await?;
     }
 
