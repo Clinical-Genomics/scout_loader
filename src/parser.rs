@@ -5,6 +5,7 @@ use crate::models::variant::VariantAnnotations;
 use crate::models::variant::{VariantCategory, VariantType};
 use crate::parse::cytobands::set_cytobands;
 use crate::parse::vcf::process_vcf;
+use std::str::FromStr;
 
 /// Parses and processes all clinical VCFs provided for a case.
 ///
