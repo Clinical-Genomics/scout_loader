@@ -124,8 +124,9 @@ impl Loader {
     /// Loads a batch of variants into the database.
     ///
     /// Variants are inserted in bulk to reduce the number of database
-    /// round trips. If the bulk insertion fails because some variants
-    /// already exist, each variant is inserted individually.
+    /// round trips. If the bulk insertion encounters a duplicate key,
+    /// the variants are retried individually and existing variants are
+    /// skipped.
     pub async fn load_variant_bulk(
         &self,
         variants: Vec<Document>,
@@ -138,11 +139,19 @@ impl Loader {
 
         match collection.insert_many(variants.clone()).await {
             Ok(_) => Ok(()),
-            Err(mongodb::error::Error { .. }) => {
-                // If we need the same fallback behaviour as the old Python
-                // implementation, insert the variants individually here.
+            Err(err) => {
+                if !err.to_string().contains("E11000") {
+                    return Err(err.into());
+                }
+
                 for variant in variants {
-                    collection.insert_one(variant).await?;
+                    match collection.insert_one(variant).await {
+                        Ok(_) => {}
+                        Err(err) if err.to_string().contains("E11000") => {
+                            // Variant already exists; skip it.
+                        }
+                        Err(err) => return Err(err.into()),
+                    }
                 }
 
                 Ok(())

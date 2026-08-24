@@ -284,11 +284,6 @@ pub async fn process_vcf(
             "samples": samples,
         };
 
-        println!(
-            "Creating variant _id={} variant_id={}",
-            variant["_id"], variant["variant_id"]
-        );
-
         if coordinates.mate_id.is_some() {
             variant.insert("mate_id", coordinates.mate_id);
         }
