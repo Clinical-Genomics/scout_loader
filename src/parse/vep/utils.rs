@@ -1,4 +1,4 @@
-use crate::HashMap;
+use std::collections::HashMap;
 
 /// Return the highest float value from a string with numbers possibly
 /// separated by `&`.

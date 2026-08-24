@@ -1,23 +1,9 @@
-use crate::models::case::CaseConfig;
-use crate::parser::parse;
 use clap::Parser;
-use loader::Loader;
-use mongodb::bson::Document;
-use std::collections::{HashMap, HashSet};
+use scout_loader::loader::Loader;
+use scout_loader::models::case::CaseConfig;
+use scout_loader::models::variant::VariantAnnotations;
+use scout_loader::parser::parse;
 use std::fs;
-
-mod build;
-mod config;
-mod loader;
-mod models;
-mod parse;
-mod parser;
-mod utils;
-
-pub struct VariantAnnotations<'a> {
-    pub gene_to_panels: &'a HashMap<i32, HashSet<String>>,
-    pub hgncid_to_gene: &'a HashMap<i32, Document>,
-}
 
 #[derive(Parser, Debug)]
 struct Args {

@@ -1,4 +1,6 @@
+use mongodb::bson::Document;
 use serde::Serialize;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 #[derive(Debug)]
@@ -83,4 +85,9 @@ pub struct Compound {
     pub display_name: String,
     pub variant: String,
     pub combined_score: f64,
+}
+
+pub struct VariantAnnotations<'a> {
+    pub gene_to_panels: &'a HashMap<i32, HashSet<String>>,
+    pub hgncid_to_gene: &'a HashMap<i32, Document>,
 }

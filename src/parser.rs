@@ -1,7 +1,7 @@
-use crate::VariantAnnotations;
 use crate::loader::Loader;
 use crate::models::build::GenomeBuild;
 use crate::models::case::CaseConfig;
+use crate::models::variant::VariantAnnotations;
 use crate::models::variant::{VariantCategory, VariantType};
 use crate::parse::cytobands::set_cytobands;
 use crate::parse::vcf::process_vcf;

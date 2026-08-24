@@ -1,5 +1,5 @@
-use crate::HashMap;
 use mongodb::bson::{Bson, Document};
+use std::collections::HashMap;
 
 /// Extract a prediction from VEP transcript annotations.
 ///

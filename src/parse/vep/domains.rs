@@ -1,5 +1,5 @@
-use crate::HashMap;
 use mongodb::bson::{Bson, Document};
+use std::collections::HashMap;
 
 /// Parse protein domain annotations from a VEP transcript entry.
 ///

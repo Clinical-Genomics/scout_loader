@@ -1,9 +1,9 @@
-use crate::VariantAnnotations;
 use crate::build::gene::add_genes;
 use crate::loader::Loader;
 use crate::models::case::SampleConfig;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
+use crate::models::variant::VariantAnnotations;
 use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::parse::alleles::parse_alleles;
@@ -245,7 +245,7 @@ pub async fn process_vcf(
 
         let samples = parse_genotypes(&record, &sample_mapping, category);
 
-        // This structure contains fields common to all variant categories.
+        // This structure contains fields common to all variant categories
         let mut variant = doc! {
             "_id": ids.document_id.clone(),
             "simple_id": ids.simple_id,
@@ -283,6 +283,11 @@ pub async fn process_vcf(
 
             "samples": samples,
         };
+
+        println!(
+            "Creating variant _id={} variant_id={}",
+            variant["_id"], variant["variant_id"]
+        );
 
         if coordinates.mate_id.is_some() {
             variant.insert("mate_id", coordinates.mate_id);
