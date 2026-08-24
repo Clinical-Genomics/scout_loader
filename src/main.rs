@@ -24,13 +24,19 @@ struct Args {
     /// Path to the case configuration YAML file.
     #[arg(long = "case-config")]
     case_config: String,
+
+    /// Path to the MongoDB configuration TOML file.
+    #[arg(long)]
+    config: Option<String>,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let loader = Loader::new("config.toml").await?;
-
     let args = Args::parse();
+
+    let config_path = args.config.as_deref().unwrap_or("config.toml");
+
+    let loader = Loader::new(config_path).await?;
 
     let yaml = fs::read_to_string(&args.case_config)?;
     let config: CaseConfig = serde_yaml::from_str(&yaml)?;
