@@ -1,83 +1,67 @@
-mod fixtures;
+use mongodb::{Client, bson::doc};
+use std::path::PathBuf;
 
-use assert_cmd::Command;
-use fixtures::{fixture_path, TestDatabase};
-use predicates::prelude::*;
+const MONGO_URI: &str = "mongodb://127.0.0.1:27017";
 
-fn run_with_config(case_config: &str, db_config: &str) -> Command {
-    let mut cmd =
-        Command::cargo_bin("scout_loader").expect("binary should build");
-
-    cmd.current_dir(env!("CARGO_MANIFEST_DIR"))
-        .env("TEST_ENV", "1")
-        .arg("--config")
-        .arg(fixture_path(db_config))
-        .arg("--case-config")
-        .arg(fixture_path(case_config));
-
-    cmd
+pub fn fixture_path(name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("fixtures")
+        .join(name)
 }
 
-#[tokio::test]
-async fn cli_processes_minimal_snv_vcf() {
-    let test_db = TestDatabase::new().await;
-
-    let mut cmd = run_with_config("minimal_case.yaml", "test_config.toml");
-
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("1_123456_A_T_clinical"));
-
-    assert_eq!(test_db.count_variants().await, 1);
+pub struct TestDatabase {
+    client: Client,
+    name: String,
 }
 
-#[tokio::test]
-async fn cli_processes_minimal_vep_snv_vcf() {
-    let test_db = TestDatabase::new().await;
+impl TestDatabase {
+    pub async fn new(name: &str) -> Self {
+        let client = Client::with_uri_str(MONGO_URI)
+            .await
+            .expect("Failed to connect to MongoDB");
 
-    let mut cmd =
-        run_with_config("minimal_vep_case.yaml", "test_config.toml");
+        let name = format!("scout_loader_test_{name}");
 
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("1_123460_G_A_clinical"))
-        .stdout(predicate::str::contains("genes"))
-        .stdout(predicate::str::contains("hgnc_ids"))
-        .stdout(predicate::str::contains("1101"))
-        .stdout(predicate::str::contains("missense_variant"));
+        client
+            .database(&name)
+            .drop()
+            .await
+            .expect("Failed to clean test database");
 
-    assert_eq!(test_db.count_variants().await, 1);
-}
+        Self { client, name }
+    }
 
-#[tokio::test]
-async fn cli_processes_minimal_sv_vcf() {
-    let test_db = TestDatabase::new().await;
+    pub async fn count_variants(&self) -> u64 {
+        self.client
+            .database(&self.name)
+            .collection::<mongodb::bson::Document>("variant")
+            .count_documents(doc! {})
+            .await
+            .expect("Failed to count variants")
+    }
 
-    let mut cmd = run_with_config("minimal_case.yaml", "test_config.toml");
+    pub fn config_path(&self) -> PathBuf {
+        let config = format!(
+            r#"
+mongo_uri = "{MONGO_URI}"
+mongo_dbname = "{}"
+"#,
+            self.name
+        );
 
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("1_123500_N_<DEL>_clinical"))
-        .stdout(predicate::str::contains("sub_category"))
-        .stdout(predicate::str::contains("del"))
-        .stdout(predicate::str::contains("end"))
-        .stdout(predicate::str::contains("123650"))
-        .stdout(predicate::str::contains("sample_id"))
-        .stdout(predicate::str::contains("0/1"));
+        let path = std::env::temp_dir().join(format!("{}.toml", self.name));
 
-    assert_eq!(test_db.count_variants().await, 1);
-}
+        std::fs::write(&path, config).expect("Failed to write test config");
 
-#[tokio::test]
-async fn cli_processes_multiple_vcfs() {
-    let test_db = TestDatabase::new().await;
+        path
+    }
 
-    let mut cmd = run_with_config("minimal_case.yaml", "test_config.toml");
-
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("1_123456_A_T_clinical"))
-        .stdout(predicate::str::contains("1_123500_N_<DEL>_clinical"));
-
-    assert_eq!(test_db.count_variants().await, 2);
+    pub async fn cleanup(self) {
+        self.client
+            .database(&self.name)
+            .drop()
+            .await
+            .expect("Failed to drop test database");
+    }
 }

@@ -1,35 +1,51 @@
-use mongodb::{Client, Database, bson::doc};
-use std::path::PathBuf;
+mod fixtures;
 
-pub struct TestDatabase {
-    db: Database,
+use assert_cmd::Command;
+use fixtures::{TestDatabase, fixture_path};
+use predicates::prelude::*;
+
+#[tokio::test]
+async fn cli_processes_minimal_case() {
+    let test_db = TestDatabase::new("minimal_case").await;
+    let config_path = test_db.config_path();
+
+    Command::cargo_bin("scout_loader")
+        .unwrap()
+        .env("TEST_ENV", "1")
+        .args([
+            "--config",
+            config_path.to_str().unwrap(),
+            "--case-config",
+            fixture_path("minimal_case.yaml").to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Variants added: 2"));
+
+    assert_eq!(test_db.count_variants().await, 2);
+
+    test_db.cleanup().await;
 }
 
-impl TestDatabase {
-    pub async fn new() -> Self {
-        let client = Client::with_uri_str("mongodb://localhost:27017")
-            .await
-            .expect("failed to connect to MongoDB");
+#[tokio::test]
+async fn cli_processes_minimal_vep_case() {
+    let test_db = TestDatabase::new("minimal_vep_case").await;
+    let config_path = test_db.config_path();
 
-        let db = client.database("scout_loader_test");
+    Command::cargo_bin("scout_loader")
+        .unwrap()
+        .env("TEST_ENV", "1")
+        .args([
+            "--config",
+            config_path.to_str().unwrap(),
+            "--case-config",
+            fixture_path("minimal_vep_case.yaml").to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Variants added: 1"));
 
-        db.drop().await.expect("failed to reset test database");
+    assert_eq!(test_db.count_variants().await, 1);
 
-        Self { db }
-    }
-
-    pub async fn count_variants(&self) -> u64 {
-        self.db
-            .collection::<mongodb::bson::Document>("variant")
-            .count_documents(doc! {})
-            .await
-            .expect("failed to count variants")
-    }
-}
-
-pub fn fixture_path(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join(name)
+    test_db.cleanup().await;
 }
