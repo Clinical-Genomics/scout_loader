@@ -252,6 +252,7 @@ pub async fn process_vcf(
             "display_name": ids.display_name,
             "document_id": ids.document_id,
             "case_id": case_id,
+            "institute" : &config.owner,
 
             "compounds": compounds_bson,
 

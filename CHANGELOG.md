@@ -60,6 +60,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Check that provided institute exists in database prior to the parsing and loading of variants (#81)
 - Added an optional --config argument to the CLI (#84)
 - Load variants in database in batches of 1000 (#82)
+- Save `institute` key on loaded variants documents (#87)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)
