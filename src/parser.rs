@@ -46,9 +46,8 @@ pub async fn parse(
                 vcf.to_str().ok_or("Invalid VCF path")?,
                 category,
                 variant_type,
-                &config.family,
+                config,
                 &cytobands,
-                &config.samples,
                 &annotations,
                 loader,
             )

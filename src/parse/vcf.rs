@@ -1,5 +1,6 @@
 use crate::build::gene::add_genes;
 use crate::loader::Loader;
+use crate::models::case::CaseConfig;
 use crate::models::case::SampleConfig;
 use crate::models::cytoband::Cytoband;
 use crate::models::sample::SampleInfo;
@@ -142,9 +143,9 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
 /// * `path` - Path to the input VCF file.
 /// * `category` - Variant category used to select the appropriate parser.
 /// * `variant_type` - Variant type for the VCF.
-/// * `case_id` - ID of the case.
+/// * `config` - Case configuration containing the case identifier and
+///   configured samples.
 /// * `cytobands` - Parsed cytobands corresponding to the case genome build.
-/// * `samples` - Samples configured for the case.
 /// * `annotations` - Gene and gene-panel annotations used when building
 ///   variants.
 /// * `loader` - Loader used to persist batches of parsed variants.
@@ -157,19 +158,17 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
 ///
 /// Panics if the VCF file cannot be opened, if the sample mapping cannot be
 /// created, or if a record cannot be read.
-#[allow(clippy::too_many_arguments)]
 pub async fn process_vcf(
     path: &str,
     category: VariantCategory,
     variant_type: VariantType,
-    case_id: &str,
+    config: &CaseConfig,
     cytobands: &HashMap<String, Vec<Cytoband>>,
-    samples: &[SampleConfig],
     annotations: &VariantAnnotations<'_>,
     loader: &Loader,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let case_id = &config.family;
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
-
     let header = vcf.header().clone();
 
     // Sample order can differ between VCF files, so build the mapping from
@@ -180,8 +179,8 @@ pub async fn process_vcf(
         .map(|sample| String::from_utf8_lossy(sample).to_string())
         .collect();
 
-    let sample_mapping =
-        parse_sample_mapping(samples, &vcf_samples).expect("Failed to build sample mapping");
+    let sample_mapping = parse_sample_mapping(&config.samples, &vcf_samples)
+        .expect("Failed to build sample mapping");
 
     let vep_header = parse_vep_header(&header);
     let rank_results_header = parse_rank_results_header(&header);
