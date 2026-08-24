@@ -10,20 +10,22 @@ fn fixture_path(name: &str) -> PathBuf {
     repo_root().join("tests").join("fixtures").join(name)
 }
 
-fn run_with_config(config: &str) -> Command {
+fn run_with_config(case_config: &str, db_config: &str) -> Command {
     let mut cmd = Command::cargo_bin("scout_loader").expect("binary should build");
 
     cmd.current_dir(repo_root())
         .env("TEST_ENV", "1")
+        .arg("--config")
+        .arg(fixture_path(db_config))
         .arg("--case-config")
-        .arg(fixture_path(config));
+        .arg(fixture_path(case_config));
 
     cmd
 }
 
 #[test]
 fn cli_processes_minimal_snv_vcf() {
-    let mut cmd = run_with_config("minimal_case.yaml");
+    let mut cmd = run_with_config("minimal_case.yaml", "test_config.toml");
 
     cmd.assert()
         .success()
@@ -37,7 +39,7 @@ fn cli_processes_minimal_snv_vcf() {
 
 #[test]
 fn cli_processes_minimal_vep_snv_vcf() {
-    let mut cmd = run_with_config("minimal_vep_case.yaml");
+    let mut cmd = run_with_config("minimal_vep_case.yaml", "test_config.toml");
 
     cmd.assert()
         .success()
@@ -50,7 +52,7 @@ fn cli_processes_minimal_vep_snv_vcf() {
 
 #[test]
 fn cli_processes_minimal_sv_vcf() {
-    let mut cmd = run_with_config("minimal_case.yaml");
+    let mut cmd = run_with_config("minimal_case.yaml", "test_config.toml");
 
     cmd.assert()
         .success()
@@ -65,7 +67,7 @@ fn cli_processes_minimal_sv_vcf() {
 
 #[test]
 fn cli_processes_multiple_vcfs() {
-    let mut cmd = run_with_config("minimal_case.yaml");
+    let mut cmd = run_with_config("minimal_case.yaml", "test_config.toml");
 
     cmd.assert()
         .success()

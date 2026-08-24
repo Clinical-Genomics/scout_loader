@@ -58,6 +58,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Complete gene and transcript variant info using gene DB collection (#77)
 - Retain `panther_domain` when parsing variant transcripts (#78)
 - Check that provided institute exists in database prior to the parsing and loading of variants (#81)
+- Added an optional --config argument to the CLI (#84)
 - Load variants in database in batches of 1000 (#82)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
