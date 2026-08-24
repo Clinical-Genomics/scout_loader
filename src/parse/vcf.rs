@@ -434,7 +434,6 @@ pub async fn process_vcf(
         }
     }
     if !batch.is_empty() {
-        println!("Loading final batch of {} variants", batch.len());
         loader.load_variant_bulk(batch).await?;
     }
 
