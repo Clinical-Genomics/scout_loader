@@ -2,6 +2,7 @@ use clap::Parser;
 use scout_loader::loader::Loader;
 use scout_loader::models::case::CaseConfig;
 use scout_loader::models::variant::VariantAnnotations;
+use scout_loader::parse::regions::get_coding_intervals;
 use scout_loader::parser::parse;
 use std::fs;
 
@@ -50,11 +51,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         hgncid_to_gene.len()
     );
 
+    let coding_intervals = get_coding_intervals(&hgncid_to_gene);
+
     let total_inserted_variants = parse(
         &config,
         VariantAnnotations {
             gene_to_panels: &gene_to_panels,
             hgncid_to_gene: &hgncid_to_gene,
+            coding_intervals: &coding_intervals,
         },
         &loader,
     )

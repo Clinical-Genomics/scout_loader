@@ -17,6 +17,7 @@ pub mod meis;
 pub mod mt_annotations;
 pub mod onco_clnsig;
 pub mod rank_scores;
+pub mod regions;
 pub mod severity;
 pub mod strs;
 pub mod vcf;

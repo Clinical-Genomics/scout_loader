@@ -29,6 +29,7 @@ use crate::parse::meis::set_mei_info;
 use crate::parse::mt_annotations::{set_hmtvar, set_mitomap_associated_diseases};
 use crate::parse::onco_clnsig::parse_clnsig_onc;
 use crate::parse::rank_scores::{parse_rank_result, parse_rank_score_other, parse_rank_scores};
+use crate::parse::regions::find_coding_region;
 use crate::parse::severity::set_severity_predictions;
 use crate::parse::strs::set_str_info;
 use crate::parse::vep::clnsig::{build_clnsig, parse_clnsig};
@@ -38,7 +39,7 @@ use mongodb::bson::{self, Bson, Document, doc};
 use rust_htslib::bcf::{Read, Reader};
 use std::collections::{HashMap, HashSet};
 
-const BATCH_SIZE: usize = 5_000;
+const BATCH_SIZE: usize = 10_000;
 
 /// Builds a mapping between configured samples and their positions in a VCF.
 ///
@@ -134,9 +135,10 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
 /// configured for the case. The mapping is created separately for each VCF
 /// because sample order may differ between VCF files.
 ///
-/// Parsed variants are accumulated into batches of `BATCH_SIZE` and passed to
-/// the loader for insertion. This keeps memory usage bounded while still
-/// avoiding a database operation for every individual variant.
+/// Parsed variants are accumulated into batches and passed to the loader for
+/// insertion. Variants belonging to the same coding region are kept in the
+/// same batch, even if the batch exceeds `BATCH_SIZE`. Intergenic variants are
+/// loaded in batches of `BATCH_SIZE`.
 ///
 /// # Arguments
 ///
@@ -146,8 +148,8 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
 /// * `config` - Case configuration containing the case identifier and
 ///   configured samples.
 /// * `cytobands` - Parsed cytobands corresponding to the case genome build.
-/// * `annotations` - Gene and gene-panel annotations used when building
-///   variants.
+/// * `annotations` - Gene, gene-panel, and coding-region annotations used
+///   when building and batching variants.
 /// * `loader` - Loader used to persist batches of parsed variants.
 ///
 /// # Errors
@@ -194,6 +196,10 @@ pub async fn process_vcf(
 
     let mut batch = Vec::with_capacity(BATCH_SIZE);
     let mut inserted_variants = 0;
+
+    // Keep track of the coding region associated with the previous variant.
+    // Variants in the same coding region must remain in the same batch.
+    let mut previous_region = None;
 
     for result in vcf.records() {
         let record = result.unwrap();
@@ -244,7 +250,7 @@ pub async fn process_vcf(
 
         let samples = parse_genotypes(&record, &sample_mapping, category);
 
-        // This structure contains fields common to all variant categories
+        // This structure contains fields common to all variant categories.
         let mut variant = doc! {
             "_id": ids.document_id.clone(),
             "simple_id": ids.simple_id,
@@ -252,7 +258,7 @@ pub async fn process_vcf(
             "display_name": ids.display_name,
             "document_id": ids.document_id,
             "case_id": case_id,
-            "institute" : &config.owner,
+            "institute": &config.owner,
 
             "compounds": compounds_bson,
 
@@ -261,7 +267,7 @@ pub async fn process_vcf(
 
             "variant_type": variant_type,
 
-            "chromosome": coordinates.chromosome,
+            "chromosome": coordinates.chromosome.clone(),
             "end_chrom": coordinates.end_chrom,
             "position": coordinates.position as i64,
             "end": coordinates.end as i64,
@@ -334,7 +340,7 @@ pub async fn process_vcf(
                 frequencies.extend(parse_mei_frequencies(&record));
             }
 
-            // This has to be fixed with a call to a distinct function
+            // This has to be fixed with a call to a distinct function.
             VariantCategory::Fusion => {
                 set_fusion_info(&record, &mut variant);
                 print_variant(&variant);
@@ -425,13 +431,48 @@ pub async fn process_vcf(
             add_genes(&mut variant, &genes, annotations.hgncid_to_gene);
         }
 
-        // print_variant(&variant);
-        batch.push(variant);
-        if batch.len() >= BATCH_SIZE {
+        // Find the coding region for the current variant.
+        //
+        // `end + 1` preserves the interval semantics used by the old Python
+        // implementation, where the end coordinate was exclusive.
+        let current_region = find_coding_region(
+            annotations.coding_intervals,
+            &coordinates.chromosome,
+            coordinates.position as i32,
+            coordinates.end as i32 + 1,
+        );
+
+        // Decide whether the current batch should be loaded.
+        //
+        // Variants belonging to the same coding region stay together even
+        // when the batch grows beyond BATCH_SIZE.
+        let should_load = match (current_region, previous_region) {
+            // Same coding region: keep adding variants.
+            (Some(current), Some(previous)) if current == previous => false,
+
+            // Moving between different coding regions.
+            (Some(_), Some(_)) => true,
+
+            // Moving from a coding region to an intergenic region.
+            (None, Some(_)) => true,
+
+            // Moving from intergenic to a coding region.
+            (Some(_), None) => true,
+
+            // Consecutive intergenic variants: use the normal batch size.
+            (None, None) => batch.len() >= BATCH_SIZE,
+        };
+
+        if should_load && !batch.is_empty() {
             inserted_variants += loader.load_variant_bulk(batch).await?;
             batch = Vec::with_capacity(BATCH_SIZE);
         }
+
+        batch.push(variant);
+        previous_region = current_region;
     }
+
+    // Load the final batch.
     if !batch.is_empty() {
         inserted_variants += loader.load_variant_bulk(batch).await?;
     }
