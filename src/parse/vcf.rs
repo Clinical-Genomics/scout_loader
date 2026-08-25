@@ -10,6 +10,7 @@ use crate::models::variant::VariantType;
 use crate::parse::alleles::parse_alleles;
 use crate::parse::callers::parse_callers;
 use crate::parse::compounds::parse_compounds;
+use crate::parse::compounds::update_compounds;
 use crate::parse::conservations::parse_conservations;
 use crate::parse::coordinates::parse_coordinates;
 use crate::parse::filters::parse_filters;
@@ -464,6 +465,9 @@ pub async fn process_vcf(
         };
 
         if should_load && !batch.is_empty() {
+            if current_region.is_some() {
+                update_compounds(loader, &mut batch).await?;
+            }
             inserted_variants += loader.load_variant_bulk(batch).await?;
             batch = Vec::with_capacity(BATCH_SIZE);
         }
@@ -474,6 +478,9 @@ pub async fn process_vcf(
 
     // Load the final batch.
     if !batch.is_empty() {
+        if previous_region.is_some() {
+            update_compounds(loader, &mut batch).await?;
+        }
         inserted_variants += loader.load_variant_bulk(batch).await?;
     }
 
