@@ -71,6 +71,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Set the same value for `rank_score` and `fusion_score` for fusion variants (#74)
 - Print exact count of inserted variants by category (#93)
 - Preserve genomic regions when batching VCF variants (#95)
+- Update compound data for batched variants (#96)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
 - Parsing of end chromosome (#29)

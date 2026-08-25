@@ -1,5 +1,9 @@
 use crate::models::variant::Compound;
 use crate::utils::hash::generate_md5_key;
+use mongodb::bson::{Bson, Document, doc};
+use std::collections::HashMap;
+
+use crate::loader::Loader;
 
 /// Parses compound annotations from Genmod output.
 ///
@@ -82,4 +86,119 @@ pub fn parse_compounds(
     }
 
     compounds
+}
+
+/// Updates compound information for a batch of variants.
+///
+/// For each compound associated with a variant, this function tries to find
+/// the referenced variant in the current batch first. If it is not present in
+/// the batch, the variant is looked up in MongoDB.
+///
+/// When the referenced variant is found, the compound is enriched with its
+/// rank score, dismissal status, and gene information. Compounds whose
+/// referenced variant cannot be found are marked as `not_loaded`.
+///
+/// This combines the behavior of Scout's `update_compounds` and
+/// `update_variant_compounds`.
+pub async fn update_compounds(
+    loader: &Loader,
+    variants: &mut [Document],
+) -> Result<(), Box<dyn std::error::Error>> {
+    if variants.is_empty() {
+        return Ok(());
+    }
+
+    // Keep only the information needed to update compounds. This avoids
+    // borrowing `variants` while we modify it below.
+    let mut variant_lookup: HashMap<String, Document> = HashMap::new();
+
+    for variant in variants.iter() {
+        if let Ok(id) = variant.get_str("_id") {
+            variant_lookup.insert(id.to_string(), variant.clone());
+        }
+    }
+
+    let collection = loader.variant_collection();
+
+    for variant in variants.iter_mut() {
+        let Some(compounds) = variant.get_array_mut("compounds").ok() else {
+            continue;
+        };
+
+        for compound in compounds.iter_mut() {
+            let Some(compound) = compound.as_document_mut() else {
+                continue;
+            };
+
+            let Some(compound_variant_id) = compound.get_str("variant").ok().map(str::to_owned)
+            else {
+                compound.insert("not_loaded", true);
+                continue;
+            };
+
+            // First look for the referenced variant in the current batch.
+            let referenced_variant =
+                if let Some(batch_variant) = variant_lookup.get(&compound_variant_id) {
+                    Some(batch_variant.clone())
+                } else {
+                    // If it isn't in the batch, fall back to MongoDB.
+                    collection
+                        .find_one(doc! { "_id": &compound_variant_id })
+                        .await?
+                };
+
+            let Some(referenced_variant) = referenced_variant else {
+                compound.insert("not_loaded", true);
+                continue;
+            };
+
+            compound.insert(
+                "rank_score",
+                referenced_variant
+                    .get("rank_score")
+                    .cloned()
+                    .unwrap_or(Bson::Null),
+            );
+
+            let is_dismissed = referenced_variant
+                .get_array("dismiss_variant")
+                .map(|variants| !variants.is_empty())
+                .unwrap_or(false);
+
+            compound.insert("is_dismissed", is_dismissed);
+
+            let genes = referenced_variant
+                .get_array("genes")
+                .map(|genes| {
+                    genes
+                        .iter()
+                        .filter_map(|gene| {
+                            let gene = gene.as_document()?;
+
+                            Some(Bson::Document(doc! {
+                                "hgnc_id": gene.get("hgnc_id").cloned().unwrap_or(Bson::Null),
+                                "hgnc_symbol": gene
+                                    .get("hgnc_symbol")
+                                    .cloned()
+                                    .unwrap_or(Bson::Null),
+                                "region_annotation": gene
+                                    .get("region_annotation")
+                                    .cloned()
+                                    .unwrap_or(Bson::Null),
+                                "functional_annotation": gene
+                                    .get("functional_annotation")
+                                    .cloned()
+                                    .unwrap_or(Bson::Null),
+                            }))
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+
+            compound.insert("genes", Bson::Array(genes));
+            compound.insert("not_loaded", false);
+        }
+    }
+
+    Ok(())
 }
