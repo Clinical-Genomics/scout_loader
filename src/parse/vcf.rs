@@ -38,7 +38,7 @@ use mongodb::bson::{self, Bson, Document, doc};
 use rust_htslib::bcf::{Read, Reader};
 use std::collections::{HashMap, HashSet};
 
-const BATCH_SIZE: usize = 1_000;
+const BATCH_SIZE: usize = 5_000;
 
 /// Builds a mapping between configured samples and their positions in a VCF.
 ///
@@ -166,7 +166,7 @@ pub async fn process_vcf(
     cytobands: &HashMap<String, Vec<Cytoband>>,
     annotations: &VariantAnnotations<'_>,
     loader: &Loader,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<usize, Box<dyn std::error::Error>> {
     let case_id = &config.family;
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
     let header = vcf.header().clone();
@@ -192,8 +192,8 @@ pub async fn process_vcf(
         return Err(error.into());
     }
 
-    let mut variant_count = 0;
     let mut batch = Vec::with_capacity(BATCH_SIZE);
+    let mut inserted_variants = 0;
 
     for result in vcf.records() {
         let record = result.unwrap();
@@ -334,9 +334,9 @@ pub async fn process_vcf(
                 frequencies.extend(parse_mei_frequencies(&record));
             }
 
+            // This has to be fixed with a call to a distinct function
             VariantCategory::Fusion => {
                 set_fusion_info(&record, &mut variant);
-                variant_count += 1;
                 print_variant(&variant);
                 continue;
             }
@@ -426,20 +426,17 @@ pub async fn process_vcf(
         }
 
         // print_variant(&variant);
-        variant_count += 1;
         batch.push(variant);
         if batch.len() >= BATCH_SIZE {
-            loader.load_variant_bulk(batch).await?;
+            inserted_variants += loader.load_variant_bulk(batch).await?;
             batch = Vec::with_capacity(BATCH_SIZE);
         }
     }
     if !batch.is_empty() {
-        loader.load_variant_bulk(batch).await?;
+        inserted_variants += loader.load_variant_bulk(batch).await?;
     }
 
-    println!("Parsed {} variants from {}", variant_count, path);
-
-    Ok(())
+    Ok(inserted_variants)
 }
 
 /// Print a parsed variant for debugging.
