@@ -1,3 +1,4 @@
+use crate::parse::regions::GenomicRegion;
 use mongodb::bson::Document;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
@@ -93,4 +94,5 @@ pub struct Compound {
 pub struct VariantAnnotations<'a> {
     pub gene_to_panels: &'a HashMap<i32, HashSet<String>>,
     pub hgncid_to_gene: &'a HashMap<i32, Document>,
+    pub coding_intervals: &'a HashMap<String, Vec<GenomicRegion>>,
 }
