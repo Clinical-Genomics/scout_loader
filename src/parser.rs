@@ -40,9 +40,11 @@ pub async fn parse(
     let variant_type =
         VariantType::from_str("clinical").map_err(|_| "Invalid variant type: clinical")?;
 
+    let mut inserted_variants = 0;
+
     for (vcf, category) in vcfs {
         if let Some(vcf) = vcf {
-            process_vcf(
+            inserted_variants = process_vcf(
                 vcf.to_str().ok_or("Invalid VCF path")?,
                 category,
                 variant_type,
@@ -53,6 +55,9 @@ pub async fn parse(
             )
             .await?;
         }
+
+        println!("{category:?}: {inserted_variants} variants added");
+        inserted_variants = 0;
     }
 
     Ok(())
