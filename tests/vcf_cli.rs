@@ -20,7 +20,11 @@ async fn cli_processes_minimal_case() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Variants added: 2"));
+        .stdout(predicate::str::contains("Snv: 1 variants added"))
+        .stdout(predicate::str::contains("Sv: 1 variants added"))
+        .stdout(predicate::str::contains(
+            "Total variants added for case case_123: 2",
+        ));
 
     assert_eq!(test_db.count_variants().await, 2);
 
@@ -43,7 +47,10 @@ async fn cli_processes_minimal_vep_case() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Variants added: 1"));
+        .stdout(predicate::str::contains("Snv: 1 variants added"))
+        .stdout(predicate::str::contains(
+            "Total variants added for case case_123: 1",
+        ));
 
     assert_eq!(test_db.count_variants().await, 1);
 

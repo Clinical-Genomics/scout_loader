@@ -50,9 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         hgncid_to_gene.len()
     );
 
-    let before = loader.count_variants().await?;
-
-    parse(
+    let total_inserted_variants = parse(
         &config,
         VariantAnnotations {
             gene_to_panels: &gene_to_panels,
@@ -62,10 +60,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .await?;
 
-    let after = loader.count_variants().await?;
-    println!("Variants before loading: {}", before);
-    println!("Variants after loading: {}", after);
-    println!("Variants added: {}", after - before);
+    println!(
+        "Total variants added for case {}: {}",
+        config.family, total_inserted_variants
+    );
 
     Ok(())
 }
