@@ -23,6 +23,15 @@ impl Loader {
         Ok(Self { db })
     }
 
+    /// Returns the variant collection.
+    pub fn variant_collection(&self) -> mongodb::Collection<mongodb::bson::Document> {
+        self.db.collection::<mongodb::bson::Document>("variant")
+    }
+
+    pub fn database(&self) -> &mongodb::Database {
+        &self.db
+    }
+
     /// Build a mapping from HGNC ID to the corresponding gene document.
     ///
     /// Fetches genes from MongoDB for the specified genome build and uses the

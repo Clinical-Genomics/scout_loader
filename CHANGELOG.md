@@ -61,6 +61,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Added an optional --config argument to the CLI (#84)
 - Load variants in database in batches of 5000 (#82 and #93)
 - Save `institute` key on loaded variants documents (#87)
+- Update variants' rank after loading them (#94)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)

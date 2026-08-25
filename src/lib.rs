@@ -4,4 +4,5 @@ pub mod loader;
 pub mod models;
 pub mod parse;
 pub mod parser;
+pub mod updater;
 pub mod utils;
