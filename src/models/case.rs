@@ -18,6 +18,8 @@ pub struct CaseConfig {
 
     pub samples: Vec<SampleConfig>,
 
+    pub rank_score_threshold: Option<i32>,
+
     pub vcf_snv: Option<PathBuf>,
 
     pub vcf_sv: Option<PathBuf>,

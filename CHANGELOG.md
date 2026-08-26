@@ -63,6 +63,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Save `institute` key on loaded variants documents (#87)
 - Update variants' rank after loading them (#94)
 - Show progress when loading variant categories (#97)
+- Variant loading filter based on rank score and category (#98)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)
