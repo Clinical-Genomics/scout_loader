@@ -2,6 +2,8 @@ family: 'case_123'
 family_name: 'case_123'
 owner: 'test_institute'
 
+rank_score_threshold: -100
+
 samples:
   - sample_id: SAMPLE1
     sample_name: sample-one
