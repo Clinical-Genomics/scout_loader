@@ -218,7 +218,6 @@ pub async fn process_vcf(
     for result in vcf.records() {
         let record = result.unwrap();
 
-        // Create the progress bar only when processing actually starts.
         if progress.is_none() {
             let pb = ProgressBar::new(nr_variants as u64);
             pb.set_style(
@@ -231,8 +230,6 @@ pub async fn process_vcf(
             progress = Some(pb);
         }
 
-        // Every VCF record counts as processed, regardless of whether the
-        // variant is eventually inserted into the database.
         if let Some(pb) = &progress {
             pb.inc(1);
         }
