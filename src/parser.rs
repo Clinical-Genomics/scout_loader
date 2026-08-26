@@ -6,7 +6,9 @@ use crate::models::variant::{VariantCategory, VariantType};
 use crate::parse::cytobands::set_cytobands;
 use crate::parse::vcf::process_vcf;
 use crate::updater;
+use indicatif::{ProgressBar, ProgressStyle};
 use std::str::FromStr;
+use std::time::Duration;
 
 /// Parses and processes all clinical VCFs provided for a case.
 ///
@@ -47,12 +49,21 @@ pub async fn parse(
     let variant_type =
         VariantType::from_str("clinical").map_err(|_| "Invalid variant type: clinical")?;
 
-    let mut inserted_variants = 0;
     let mut total_inserted_variants = 0;
 
     for (vcf, category) in vcfs {
         if let Some(vcf) = vcf {
-            inserted_variants = process_vcf(
+            let progress = ProgressBar::new_spinner();
+
+            progress.set_style(
+                ProgressStyle::with_template("{prefix}   {spinner} {msg}")
+                    .expect("Invalid progress bar template"),
+            );
+
+            progress.enable_steady_tick(Duration::from_millis(100));
+            progress.set_prefix(format!("Loading {category:?} variants"));
+
+            let inserted_variants = process_vcf(
                 vcf.to_str().ok_or("Invalid VCF path")?,
                 category,
                 variant_type,
@@ -62,16 +73,16 @@ pub async fn parse(
                 loader,
             )
             .await?;
+
+            progress.finish_with_message(format!("{} variants added", inserted_variants));
+
+            total_inserted_variants += inserted_variants;
+
+            if inserted_variants > 0 {
+                updater::update_variant_rank(loader, &config.family, variant_type, category)
+                    .await?;
+            }
         }
-
-        println!("{category:?}: {inserted_variants} variants added");
-        total_inserted_variants += inserted_variants;
-
-        if inserted_variants > 0 {
-            updater::update_variant_rank(loader, &config.family, variant_type, category).await?;
-        }
-
-        inserted_variants = 0;
     }
 
     Ok(total_inserted_variants)
