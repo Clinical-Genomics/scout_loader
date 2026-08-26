@@ -77,6 +77,35 @@ pub fn parse_sample_mapping(
     Ok(sample_mapping)
 }
 
+/// Determines whether a variant should be loaded into the database.
+///
+/// A variant is loaded if it has no rank score, its rank score is above the
+/// configured threshold, its chromosome contains `M`, or it belongs to the
+/// STR category.
+///
+/// # Arguments
+///
+/// * `variant` - Parsed variant document.
+/// * `category` - Variant category.
+/// * `rank_threshold` - Minimum rank score required for loading.
+///
+/// # Returns
+///
+/// `true` if the variant should be loaded, otherwise `false`.
+fn should_load_variant(
+    variant: &bson::Document,
+    category: VariantCategory,
+    rank_threshold: i32,
+) -> bool {
+    let rank_score = variant.get_i32("rank_score").ok();
+    let chromosome = variant.get_str("chromosome").unwrap_or_default();
+
+    rank_score.is_none()
+        || rank_score.is_some_and(|score| score > rank_threshold)
+        || chromosome.contains('M')
+        || category == VariantCategory::Str
+}
+
 /// Adds gene panel information to a parsed variant.
 ///
 /// Collects all gene panels associated with the variant's HGNC IDs and adds
@@ -197,6 +226,8 @@ pub async fn process_vcf(
 
     let sample_mapping = parse_sample_mapping(&config.samples, &vcf_samples)
         .expect("Failed to build sample mapping");
+
+    let rank_threshold = config.rank_score_threshold.unwrap_or(5);
 
     let vep_header = parse_vep_header(&header);
     let rank_results_header = parse_rank_results_header(&header);
@@ -319,6 +350,10 @@ pub async fn process_vcf(
 
             "samples": samples,
         };
+
+        if !should_load_variant(&variant, category, rank_threshold) {
+            continue;
+        }
 
         if coordinates.mate_id.is_some() {
             variant.insert("mate_id", coordinates.mate_id);
