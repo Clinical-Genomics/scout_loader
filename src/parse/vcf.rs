@@ -468,6 +468,9 @@ pub async fn process_vcf(
         );
 
         // Decide whether the current batch should be loaded.
+        //
+        // Variants belonging to the same coding region stay together even
+        // when the batch grows beyond BATCH_SIZE.
         let should_load = match (current_region, previous_region) {
             // Same coding region: keep adding variants.
             (Some(current), Some(previous)) if current == previous => false,
