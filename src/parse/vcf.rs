@@ -143,8 +143,7 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
 /// loaded in batches of `BATCH_SIZE`.
 ///
 /// A progress bar shows the percentage of VCF records that have been
-/// processed. This represents processing progress rather than the number of
-/// variants inserted, since not every VCF record is necessarily loaded.
+/// processed. The bar is only displayed once processing has started.
 ///
 /// # Arguments
 ///
@@ -183,12 +182,7 @@ pub async fn process_vcf(
         .records()
         .count();
 
-    let progress = ProgressBar::new(nr_variants as u64);
-    progress.set_style(
-        indicatif::ProgressStyle::with_template("Processing {prefix} [{bar:30}] {percent}%")
-            .expect("Invalid progress bar template"),
-    );
-    progress.set_prefix(format!("{category:?} variants"));
+    let mut progress: Option<ProgressBar> = None;
 
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
     let header = vcf.header().clone();
@@ -224,9 +218,24 @@ pub async fn process_vcf(
     for result in vcf.records() {
         let record = result.unwrap();
 
+        // Create the progress bar only when processing actually starts.
+        if progress.is_none() {
+            let pb = ProgressBar::new(nr_variants as u64);
+            pb.set_style(
+                indicatif::ProgressStyle::with_template(
+                    "Processing {prefix} [{bar:30}] {percent}%",
+                )
+                .expect("Invalid progress bar template"),
+            );
+            pb.set_prefix(format!("{category:?} variants"));
+            progress = Some(pb);
+        }
+
         // Every VCF record counts as processed, regardless of whether the
         // variant is eventually inserted into the database.
-        progress.inc(1);
+        if let Some(pb) = &progress {
+            pb.inc(1);
+        }
 
         let coordinates = parse_coordinates(&record, &header, cytobands, &category);
 
@@ -242,12 +251,6 @@ pub async fn process_vcf(
             case_id,
             &variant_type,
         );
-
-        /*
-        if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
-            continue;
-        }
-        */
 
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
@@ -364,7 +367,6 @@ pub async fn process_vcf(
                 frequencies.extend(parse_mei_frequencies(&record));
             }
 
-            // This has to be fixed with a call to a distinct function.
             VariantCategory::Fusion => {
                 set_fusion_info(&record, &mut variant);
                 print_variant(&variant);
@@ -455,10 +457,6 @@ pub async fn process_vcf(
             add_genes(&mut variant, &genes, annotations.hgncid_to_gene);
         }
 
-        // Find the coding region for the current variant.
-        //
-        // `end + 1` preserves the interval semantics used by the old Python
-        // implementation, where the end coordinate was exclusive.
         let current_region = find_coding_region(
             annotations.coding_intervals,
             &coordinates.chromosome,
@@ -466,24 +464,11 @@ pub async fn process_vcf(
             coordinates.end as i32 + 1,
         );
 
-        // Decide whether the current batch should be loaded.
-        //
-        // Variants belonging to the same coding region stay together even
-        // when the batch grows beyond BATCH_SIZE.
         let should_load = match (current_region, previous_region) {
-            // Same coding region: keep adding variants.
             (Some(current), Some(previous)) if current == previous => false,
-
-            // Moving between different coding regions.
             (Some(_), Some(_)) => true,
-
-            // Moving from a coding region to an intergenic region.
             (None, Some(_)) => true,
-
-            // Moving from intergenic to a coding region.
             (Some(_), None) => true,
-
-            // Consecutive intergenic variants: use the normal batch size.
             (None, None) => batch.len() >= BATCH_SIZE,
         };
 
@@ -500,7 +485,6 @@ pub async fn process_vcf(
         previous_region = current_region;
     }
 
-    // Load the final batch.
     if !batch.is_empty() {
         if previous_region.is_some() {
             update_compounds(loader, &mut batch).await?;
@@ -509,9 +493,9 @@ pub async fn process_vcf(
         inserted_variants += loader.load_variant_bulk(batch).await?;
     }
 
-    // Remove the progress bar once processing is complete. The caller will
-    // print the number of inserted variants for the category.
-    progress.finish_and_clear();
+    if let Some(progress) = progress {
+        progress.finish();
+    }
 
     Ok(inserted_variants)
 }
