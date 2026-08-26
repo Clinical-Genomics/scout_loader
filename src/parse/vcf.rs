@@ -461,11 +461,21 @@ pub async fn process_vcf(
             coordinates.end as i32 + 1,
         );
 
+        // Decide whether the current batch should be loaded.
         let should_load = match (current_region, previous_region) {
+            // Same coding region: keep adding variants.
             (Some(current), Some(previous)) if current == previous => false,
+
+            // Moving between different coding regions.
             (Some(_), Some(_)) => true,
+
+            // Moving from a coding region to an intergenic region.
             (None, Some(_)) => true,
+
+            // Moving from intergenic to a coding region.
             (Some(_), None) => true,
+
+            // Consecutive intergenic variants: use the normal batch size.
             (None, None) => batch.len() >= BATCH_SIZE,
         };
 
