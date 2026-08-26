@@ -36,6 +36,7 @@ use crate::parse::strs::set_str_info;
 use crate::parse::vep::clnsig::{build_clnsig, parse_clnsig};
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::transcripts::parse_vep_transcripts;
+use indicatif::ProgressBar;
 use mongodb::bson::{self, Bson, Document, doc};
 use rust_htslib::bcf::{Read, Reader};
 use std::collections::{HashMap, HashSet};
@@ -141,6 +142,10 @@ pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Do
 /// same batch, even if the batch exceeds `BATCH_SIZE`. Intergenic variants are
 /// loaded in batches of `BATCH_SIZE`.
 ///
+/// A progress bar shows the percentage of VCF records that have been
+/// processed. This represents processing progress rather than the number of
+/// variants inserted, since not every VCF record is necessarily loaded.
+///
 /// # Arguments
 ///
 /// * `path` - Path to the input VCF file.
@@ -171,6 +176,20 @@ pub async fn process_vcf(
     loader: &Loader,
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let case_id = &config.family;
+
+    // Count the VCF records so the progress bar can show processing progress.
+    let nr_variants = Reader::from_path(path)
+        .expect("couldn't open input vcf")
+        .records()
+        .count();
+
+    let progress = ProgressBar::new(nr_variants as u64);
+    progress.set_style(
+        indicatif::ProgressStyle::with_template("Processing {prefix} [{bar:30}] {percent}%")
+            .expect("Invalid progress bar template"),
+    );
+    progress.set_prefix(format!("{category:?} variants"));
+
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
     let header = vcf.header().clone();
 
@@ -204,6 +223,10 @@ pub async fn process_vcf(
 
     for result in vcf.records() {
         let record = result.unwrap();
+
+        // Every VCF record counts as processed, regardless of whether the
+        // variant is eventually inserted into the database.
+        progress.inc(1);
 
         let coordinates = parse_coordinates(&record, &header, cytobands, &category);
 
@@ -468,6 +491,7 @@ pub async fn process_vcf(
             if current_region.is_some() {
                 update_compounds(loader, &mut batch).await?;
             }
+
             inserted_variants += loader.load_variant_bulk(batch).await?;
             batch = Vec::with_capacity(BATCH_SIZE);
         }
@@ -481,8 +505,13 @@ pub async fn process_vcf(
         if previous_region.is_some() {
             update_compounds(loader, &mut batch).await?;
         }
+
         inserted_variants += loader.load_variant_bulk(batch).await?;
     }
+
+    // Remove the progress bar once processing is complete. The caller will
+    // print the number of inserted variants for the category.
+    progress.finish_and_clear();
 
     Ok(inserted_variants)
 }
