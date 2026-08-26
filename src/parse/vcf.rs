@@ -227,6 +227,8 @@ pub async fn process_vcf(
     let sample_mapping = parse_sample_mapping(&config.samples, &vcf_samples)
         .expect("Failed to build sample mapping");
 
+    let rank_threshold = config.rank_score_threshold.unwrap_or(5);
+
     let vep_header = parse_vep_header(&header);
     let rank_results_header = parse_rank_results_header(&header);
 
@@ -349,7 +351,6 @@ pub async fn process_vcf(
             "samples": samples,
         };
 
-        let rank_threshold = config.rank_score_threshold.unwrap_or(5);
         if !should_load_variant(&variant, category, rank_threshold) {
             continue;
         }
