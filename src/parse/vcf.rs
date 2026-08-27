@@ -36,6 +36,7 @@ use crate::parse::strs::set_str_info;
 use crate::parse::vep::clnsig::{build_clnsig, is_pathogenic, parse_clnsig};
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::transcripts::parse_vep_transcripts;
+use crate::utils::hash::generate_md5_key;
 use indicatif::ProgressBar;
 use mongodb::bson::{self, Bson, Document, doc};
 use rust_htslib::bcf::{Read, Reader};
@@ -96,15 +97,28 @@ pub fn should_load_variant(
     variant: &bson::Document,
     category: VariantCategory,
     rank_threshold: i32,
+    managed_variant_ids: &HashSet<String>,
 ) -> bool {
     let rank_score = variant.get_i32("rank_score").ok();
     let chromosome = variant.get_str("chromosome").unwrap_or_default();
+
+    let managed_variant_id = generate_md5_key(&[
+        chromosome.to_string(),
+        variant.get_i64("position").unwrap().to_string(),
+        variant.get_str("reference").unwrap_or_default().to_string(),
+        variant
+            .get_str("alternative")
+            .unwrap_or_default()
+            .to_string(),
+        "clinical".to_string(),
+    ]);
 
     rank_score.is_none()
         || rank_score.is_some_and(|score| score > rank_threshold)
         || chromosome.contains('M')
         || category == VariantCategory::Str
         || is_pathogenic(variant)
+        || managed_variant_ids.contains(&managed_variant_id)
 }
 
 /// Adds gene panel information to a parsed variant.
@@ -442,7 +456,12 @@ pub async fn process_vcf(
             );
         }
 
-        if !should_load_variant(&variant, category, rank_threshold) {
+        if !should_load_variant(
+            &variant,
+            category,
+            rank_threshold,
+            &annotations.managed_variant_ids,
+        ) {
             continue;
         }
 

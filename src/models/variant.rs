@@ -95,4 +95,5 @@ pub struct VariantAnnotations<'a> {
     pub gene_to_panels: &'a HashMap<i32, HashSet<String>>,
     pub hgncid_to_gene: &'a HashMap<i32, Document>,
     pub coding_intervals: &'a HashMap<String, Vec<GenomicRegion>>,
+    pub managed_variant_ids: HashSet<String>,
 }
