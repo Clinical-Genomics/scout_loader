@@ -96,4 +96,5 @@ pub struct VariantAnnotations<'a> {
     pub hgncid_to_gene: &'a HashMap<i32, Document>,
     pub coding_intervals: &'a HashMap<String, Vec<GenomicRegion>>,
     pub managed_variant_ids: HashSet<String>,
+    pub causative_variant_ids: &'a HashSet<String>,
 }

@@ -160,6 +160,36 @@ impl Loader {
         Ok(variant_ids)
     }
 
+    /// Get variant IDs that have been marked as causative in other cases.
+    ///
+    /// Returns the subjects of all variant events with either a `mark_causative`
+    /// or `mark_partial_causative` verb.
+    pub async fn get_causative_variant_ids(
+        &self,
+    ) -> Result<HashSet<String>, Box<dyn std::error::Error>> {
+        let collection = self.db.collection::<Document>("event");
+
+        let filter = doc! {
+            "verb": {
+                "$in": ["mark_causative", "mark_partial_causative"],
+            },
+            "category": "variant",
+        };
+
+        let mut cursor = collection.find(filter).await?;
+        let mut causative_variant_ids = HashSet::new();
+
+        while cursor.advance().await? {
+            let event = cursor.deserialize_current()?;
+
+            if let Ok(subject) = event.get_str("subject") {
+                causative_variant_ids.insert(subject.to_string());
+            }
+        }
+
+        Ok(causative_variant_ids)
+    }
+
     pub async fn count_variants(&self) -> Result<u64, mongodb::error::Error> {
         let collection = self.db.collection::<Document>("variant");
 
