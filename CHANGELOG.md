@@ -74,6 +74,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Print exact count of inserted variants by category (#93)
 - Preserve genomic regions when batching VCF variants (#95)
 - Update compound data for batched variants (#96)
+- Always load variants which are pathogenic in ClinVar (#99)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
 - Parsing of end chromosome (#29)
