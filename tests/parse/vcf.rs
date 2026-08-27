@@ -5,6 +5,15 @@ use scout_loader::parse::vcf::should_load_variant;
 use scout_loader::utils::hash::generate_md5_key;
 use std::collections::HashSet;
 
+fn test_variant() -> mongodb::bson::Document {
+    doc! {
+        "chromosome": "1",
+        "position": 100_i64,
+        "reference": "A",
+        "alternative": "G",
+    }
+}
+
 #[test]
 fn test_should_load_variant() {
     let threshold = 5;
@@ -12,68 +21,70 @@ fn test_should_load_variant() {
 
     let cases = [
         // No rank score.
-        (
-            doc! {
-                "chromosome": "1",
-            },
-            VariantCategory::Snv,
-            true,
-        ),
+        (test_variant(), VariantCategory::Snv, true),
         // Rank score above threshold.
         (
-            doc! {
-                "rank_score": 6,
-                "chromosome": "1",
+            {
+                let mut variant = test_variant();
+                variant.insert("rank_score", 6);
+                variant
             },
             VariantCategory::Snv,
             true,
         ),
         // Rank score equal to threshold.
         (
-            doc! {
-                "rank_score": 5,
-                "chromosome": "1",
+            {
+                let mut variant = test_variant();
+                variant.insert("rank_score", 5);
+                variant
             },
             VariantCategory::Snv,
             false,
         ),
         // Rank score below threshold.
         (
-            doc! {
-                "rank_score": 4,
-                "chromosome": "1",
+            {
+                let mut variant = test_variant();
+                variant.insert("rank_score", 4);
+                variant
             },
             VariantCategory::Snv,
             false,
         ),
         // Mitochondrial variant.
         (
-            doc! {
-                "rank_score": 1,
-                "chromosome": "MT",
+            {
+                let mut variant = test_variant();
+                variant.insert("chromosome", "MT");
+                variant.insert("rank_score", 1);
+                variant
             },
             VariantCategory::Snv,
             true,
         ),
         // STR variant.
         (
-            doc! {
-                "rank_score": 1,
-                "chromosome": "1",
+            {
+                let mut variant = test_variant();
+                variant.insert("rank_score", 1);
+                variant
             },
             VariantCategory::Str,
             true,
         ),
         // Pathogenic variant.
         (
-            doc! {
-                "rank_score": 1,
-                "chromosome": "1",
-                "clnsig": [
-                    {
+            {
+                let mut variant = test_variant();
+                variant.insert("rank_score", 1);
+                variant.insert(
+                    "clnsig",
+                    vec![doc! {
                         "value": "pathogenic",
-                    }
-                ],
+                    }],
+                );
+                variant
             },
             VariantCategory::Snv,
             true,
@@ -90,19 +101,13 @@ fn test_should_load_variant() {
 
 #[test]
 fn should_load_managed_variant() {
-    let variant = doc! {
-        "chromosome": "5",
-        "position": 112043220,
-        "reference": "A",
-        "alternative": "C",
-        "rank_score": 0,
-    };
+    let variant = test_variant();
 
     let managed_variant_id = generate_md5_key(&[
-        "5".to_string(),
-        "112043220".to_string(),
+        "1".to_string(),
+        "100".to_string(),
         "A".to_string(),
-        "C".to_string(),
+        "G".to_string(),
         "clinical".to_string(),
     ]);
 
