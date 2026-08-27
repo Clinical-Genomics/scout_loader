@@ -473,7 +473,7 @@ pub async fn process_vcf(
             category,
             rank_threshold,
             &annotations.managed_variant_ids,
-            &annotations.causative_variant_ids,
+            annotations.causative_variant_ids,
         ) {
             continue;
         }
