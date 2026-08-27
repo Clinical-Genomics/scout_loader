@@ -92,7 +92,7 @@ pub fn parse_sample_mapping(
 /// # Returns
 ///
 /// `true` if the variant should be loaded, otherwise `false`.
-fn should_load_variant(
+pub fn should_load_variant(
     variant: &bson::Document,
     category: VariantCategory,
     rank_threshold: i32,
