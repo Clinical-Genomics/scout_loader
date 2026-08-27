@@ -81,14 +81,17 @@ pub fn parse_sample_mapping(
 /// Determines whether a variant should be loaded into the database.
 ///
 /// A variant is loaded if it has no rank score, its rank score is above the
-/// configured threshold, its chromosome contains `M`, or it belongs to the
-/// STR category.
+/// configured threshold, its chromosome contains `M`, it belongs to the STR
+/// category, is pathogenic, is a managed variant, or has been marked
+/// causative in another case.
 ///
 /// # Arguments
 ///
 /// * `variant` - Parsed variant document.
 /// * `category` - Variant category.
 /// * `rank_threshold` - Minimum rank score required for loading.
+/// * `managed_variant_ids` - IDs of variants on the managed list.
+/// * `causative_variant_ids` - IDs of variants marked causative in other cases.
 ///
 /// # Returns
 ///
@@ -98,6 +101,7 @@ pub fn should_load_variant(
     category: VariantCategory,
     rank_threshold: i32,
     managed_variant_ids: &HashSet<String>,
+    causative_variant_ids: &HashSet<String>,
 ) -> bool {
     let rank_score = variant.get_i32("rank_score").ok();
     let chromosome = variant.get_str("chromosome").unwrap_or_default();
@@ -113,12 +117,20 @@ pub fn should_load_variant(
         "clinical".to_string(),
     ]);
 
+    let simple_id = variant.get_str("simple_id").unwrap();
+    let clinical_variant = format!("{simple_id}_clinical");
+    let research_variant = format!("{simple_id}_research");
+
+    let is_causative_other_case = causative_variant_ids.contains(&clinical_variant)
+        || causative_variant_ids.contains(&research_variant);
+
     rank_score.is_none()
         || rank_score.is_some_and(|score| score > rank_threshold)
         || chromosome.contains('M')
         || category == VariantCategory::Str
         || is_pathogenic(variant)
         || managed_variant_ids.contains(&managed_variant_id)
+        || is_causative_other_case
 }
 
 /// Adds gene panel information to a parsed variant.
@@ -461,6 +473,7 @@ pub async fn process_vcf(
             category,
             rank_threshold,
             &annotations.managed_variant_ids,
+            &annotations.causative_variant_ids,
         ) {
             continue;
         }

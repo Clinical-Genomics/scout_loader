@@ -53,6 +53,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let coding_intervals = get_coding_intervals(&hgncid_to_gene);
+    let causative_variant_ids = loader.get_causative_variant_ids().await?;
 
     let total_inserted_variants = parse(
         &config,
@@ -60,7 +61,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             gene_to_panels: &gene_to_panels,
             hgncid_to_gene: &hgncid_to_gene,
             coding_intervals: &coding_intervals,
-            managed_variant_ids: HashSet::new(),
+            managed_variant_ids: HashSet::new(), // These depend on variant category, so they're added later, in the parser module
+            causative_variant_ids: &causative_variant_ids,
         },
         &loader,
     )
