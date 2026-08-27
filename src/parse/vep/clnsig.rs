@@ -228,3 +228,41 @@ pub fn build_clnsig(clnsig_info: Document) -> Document {
 
     clnsig_obj
 }
+
+/// Checks whether a variant has a pathogenic ClinVar classification.
+///
+/// Returns `false` if the variant has no ClinVar significance annotations.
+///
+/// # Arguments
+///
+/// * `variant` - Parsed variant document.
+///
+/// # Returns
+///
+/// `true` if any ClinVar annotation has a pathogenic classification,
+/// otherwise `false`.
+pub fn is_pathogenic(variant: &Document) -> bool {
+    let Some(clnsig) = variant.get_array("clnsig").ok() else {
+        return false;
+    };
+
+    clnsig.iter().any(|annotation| {
+        let Some(annotation) = annotation.as_document() else {
+            return false;
+        };
+
+        match annotation.get("value") {
+            Some(Bson::String(value)) => matches!(
+                value.as_str(),
+                "pathogenic"
+                    | "likely_pathogenic"
+                    | "conflicting_classifications_of_pathogenicity"
+                    | "conflicting_interpretations_of_pathogenicity"
+                    | "conflicting_interpretations"
+            ),
+            Some(Bson::Int32(value)) => matches!(value, 4 | 5 | 8),
+            Some(Bson::Int64(value)) => matches!(value, 4 | 5 | 8),
+            _ => false,
+        }
+    })
+}

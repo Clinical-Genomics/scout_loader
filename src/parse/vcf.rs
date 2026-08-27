@@ -33,7 +33,7 @@ use crate::parse::rank_scores::{parse_rank_result, parse_rank_score_other, parse
 use crate::parse::regions::find_coding_region;
 use crate::parse::severity::set_severity_predictions;
 use crate::parse::strs::set_str_info;
-use crate::parse::vep::clnsig::{build_clnsig, parse_clnsig};
+use crate::parse::vep::clnsig::{build_clnsig, is_pathogenic, parse_clnsig};
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::transcripts::parse_vep_transcripts;
 use indicatif::ProgressBar;
@@ -92,7 +92,7 @@ pub fn parse_sample_mapping(
 /// # Returns
 ///
 /// `true` if the variant should be loaded, otherwise `false`.
-fn should_load_variant(
+pub fn should_load_variant(
     variant: &bson::Document,
     category: VariantCategory,
     rank_threshold: i32,
@@ -104,6 +104,7 @@ fn should_load_variant(
         || rank_score.is_some_and(|score| score > rank_threshold)
         || chromosome.contains('M')
         || category == VariantCategory::Str
+        || is_pathogenic(variant)
 }
 
 /// Adds gene panel information to a parsed variant.
@@ -351,10 +352,6 @@ pub async fn process_vcf(
             "samples": samples,
         };
 
-        if !should_load_variant(&variant, category, rank_threshold) {
-            continue;
-        }
-
         if coordinates.mate_id.is_some() {
             variant.insert("mate_id", coordinates.mate_id);
         }
@@ -430,15 +427,6 @@ pub async fn process_vcf(
 
         let parsed_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
 
-        let genes = parse_genes(&parsed_transcripts);
-
-        variant.insert(
-            "genes",
-            Bson::Array(genes.into_iter().map(Bson::Document).collect()),
-        );
-
-        set_hgnc_ids(&mut variant);
-
         let clnsig_predictions = parse_clnsig(&record, &parsed_transcripts);
 
         if !clnsig_predictions.is_empty() {
@@ -453,6 +441,19 @@ pub async fn process_vcf(
                 ),
             );
         }
+
+        if !should_load_variant(&variant, category, rank_threshold) {
+            continue;
+        }
+
+        let genes = parse_genes(&parsed_transcripts);
+
+        variant.insert(
+            "genes",
+            Bson::Array(genes.into_iter().map(Bson::Document).collect()),
+        );
+
+        set_hgnc_ids(&mut variant);
 
         let clnsig_onc_predictions = parse_clnsig_onc(&record);
 
