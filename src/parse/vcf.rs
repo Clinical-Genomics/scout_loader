@@ -104,7 +104,7 @@ pub fn should_load_variant(
 
     let managed_variant_id = generate_md5_key(&[
         chromosome.to_string(),
-        variant.get_i32("position").unwrap().to_string(),
+        variant.get_i64("position").unwrap().to_string(),
         variant.get_str("reference").unwrap_or_default().to_string(),
         variant
             .get_str("alternative")
