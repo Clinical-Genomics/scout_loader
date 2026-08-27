@@ -24,7 +24,7 @@ use std::str::FromStr;
 /// Returns the total number of variants inserted across all VCFs for the case.
 pub async fn parse(
     config: &CaseConfig,
-    annotations: VariantAnnotations<'_>,
+    mut annotations: VariantAnnotations<'_>,
     loader: &Loader,
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let genome_build = GenomeBuild::from_str(&config.human_genome_build)
@@ -52,6 +52,10 @@ pub async fn parse(
 
     for (vcf, category) in vcfs {
         if let Some(vcf) = vcf {
+            annotations.managed_variant_ids = loader
+                .get_managed_variant_ids(&category.to_string(), &config.human_genome_build)
+                .await?;
+
             inserted_variants = process_vcf(
                 vcf.to_str().ok_or("Invalid VCF path")?,
                 category,

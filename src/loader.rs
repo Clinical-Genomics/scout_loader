@@ -124,6 +124,42 @@ impl Loader {
         Ok(gene_dict)
     }
 
+    /// Get the variant IDs of managed variants for a category and genome build.
+    ///
+    /// # Arguments
+    ///
+    /// * `category` - Variant category.
+    /// * `build` - Genome build.
+    ///
+    /// # Returns
+    ///
+    /// A set of managed variant IDs matching the category and genome build.
+    pub async fn get_managed_variant_ids(
+        &self,
+        category: &str,
+        build: &str,
+    ) -> Result<HashSet<String>, Box<dyn std::error::Error>> {
+        let collection = self.db.collection::<Document>("managed_variant");
+
+        let filter = doc! {
+            "category": category,
+            "build": build,
+        };
+
+        let mut cursor = collection.find(filter).await?;
+        let mut variant_ids = HashSet::new();
+
+        while cursor.advance().await? {
+            let document = cursor.deserialize_current()?;
+
+            if let Ok(variant_id) = document.get_str("variant_id") {
+                variant_ids.insert(variant_id.to_string());
+            }
+        }
+
+        Ok(variant_ids)
+    }
+
     pub async fn count_variants(&self) -> Result<u64, mongodb::error::Error> {
         let collection = self.db.collection::<Document>("variant");
 

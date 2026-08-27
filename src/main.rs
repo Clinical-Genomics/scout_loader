@@ -4,6 +4,7 @@ use scout_loader::models::case::CaseConfig;
 use scout_loader::models::variant::VariantAnnotations;
 use scout_loader::parse::regions::get_coding_intervals;
 use scout_loader::parser::parse;
+use std::collections::HashSet;
 use std::fs;
 
 #[derive(Parser, Debug)]
@@ -59,6 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             gene_to_panels: &gene_to_panels,
             hgncid_to_gene: &hgncid_to_gene,
             coding_intervals: &coding_intervals,
+            managed_variant_ids: HashSet::new(),
         },
         &loader,
     )
