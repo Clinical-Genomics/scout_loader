@@ -130,3 +130,19 @@ fn should_load_managed_variant() {
         &causative_variant_ids,
     ));
 }
+
+#[test]
+fn should_load_causative_variant() {
+    let variant = test_variant();
+    let managed_variant_ids = HashSet::new();
+
+    let causative_variant_ids = HashSet::from(["1_100_A_G_clinical".to_string()]);
+
+    assert!(should_load_variant(
+        &variant,
+        VariantCategory::Snv,
+        5,
+        &managed_variant_ids,
+        &causative_variant_ids,
+    ));
+}
