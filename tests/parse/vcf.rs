@@ -11,6 +11,7 @@ fn test_variant() -> mongodb::bson::Document {
         "position": 100_i64,
         "reference": "A",
         "alternative": "G",
+        "simple_id": "1_100_A_G",
     }
 }
 
@@ -18,6 +19,7 @@ fn test_variant() -> mongodb::bson::Document {
 fn test_should_load_variant() {
     let threshold = 5;
     let managed_variant_ids = HashSet::new();
+    let causative_variant_ids = HashSet::new();
 
     let cases = [
         // No rank score.
@@ -93,7 +95,13 @@ fn test_should_load_variant() {
 
     for (variant, category, expected) in cases {
         assert_eq!(
-            should_load_variant(&variant, category, threshold, &managed_variant_ids),
+            should_load_variant(
+                &variant,
+                category,
+                threshold,
+                &managed_variant_ids,
+                &causative_variant_ids,
+            ),
             expected,
         );
     }
@@ -112,11 +120,13 @@ fn should_load_managed_variant() {
     ]);
 
     let managed_variant_ids = HashSet::from([managed_variant_id]);
+    let causative_variant_ids = HashSet::new();
 
     assert!(should_load_variant(
         &variant,
         VariantCategory::Snv,
         5,
         &managed_variant_ids,
+        &causative_variant_ids,
     ));
 }
