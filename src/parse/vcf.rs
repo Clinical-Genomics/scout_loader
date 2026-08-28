@@ -36,6 +36,7 @@ use crate::parse::strs::set_str_info;
 use crate::parse::vep::clnsig::{build_clnsig, is_pathogenic, parse_clnsig};
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::transcripts::parse_vep_transcripts;
+use crate::utils::custom_images::set_custom_images;
 use crate::utils::hash::generate_md5_key;
 use indicatif::ProgressBar;
 use mongodb::bson::{self, Bson, Document, doc};
@@ -338,6 +339,15 @@ pub async fn process_vcf(
 
         let samples = parse_genotypes(&record, &sample_mapping, category);
 
+        let str_variants_images = if category == VariantCategory::Str {
+            config
+                .custom_images
+                .as_ref()
+                .and_then(|images| images.str_variants_images.as_ref())
+        } else {
+            None
+        };
+
         // This structure contains fields common to all variant categories.
         let mut variant = doc! {
             "_id": ids.document_id.clone(),
@@ -421,6 +431,15 @@ pub async fn process_vcf(
 
             VariantCategory::Str => {
                 set_str_info(&record, &mut variant);
+                if let Ok(str_repid) = variant.get_str("str_repid")
+                    && let Some(images) = str_variants_images
+                {
+                    let custom_images = set_custom_images(images, str_repid);
+
+                    if !custom_images.is_empty() {
+                        variant.insert("custom_images", bson::to_bson(&custom_images)?);
+                    }
+                }
             }
 
             VariantCategory::Mei => {
