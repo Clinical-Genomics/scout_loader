@@ -504,7 +504,7 @@ pub async fn process_vcf(
             Bson::Array(genes.into_iter().map(Bson::Document).collect()),
         );
 
-        set_hgnc_ids(&mut variant);
+        set_hgnc_ids(&mut variant, &record);
 
         let clnsig_onc_predictions = parse_clnsig_onc(&record);
 

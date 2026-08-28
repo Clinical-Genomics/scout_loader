@@ -1,4 +1,5 @@
 use mongodb::bson::{Bson, Document, doc};
+use rust_htslib::bcf::Record;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -180,7 +181,7 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
 /// created.
 ///
 /// The collected identifiers are stored in the variant as `hgnc_ids`.
-pub fn set_hgnc_ids(variant: &mut Document) {
+pub fn set_hgnc_ids(variant: &mut Document, record: &Record) {
     let mut hgnc_ids: HashSet<i32> = HashSet::new();
 
     // Collect HGNC IDs from parsed genes
@@ -206,8 +207,8 @@ pub fn set_hgnc_ids(variant: &mut Document) {
     }
 
     // STR HGNC IDs are annotated by Stranger
-    if let Some(Bson::String(str_hgnc_id)) = variant.get("HGNCId")
-        && let Ok(hgnc_id) = str_hgnc_id.parse::<i32>()
+    if let Ok(Some(values)) = record.info(b"HGNCId").integer()
+        && let Some(&hgnc_id) = values.first()
     {
         hgnc_ids.insert(hgnc_id);
 
