@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 /// Configuration required to load a Scout case from a YAML file.
@@ -33,6 +33,28 @@ pub struct CaseConfig {
     pub vcf_cancer_sv: Option<PathBuf>,
 
     pub vcf_fusion: Option<PathBuf>,
+
+    pub custom_images: Option<CustomImages>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CustomImages {
+    pub str_variants_images: Option<Vec<CustomImage>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CustomImage {
+    pub title: String,
+
+    pub str_repid: String,
+
+    pub description: String,
+
+    pub width: Option<u32>,
+
+    pub height: Option<u32>,
+
+    pub path: String,
 }
 
 /// Sample information extracted from the case YAML configuration.
