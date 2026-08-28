@@ -431,13 +431,13 @@ pub async fn process_vcf(
 
             VariantCategory::Str => {
                 set_str_info(&record, &mut variant);
-                if let Ok(str_repid) = variant.get_str("str_repid") {
-                    if let Some(images) = str_variants_images {
-                        let custom_images = set_custom_images(images, str_repid);
+                if let Ok(str_repid) = variant.get_str("str_repid")
+                    && let Some(images) = str_variants_images
+                {
+                    let custom_images = set_custom_images(images, str_repid);
 
-                        if !custom_images.is_empty() {
-                            variant.insert("custom_images", bson::to_bson(&custom_images)?);
-                        }
+                    if !custom_images.is_empty() {
+                        variant.insert("custom_images", bson::to_bson(&custom_images)?);
                     }
                 }
             }
