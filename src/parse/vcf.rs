@@ -449,8 +449,6 @@ pub async fn process_vcf(
 
             VariantCategory::Fusion => {
                 set_fusion_info(&record, &mut variant);
-                batch.push(variant);
-                continue;
             }
 
             VariantCategory::Cancer | VariantCategory::CancerSv => {
