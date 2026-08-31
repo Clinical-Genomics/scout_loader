@@ -803,14 +803,13 @@ fn get_alt_frequency(record: &Record, pos: usize) -> f32 {
     alt_depth as f32 / total_depth as f32
 }
 
-/// Get FFPM information from FORMAT tags.
 ///
-/// Returns the fusion fragments per million value if available.
+/// Returns the fusion fragments per million value as an integer if available.
 fn get_ffpm_info(record: &Record, pos: usize) -> Option<i32> {
-    if let Ok(values) = record.format(b"FFPM").integer()
+    if let Ok(values) = record.format(b"FFPM").float()
         && let Some(value) = values.get(pos).and_then(|sample| sample.first())
     {
-        return Some(*value);
+        return Some(*value as i32);
     }
 
     None
