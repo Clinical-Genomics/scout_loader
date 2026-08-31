@@ -92,9 +92,8 @@ fn set_fusion_genes(record: &Record, variant: &mut Document) {
         let transcript_id = parse_info_string(record, format!("TRANSCRIPT_ID_{suffix}").as_bytes())
             .filter(|value| !value.is_empty() && value != "nan");
 
-        let exon_number = parse_info_float(record, format!("EXON_NUMBER_{suffix}").as_bytes())
-            .map(|value| value as i32)
-            .filter(|value| *value > 0);
+        let exon_number = parse_info_string(record, format!("EXON_NUMBER_{suffix}").as_bytes())
+            .filter(|value| !value.is_empty() && value != "nan");
 
         // Only add fusion partners with an HGNC ID.
         let Some(hgnc_id) = hgnc_id else {
@@ -125,10 +124,6 @@ fn set_fusion_genes(record: &Record, variant: &mut Document) {
             }
 
             transcript.insert("hgnc_id", hgnc_id);
-
-            if !gene.is_empty() {
-                transcript.insert("hgnc_symbol", gene);
-            }
 
             if let Some(exon_number) = exon_number {
                 transcript.insert("exon", exon_number);
