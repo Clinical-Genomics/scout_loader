@@ -296,7 +296,7 @@ pub async fn process_vcf(
                 )
                 .expect("Invalid progress bar template"),
             );
-            pb.set_prefix(format!("{category:?} variants"));
+            pb.set_prefix(format!("{variant_type:?} {category:?} variants"));
             progress = Some(pb);
         }
 
