@@ -449,7 +449,7 @@ pub async fn process_vcf(
 
             VariantCategory::Fusion => {
                 set_fusion_info(&record, &mut variant);
-                print_variant(&variant);
+                batch.push(variant);
                 continue;
             }
 
@@ -603,7 +603,8 @@ pub async fn process_vcf(
     Ok(inserted_variants)
 }
 
-/// Print a parsed variant for debugging.
+/* Print a parsed variant for debugging.
 fn print_variant(variant: &Document) {
     println!("Parsed variant: {variant:?}\n");
 }
+*/
