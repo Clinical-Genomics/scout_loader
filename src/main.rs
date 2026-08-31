@@ -16,6 +16,15 @@ struct Args {
     /// Path to the MongoDB configuration TOML file.
     #[arg(long)]
     config: Option<String>,
+
+    /// Load research VCFs instead of clinical VCFs.
+    #[arg(long)]
+    research: bool,
+
+    /// VCF categories to load, e.g. snv,fusion,sv.
+    /// If omitted, all available categories are loaded.
+    #[arg(long, value_delimiter = ',')]
+    categories: Option<Vec<String>>,
 }
 
 #[tokio::main]
@@ -65,6 +74,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             causative_variant_ids: &causative_variant_ids,
         },
         &loader,
+        args.categories.as_deref(),
+        args.research,
     )
     .await?;
 

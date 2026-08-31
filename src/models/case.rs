@@ -4,8 +4,9 @@ use std::path::PathBuf;
 /// Configuration required to load a Scout case from a YAML file.
 ///
 /// The YAML file may contain many additional Scout configuration fields,
-/// but only the fields defined here are deserialized. Research VCFs are
-/// intentionally excluded and will not be loaded.
+/// but only the fields defined here are deserialized. Both clinical and
+/// research VCFs can be specified. Which VCFs are loaded is determined by
+/// the requested categories and the research flag.
 #[derive(Debug, Deserialize)]
 pub struct CaseConfig {
     pub owner: String,
@@ -21,18 +22,25 @@ pub struct CaseConfig {
     pub rank_score_threshold: Option<i32>,
 
     pub vcf_snv: Option<PathBuf>,
+    pub vcf_snv_research: Option<PathBuf>,
 
     pub vcf_sv: Option<PathBuf>,
+    pub vcf_sv_research: Option<PathBuf>,
 
     pub vcf_str: Option<PathBuf>,
+    pub vcf_str_research: Option<PathBuf>,
 
     pub vcf_mei: Option<PathBuf>,
+    pub vcf_mei_research: Option<PathBuf>,
 
     pub vcf_cancer: Option<PathBuf>,
+    pub vcf_cancer_research: Option<PathBuf>,
 
     pub vcf_cancer_sv: Option<PathBuf>,
+    pub vcf_cancer_sv_research: Option<PathBuf>,
 
     pub vcf_fusion: Option<PathBuf>,
+    pub vcf_fusion_research: Option<PathBuf>,
 
     pub custom_images: Option<CustomImages>,
 }
