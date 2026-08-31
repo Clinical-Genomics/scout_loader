@@ -55,7 +55,10 @@ pub fn set_fusion_info(record: &Record, variant: &mut Document) {
 
     variant.insert(
         "orientation",
-        replace_nan(parse_info_string(record, b"ORIENTATION"), "nan,nan"),
+        replace_nan(
+            parse_info_string_array(record, b"ORIENTATION").map(|values| values.join(",")),
+            "nan,nan",
+        ),
     );
 
     variant.insert(
