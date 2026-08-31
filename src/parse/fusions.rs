@@ -1,7 +1,9 @@
 use mongodb::bson::{Bson, Document};
 use rust_htslib::bcf::Record;
 
-use crate::parse::info::{parse_info_float, parse_info_int, parse_info_string};
+use crate::parse::info::{
+    parse_info_float, parse_info_int, parse_info_string, parse_info_string_array,
+};
 
 /// Add fusion-specific information from VCF INFO fields.
 ///
@@ -18,15 +20,20 @@ pub fn set_fusion_info(record: &Record, variant: &mut Document) {
         }
     }
 
-    fn parse_found_db(value: Option<String>) -> Option<Vec<Bson>> {
-        value.and_then(|value| {
-            if value.is_empty() || value == "[]" {
+    fn parse_found_db(value: Option<Vec<String>>) -> Option<Vec<Bson>> {
+        value.and_then(|values| {
+            if values.is_empty() || values == vec!["[]"] {
                 None
             } else {
                 Some(
-                    value
-                        .split(',')
-                        .map(|entry| Bson::String(entry.to_string()))
+                    values
+                        .into_iter()
+                        .flat_map(|value| {
+                            value
+                                .split(',')
+                                .map(|entry| Bson::String(entry.trim().to_string()))
+                                .collect::<Vec<Bson>>()
+                        })
                         .collect(),
                 )
             }
@@ -37,7 +44,7 @@ pub fn set_fusion_info(record: &Record, variant: &mut Document) {
         variant.insert("tool_hits", value);
     }
 
-    if let Some(value) = parse_found_db(parse_info_string(record, b"FOUND_DB")) {
+    if let Some(value) = parse_found_db(parse_info_string_array(record, b"FOUND_DB")) {
         variant.insert("found_db", Bson::Array(value));
     }
 
