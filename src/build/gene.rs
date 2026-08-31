@@ -1,4 +1,5 @@
 use crate::build::transcript::build_transcript;
+use crate::models::variant::VariantCategory;
 use mongodb::bson::{Bson, Document};
 use std::collections::HashMap;
 
@@ -12,11 +13,18 @@ use crate::models::consequence::{CONSEQUENCE, FEATURE_TYPES, SO_TERMS};
 ///
 /// To avoid uploading excessive amounts of data, processing stops after
 /// the 31st gene and the variant is marked as having missing data.
+/// Fusion variants are skipped because their HGNC symbols are parsed directly
+/// from the fusion VCF and should not be overwritten by the database mapping.
 pub fn add_genes(
     variant: &mut Document,
     gene_list: &[Bson],
     hgncid_to_gene: &HashMap<i32, Document>,
+    category: VariantCategory,
 ) {
+    if category == VariantCategory::Fusion {
+        return;
+    }
+
     let mut genes = Vec::new();
 
     for (index, gene) in gene_list.iter().enumerate() {

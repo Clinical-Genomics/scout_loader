@@ -160,9 +160,20 @@ pub fn link_gene_panels(variant: &mut Document, gene_to_panels: &HashMap<i32, Ha
 
 /// Add HGNC symbols to a parsed variant using the HGNC ID-to-gene mapping.
 ///
-/// Adds the symbols for all HGNC IDs found in the variant. Logs a warning
-/// when an HGNC ID has no corresponding gene in the mapping.
-pub fn add_hgnc_symbols(variant: &mut Document, hgncid_to_gene: &HashMap<i32, Document>) {
+/// Adds symbols for all HGNC IDs found in the variant. Logs a warning when
+/// an HGNC ID has no corresponding gene in the mapping.
+///
+/// Fusion variants are skipped because their HGNC symbols are parsed directly
+/// from the fusion VCF and should not be overwritten by the database mapping.
+pub fn add_hgnc_symbols(
+    variant: &mut Document,
+    hgncid_to_gene: &HashMap<i32, Document>,
+    category: VariantCategory,
+) {
+    if category == VariantCategory::Fusion {
+        return;
+    }
+
     let Some(Bson::Array(hgnc_ids)) = variant.get("hgnc_ids") else {
         return;
     };
@@ -495,12 +506,14 @@ pub async fn process_vcf(
             continue;
         }
 
-        let genes = parse_genes(&parsed_transcripts);
+        if category != VariantCategory::Fusion {
+            let genes = parse_genes(&parsed_transcripts);
 
-        variant.insert(
-            "genes",
-            Bson::Array(genes.into_iter().map(Bson::Document).collect()),
-        );
+            variant.insert(
+                "genes",
+                Bson::Array(genes.into_iter().map(Bson::Document).collect()),
+            );
+        }
 
         set_hgnc_ids(&mut variant, &record);
 
@@ -537,12 +550,12 @@ pub async fn process_vcf(
         }
 
         link_gene_panels(&mut variant, annotations.gene_to_panels);
-        add_hgnc_symbols(&mut variant, annotations.hgncid_to_gene);
+        add_hgnc_symbols(&mut variant, annotations.hgncid_to_gene, category);
 
         if let Ok(genes) = variant.get_array("genes") {
             let genes = genes.to_vec();
 
-            add_genes(&mut variant, &genes, annotations.hgncid_to_gene);
+            add_genes(&mut variant, &genes, annotations.hgncid_to_gene, category);
         }
 
         let current_region = find_coding_region(
