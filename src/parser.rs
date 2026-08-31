@@ -6,26 +6,75 @@ use crate::models::variant::{VariantCategory, VariantType};
 use crate::parse::cytobands::set_cytobands;
 use crate::parse::vcf::process_vcf;
 use crate::updater;
+use std::path::PathBuf;
 use std::str::FromStr;
 
-/// Parse and process the selected VCFs provided for a case.
+/// Select VCFs to process based on variant categories and data type.
 ///
-/// By default, all available clinical VCFs are processed. When `research` is
-/// true, all available research VCFs are processed instead.
+/// By default, clinical VCFs are selected. When research is true, only
+/// research VCFs are considered instead. If categories is provided, only
+/// VCFs belonging to the requested variant categories are selected.
 ///
-/// If `categories` is provided, only the requested categories are processed.
-/// The `research` flag determines whether the clinical or research VCF is
-/// selected for each category.
+/// VCFs that are not specified in the case configuration are skipped.
+///
+/// Returns the selected VCF paths together with their corresponding variant
+/// categories.
+pub fn select_vcfs<'a>(
+    config: &'a CaseConfig,
+    categories: Option<&[String]>,
+    research: bool,
+) -> Vec<(&'a PathBuf, VariantCategory)> {
+    let vcfs = [
+        (
+            if research {
+                &config.vcf_snv_research
+            } else {
+                &config.vcf_snv
+            },
+            VariantCategory::Snv,
+            "snv",
+        ),
+        (
+            if research {
+                &config.vcf_sv_research
+            } else {
+                &config.vcf_sv
+            },
+            VariantCategory::Sv,
+            "sv",
+        ),
+        // ...
+    ];
+
+    vcfs.into_iter()
+        .filter_map(|(vcf, category, name)| {
+            if let Some(categories) = categories
+                && !categories.iter().any(|requested| requested == name)
+            {
+                return None;
+            }
+
+            vcf.as_ref().map(|path| (path, category))
+        })
+        .collect()
+}
+
+/// Parses and processes the selected VCFs provided for a case.
 ///
 /// Shared information such as the genome build and cytobands is prepared once
 /// and reused for every VCF. Sample mappings are created separately for each
 /// VCF because sample indices may differ between VCF files.
 ///
+/// VCF selection is handled by `select_vcfs`, which determines whether
+/// clinical or research VCFs should be loaded and optionally filters them by
+/// variant category.
+///
 /// After each VCF is processed, the number of newly inserted variants is
 /// checked. If variants were inserted, their `variant_rank` values are
 /// updated for the corresponding variant category and type.
 ///
-/// Returns the total number of variants inserted across all selected VCFs.
+/// Returns the total number of variants inserted across all selected VCFs
+/// for the case.
 pub async fn parse(
     config: &CaseConfig,
     mut annotations: VariantAnnotations<'_>,
@@ -39,73 +88,17 @@ pub async fn parse(
     let cytobands = set_cytobands(genome_build.cytoband_path())
         .map_err(|error| format!("Could not load cytobands: {error}"))?;
 
-    let variant_type = VariantType::from_str(if research { "research" } else { "clinical" })
-        .map_err(|_| "Invalid variant type")?;
+    let vcfs = select_vcfs(config, categories, research);
 
-    let vcfs = [
-        (
-            &config.vcf_snv,
-            &config.vcf_snv_research,
-            VariantCategory::Snv,
-            "snv",
-        ),
-        (
-            &config.vcf_cancer,
-            &config.vcf_cancer_research,
-            VariantCategory::Cancer,
-            "cancer",
-        ),
-        (
-            &config.vcf_sv,
-            &config.vcf_sv_research,
-            VariantCategory::Sv,
-            "sv",
-        ),
-        (
-            &config.vcf_cancer_sv,
-            &config.vcf_cancer_sv_research,
-            VariantCategory::CancerSv,
-            "cancer_sv",
-        ),
-        (
-            &config.vcf_fusion,
-            &config.vcf_fusion_research,
-            VariantCategory::Fusion,
-            "fusion",
-        ),
-        (
-            &config.vcf_mei,
-            &config.vcf_mei_research,
-            VariantCategory::Mei,
-            "mei",
-        ),
-        (
-            &config.vcf_str,
-            &config.vcf_str_research,
-            VariantCategory::Str,
-            "str",
-        ),
-    ];
+    let variant_type = if research {
+        VariantType::Research
+    } else {
+        VariantType::Clinical
+    };
 
     let mut total_inserted_variants = 0;
 
-    for (clinical_vcf, research_vcf, category, category_name) in vcfs {
-        // If categories were explicitly requested, skip everything else.
-        if let Some(categories) = categories
-            && !categories
-                .iter()
-                .any(|requested| requested == category_name)
-        {
-            continue;
-        }
-
-        // Select either the clinical or research VCF.
-        let vcf = if research { research_vcf } else { clinical_vcf };
-
-        let Some(vcf) = vcf else {
-            continue;
-        };
-
+    for (vcf, category) in vcfs {
         annotations.managed_variant_ids = loader
             .get_managed_variant_ids(&category.to_string(), &config.human_genome_build)
             .await?;
