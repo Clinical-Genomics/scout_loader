@@ -31,7 +31,7 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
     let mut genes_to_transcripts: HashMap<String, Vec<Document>> = HashMap::new();
 
     // Group transcripts by gene
-    for (_idx, transcript) in transcripts.iter().enumerate() {
+    for transcript in transcripts {
         let hgnc_id = match transcript.get("hgnc_id") {
             Some(Bson::String(value)) if !value.is_empty() => Some(value.clone()),
             Some(Bson::Int32(value)) => Some(value.to_string()),
