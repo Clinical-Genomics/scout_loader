@@ -92,8 +92,9 @@ fn set_fusion_genes(record: &Record, variant: &mut Document) {
         let transcript_id = parse_info_string(record, format!("TRANSCRIPT_ID_{suffix}").as_bytes())
             .filter(|value| !value.is_empty() && value != "nan");
 
-        let exon_number = parse_info_string(record, format!("EXON_NUMBER_{suffix}").as_bytes())
-            .filter(|value| !value.is_empty() && value != "nan");
+        let exon_number = parse_info_float(record, format!("EXON_NUMBER_{suffix}").as_bytes())
+            .map(|value| value.to_string())
+            .filter(|value| value != "0");
 
         // Only add fusion partners with an HGNC ID.
         let Some(hgnc_id) = hgnc_id else {
