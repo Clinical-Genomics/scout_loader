@@ -72,11 +72,10 @@ pub fn set_fusion_info(record: &Record, variant: &mut Document) {
 /// Add gene and transcript information for fusion variants.
 ///
 /// Parses fusion partner gene annotations from VCF INFO fields and stores them
-/// in the variant document. Gene entries are created when a gene symbol or an
-/// HGNC ID is available. Transcript annotations are stored under their
-/// corresponding gene and include transcript ID and exon information when
-/// available. Missing HGNC IDs are kept as null values rather than replaced
-/// with zero.
+/// in the variant document. Only fusion partners with an HGNC ID are added to
+/// the gene list. Transcript annotations are stored under their corresponding
+/// gene and include transcript ID, HGNC information, and exon information when
+/// available.
 fn set_fusion_genes(record: &Record, variant: &mut Document) {
     let mut genes = Vec::new();
     let mut hgnc_ids = Vec::new();
@@ -97,32 +96,24 @@ fn set_fusion_genes(record: &Record, variant: &mut Document) {
             .map(|value| value as i32)
             .filter(|value| *value > 0);
 
-        if gene.is_empty() && hgnc_id.is_none() {
+        // Only add fusion partners with an HGNC ID.
+        let Some(hgnc_id) = hgnc_id else {
             continue;
-        }
+        };
 
         if !gene.is_empty() {
             hgnc_symbols.push(Bson::String(gene.clone()));
         }
 
-        if let Some(hgnc_id) = hgnc_id {
-            hgnc_ids.push(Bson::Int32(hgnc_id));
-        }
+        hgnc_ids.push(Bson::Int32(hgnc_id));
 
         let mut gene_doc = Document::new();
 
         if !gene.is_empty() {
-            gene_doc.insert("hgnc_symbol", gene);
+            gene_doc.insert("hgnc_symbol", gene.clone());
         }
 
-        match hgnc_id {
-            Some(hgnc_id) => {
-                gene_doc.insert("hgnc_id", hgnc_id);
-            }
-            None => {
-                gene_doc.insert("hgnc_id", Bson::Null);
-            }
-        }
+        gene_doc.insert("hgnc_id", hgnc_id);
 
         let mut transcripts = Vec::new();
 
@@ -133,9 +124,17 @@ fn set_fusion_genes(record: &Record, variant: &mut Document) {
                 transcript.insert("transcript_id", transcript_id);
             }
 
+            transcript.insert("hgnc_id", hgnc_id);
+
+            if !gene.is_empty() {
+                transcript.insert("hgnc_symbol", gene);
+            }
+
             if let Some(exon_number) = exon_number {
                 transcript.insert("exon", exon_number);
             }
+
+            transcript.insert("is_canonical", false);
 
             transcripts.push(Bson::Document(transcript));
         }

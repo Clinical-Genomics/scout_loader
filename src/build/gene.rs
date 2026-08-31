@@ -13,8 +13,9 @@ use crate::models::consequence::{CONSEQUENCE, FEATURE_TYPES, SO_TERMS};
 ///
 /// To avoid uploading excessive amounts of data, processing stops after
 /// the 31st gene and the variant is marked as having missing data.
-/// Fusion variants are skipped because their HGNC symbols are parsed directly
-/// from the fusion VCF and should not be overwritten by the database mapping.
+///
+/// Fusion variants are skipped because their gene annotations are parsed
+/// directly from the fusion VCF and should not be overwritten.
 pub fn add_genes(
     variant: &mut Document,
     gene_list: &[Bson],

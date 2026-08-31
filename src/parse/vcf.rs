@@ -596,6 +596,7 @@ pub async fn process_vcf(
         }
 
         batch.push(variant);
+
         previous_region = current_region;
     }
 
