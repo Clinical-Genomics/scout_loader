@@ -121,7 +121,7 @@ pub async fn parse(
         )
         .await?;
 
-        println!("{category:?}: {inserted_variants} variants added");
+        println!("{variant_type:?} {category:?}: {inserted_variants} variants added");
 
         total_inserted_variants += inserted_variants;
 
