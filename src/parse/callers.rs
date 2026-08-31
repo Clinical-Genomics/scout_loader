@@ -1,4 +1,4 @@
-use crate::parse::info::parse_info_string;
+use crate::parse::info::{parse_info_string, parse_info_string_array};
 use mongodb::bson::{Bson, Document};
 use rust_htslib::bcf::Record;
 
@@ -223,7 +223,8 @@ pub fn parse_callers(record: &Record, category: VariantCategory, filters: &[Stri
         Some(filters.join(" - "))
     };
 
-    if let Some(found_in) = parse_info_string(record, b"FOUND_IN") {
+    if let Some(found_in) = parse_info_string_array(record, b"FOUND_IN") {
+        let found_in = found_in.join(",");
         get_callers_from_found_in(&mut callers, &found_in, filter_status.as_deref());
     } else if let Some(svdb_origin) = parse_info_string(record, b"svdb_origin") {
         get_callers_from_svdb_origin(&mut callers, &svdb_origin, filter_status.as_deref());
