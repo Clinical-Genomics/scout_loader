@@ -16,7 +16,7 @@ rust-htslib = "*"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-toml = "0.8"
+toml = "1.1"
 
 [dev-dependencies]
 assert_cmd = "2"
