@@ -1,5 +1,4 @@
 mod fixtures;
-
 use assert_cmd::Command;
 use fixtures::{TestDatabase, fixture_path};
 use predicates::prelude::*;

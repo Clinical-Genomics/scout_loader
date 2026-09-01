@@ -11,4 +11,7 @@ samples:
 vcf_snv: tests/fixtures/minimal_snv.vcf
 vcf_sv: tests/fixtures/minimal_sv.vcf
 
+vcf_snv_research: tests/fixtures/minimal_snv.vcf
+vcf_sv_research: tests/fixtures/minimal_sv.vcf
+
 human_genome_build: '37'

@@ -1,7 +1,8 @@
+use crate::case::test_case_config;
 use mongodb::bson::doc;
-
 use scout_loader::models::variant::VariantCategory;
 use scout_loader::parse::vcf::should_load_variant;
+use scout_loader::parser::select_vcfs;
 use scout_loader::utils::hash::generate_md5_key;
 use std::collections::HashSet;
 
@@ -145,4 +146,48 @@ fn should_load_causative_variant() {
         &managed_variant_ids,
         &causative_variant_ids,
     ));
+}
+
+#[test]
+fn test_selects_all_clinical_vcfs_by_default() {
+    let config = test_case_config();
+
+    let selected = select_vcfs(&config, None, false);
+
+    assert_eq!(selected.len(), 2);
+    assert_eq!(selected[0].1, VariantCategory::Snv);
+    assert_eq!(selected[1].1, VariantCategory::Sv);
+}
+
+#[test]
+fn test_selects_all_research_vcfs() {
+    let config = test_case_config();
+
+    let selected = select_vcfs(&config, None, true);
+
+    assert_eq!(selected.len(), 2);
+    assert_eq!(selected[0].1, VariantCategory::Snv);
+    assert_eq!(selected[1].1, VariantCategory::Sv);
+}
+
+#[test]
+fn test_selects_requested_clinical_categories() {
+    let config = test_case_config();
+    let categories = vec!["snv".to_string()];
+
+    let selected = select_vcfs(&config, Some(&categories), false);
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(selected[0].1, VariantCategory::Snv);
+}
+
+#[test]
+fn test_selects_requested_research_categories() {
+    let config = test_case_config();
+    let categories = vec!["sv".to_string()];
+
+    let selected = select_vcfs(&config, Some(&categories), true);
+
+    assert_eq!(selected.len(), 1);
+    assert_eq!(selected[0].1, VariantCategory::Sv);
 }
