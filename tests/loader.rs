@@ -226,3 +226,47 @@ async fn institute_exists() {
         .await
         .expect("failed to clean institute collection");
 }
+
+/// Deletes only the variants belonging to the specified case.
+#[tokio::test]
+async fn delete_case_variants() {
+    let Some(client) = test_client().await else {
+        eprintln!("Skipping MongoDB Loader test: MONGODB_URI is not set");
+        return;
+    };
+
+    let db = client.database("scout_loader_test");
+    let collection = db.collection::<Document>("variant");
+
+    collection.delete_many(doc! {}).await.unwrap();
+
+    collection
+        .insert_many([
+            doc! {"case_id": "case_123"},
+            doc! {"case_id": "case_123"},
+            doc! {"case_id": "other_case"},
+        ])
+        .await
+        .unwrap();
+
+    let loader = Loader::new(TEST_CONFIG).await.unwrap();
+
+    loader.delete_case_variants("case_123").await.unwrap();
+
+    assert_eq!(
+        collection
+            .count_documents(doc! {"case_id": "case_123"})
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        collection
+            .count_documents(doc! {"case_id": "other_case"})
+            .await
+            .unwrap(),
+        1
+    );
+
+    collection.delete_many(doc! {}).await.unwrap();
+}
