@@ -128,13 +128,12 @@ pub async fn parse(
 
         total_inserted_variants += inserted_variants;
 
-        if inserted_variants > 0 {
-            if let Err(error) =
+        if inserted_variants > 0
+            && let Err(error) =
                 updater::update_variant_rank(loader, &config.family, variant_type, category).await
-            {
-                loader.delete_case_variants(&config.family).await?;
-                return Err(error);
-            }
+        {
+            loader.delete_case_variants(&config.family).await?;
+            return Err(error);
         }
     }
 
