@@ -1,4 +1,4 @@
-name: CI
+name: Test
 
 on:
   push:
@@ -8,36 +8,46 @@ permissions:
   contents: read
 
 jobs:
-  lint-and-test:
-    name: Lint and test
+  test:
+    name: Test
     runs-on: ubuntu-latest
+
     services:
       mongodb:
         image: mongodb/mongodb-community-server:7.0-ubi8
         ports:
           - 27017:27017
+
     env:
       CARGO_TERM_COLOR: always
       MONGODB_URI: mongodb://127.0.0.1:27017
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
 
       - name: Cache cargo artifacts
         uses: Swatinem/rust-cache@v2
 
-      - name: Check formatting
-        run: cargo fmt --all --check
-
-      - name: Run Clippy
-        run: cargo clippy --locked --all-targets -- -D warnings
-
       - name: Run tests
         run: cargo test --locked --all-targets
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      - name: Generate coverage
+        run: cargo llvm-cov --locked --all-targets --lcov --output-path lcov.info
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: true
 
 
