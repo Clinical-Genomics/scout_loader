@@ -85,6 +85,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Always load managed variants (#100)
 - Always load any variant found to be causative in other cases (#101)
 - Split linter and tests GitHub actions (#123)
+- Assign rank scores regardless of case ID, with test (#127)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
 - Parsing of end chromosome (#29)
