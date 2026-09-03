@@ -344,7 +344,7 @@ pub async fn process_vcf(
         let compounds_bson =
             bson::to_bson(&compounds).expect("Failed to convert compounds to BSON");
 
-        let (rank_score, norm_rank_score) = parse_rank_scores(&record, case_id);
+        let (rank_score, norm_rank_score) = parse_rank_scores(&record);
 
         let genetic_models = parse_genetic_models(&record, case_id);
 

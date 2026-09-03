@@ -8,25 +8,24 @@ pub const GICAM_SCORE_KEY: &str = "GicamScore";
 
 /// Parses the rank score annotations for a variant from a VCF record.
 ///
-/// This function extracts the `RankScore` and `RankScoreNormalized` INFO
-/// annotations from the VCF record and retrieves the values corresponding
-/// to the provided case ID.
+/// Extracts the `RankScore` and `RankScoreNormalized` INFO annotations.
+/// The case identifier stored in the annotation is ignored; the score
+/// is taken from the first `<identifier>:<score>` entry.
 ///
 /// Missing or invalid scores are replaced with default values:
-/// `0` for the integer rank score and `0.0` for the normalized rank score.
+/// `0.0` for both scores.
 ///
 /// # Arguments
 ///
 /// * `record` - VCF record containing the rank score annotations.
-/// * `case_id` - Case identifier used to select the corresponding scores.
 ///
 /// # Returns
 ///
 /// A tuple containing:
 ///
-/// * `rank_score` - The integer rank score for the case (`i32`).
-/// * `norm_rank_score` - The normalized rank score for the case (`f64`).
-pub fn parse_rank_scores(record: &Record, case_id: &str) -> (i32, f64) {
+/// * `rank_score` - The rank score as a floating-point value.
+/// * `norm_rank_score` - The normalized rank score as a floating-point value.
+pub fn parse_rank_scores(record: &Record) -> (f64, f64) {
     let rank_score_entry = record
         .info(b"RankScore")
         .string()
@@ -49,50 +48,33 @@ pub fn parse_rank_scores(record: &Record, case_id: &str) -> (i32, f64) {
                 .map(|value| String::from_utf8_lossy(value).to_string())
         });
 
-    let rank_score = parse_score_entry(rank_score_entry.as_deref(), case_id)
-        .and_then(|score| score.parse::<i32>().ok())
-        .unwrap_or(0);
+    let rank_score = parse_score_entry(rank_score_entry.as_deref())
+        .and_then(|score| score.parse::<f64>().ok())
+        .unwrap_or(0.0);
 
-    let norm_rank_score = parse_score_entry(norm_rank_score_entry.as_deref(), case_id)
+    let norm_rank_score = parse_score_entry(norm_rank_score_entry.as_deref())
         .and_then(|score| score.parse::<f64>().ok())
         .unwrap_or(0.0);
 
     (rank_score, norm_rank_score)
 }
 
-/// Extracts a score value for a specific case from a raw VCF annotation.
+/// Extracts the score from a rank score annotation.
 ///
-/// The annotation contains scores for multiple cases, separated by commas.
-/// Each entry follows the format `<case_id>:<score>`.
+/// The annotation is expected to contain an entry in the format
+/// `<identifier>:<score>`. The identifier is ignored, since the score
+/// should not depend on the Scout case ID.
 ///
 /// # Arguments
 ///
-/// * `score_entry` - Optional raw score annotation string.
-/// * `case_id` - Case identifier used to select the corresponding score.
+/// * `score_entry` - Optional raw score annotation from the VCF.
 ///
 /// # Returns
 ///
-/// The score value as a string slice if the case ID is found, otherwise `None`.
-pub fn parse_score_entry<'a>(score_entry: Option<&'a str>, case_id: &str) -> Option<&'a str> {
-    let score_entry = score_entry?;
-
-    for family_info in score_entry.split(',') {
-        let mut split_info = family_info.split(':');
-
-        let Some(entry_case_id) = split_info.next() else {
-            continue;
-        };
-
-        let Some(score) = split_info.next() else {
-            continue;
-        };
-
-        if entry_case_id == case_id {
-            return Some(score);
-        }
-    }
-
-    None
+/// The score value as a string slice, or `None` if the annotation is
+/// missing or does not contain a `:` separator.
+pub fn parse_score_entry(score_entry: Option<&str>) -> Option<&str> {
+    score_entry?.split_once(':').map(|(_, score)| score)
 }
 
 /// Parse the `RankResult` INFO field into category/score entries.
