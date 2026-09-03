@@ -1,5 +1,8 @@
 # Scout Loader
 
+[![codecov](https://codecov.io/gh/Clinical-Genomics/scout_loader/graph/badge.svg)](https://codecov.io/gh/Clinical-Genomics/scout_loader)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 `scout_loader` is a command-line tool intended to load **clinical and research variants from VCF files into a Scout database**.
 
 The repository is designed to work alongside the [Scout](https://github.com/Clinical-Genomics/scout) repository and uses the case configuration to determine which VCF files are available for a case.
