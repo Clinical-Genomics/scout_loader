@@ -43,7 +43,24 @@ pub fn select_vcfs<'a>(
             VariantCategory::Sv,
             "sv",
         ),
-        // ...
+        (
+            if research {
+                &config.vcf_mei_research
+            } else {
+                &config.vcf_mei
+            },
+            VariantCategory::Mei,
+            "mei",
+        ),
+        (
+            if research {
+                &config.vcf_str_research
+            } else {
+                &config.vcf_str
+            },
+            VariantCategory::Str,
+            "str",
+        ),
     ];
 
     vcfs.into_iter()
