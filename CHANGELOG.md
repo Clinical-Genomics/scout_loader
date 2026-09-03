@@ -68,6 +68,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Support loading VCFs by category and research status (#111)
 - Tests for clinical and research VCF category selection (#113)
 - Improved documentation on README file (#115)
+- Clean up loaded variants on failure (#122)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)

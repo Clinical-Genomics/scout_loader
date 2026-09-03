@@ -73,6 +73,9 @@ pub fn select_vcfs<'a>(
 /// checked. If variants were inserted, their `variant_rank` values are
 /// updated for the corresponding variant category and type.
 ///
+/// If an error occurs while processing a VCF or updating variant ranks, all
+/// variants loaded for the case are removed before the error is returned.
+///
 /// Returns the total number of variants inserted across all selected VCFs
 /// for the case.
 pub async fn parse(
@@ -103,7 +106,7 @@ pub async fn parse(
             .get_managed_variant_ids(&category.to_string(), &config.human_genome_build)
             .await?;
 
-        let inserted_variants = process_vcf(
+        let inserted_variants = match process_vcf(
             vcf.to_str().ok_or("Invalid VCF path")?,
             category,
             variant_type,
@@ -112,14 +115,26 @@ pub async fn parse(
             &annotations,
             loader,
         )
-        .await?;
+        .await
+        {
+            Ok(count) => count,
+            Err(error) => {
+                loader.delete_case_variants(&config.family).await?;
+                return Err(error);
+            }
+        };
 
         println!("{variant_type:?} {category:?}: {inserted_variants} variants added");
 
         total_inserted_variants += inserted_variants;
 
         if inserted_variants > 0 {
-            updater::update_variant_rank(loader, &config.family, variant_type, category).await?;
+            if let Err(error) =
+                updater::update_variant_rank(loader, &config.family, variant_type, category).await
+            {
+                loader.delete_case_variants(&config.family).await?;
+                return Err(error);
+            }
         }
     }
 

@@ -239,4 +239,17 @@ impl Loader {
             }
         }
     }
+
+    /// Delete all variants associated with a case.
+    ///
+    /// This is used to clean up variants that may have been inserted before
+    /// an error occurred while loading the case.
+    pub async fn delete_case_variants(&self, case_id: &str) -> Result<(), mongodb::error::Error> {
+        self.db
+            .collection::<Document>("variant")
+            .delete_many(doc! { "case_id": case_id })
+            .await?;
+
+        Ok(())
+    }
 }
