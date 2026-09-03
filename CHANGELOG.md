@@ -70,6 +70,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Improved documentation on README file (#115)
 - Clean up loaded variants on failure (#122)
 - A Codecov push step on the automatic tests GitHub action (#123)
+- Codecov and license badges on README page (#124)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)
