@@ -339,7 +339,7 @@ pub async fn process_vcf(
                     .map(|value| String::from_utf8_lossy(value).to_string())
             });
 
-        let compounds = parse_compounds(compound_info, case_id, &variant_type);
+        let compounds = parse_compounds(compound_info, &variant_type, case_id);
 
         let compounds_bson =
             bson::to_bson(&compounds).expect("Failed to convert compounds to BSON");

@@ -87,6 +87,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Split linter and tests GitHub actions (#123)
 - Assign rank scores regardless of case ID, with test (#127)
 - Decouple genetic model parsing from case ID (#130)
+- Decouple compound parsing from case ID (#131)
 ### Fixed
 - Normalize chromosome names by stripping the chr prefix (#4)
 - Parsing of end chromosome (#29)
