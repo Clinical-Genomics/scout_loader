@@ -1,5 +1,6 @@
 # Scout Loader
 
+[![Tests](https://github.com/Clinical-Genomics/scout_loader/actions/workflows/tests_n_coverage.yml/badge.svg)](https://github.com/Clinical-Genomics/scout_loader/actions/workflows/tests_n_coverage.yml)
 [![codecov](https://codecov.io/gh/Clinical-Genomics/scout_loader/graph/badge.svg)](https://codecov.io/gh/Clinical-Genomics/scout_loader)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
