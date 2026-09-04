@@ -346,7 +346,7 @@ pub async fn process_vcf(
 
         let (rank_score, norm_rank_score) = parse_rank_scores(&record);
 
-        let genetic_models = parse_genetic_models(&record, case_id);
+        let genetic_models = parse_genetic_models(&record);
 
         let samples = parse_genotypes(&record, &sample_mapping, category);
 

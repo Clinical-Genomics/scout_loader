@@ -1,27 +1,29 @@
 use rust_htslib::bcf::Record;
 
-/// Parses the genetic models for a specific case from a VCF record.
+/// Parses genetic models from the `GeneticModels` INFO field of a VCF record.
 ///
-/// The `GeneticModels` INFO field contains information for one or more cases,
-/// separated by commas. Each case entry is expected to follow the format:
+/// The `GeneticModels` field may contain model annotations for one or more
+/// cases, separated by commas. Each case entry is expected to follow the
+/// format:
 ///
 /// ```text
 /// <case_id>:<model1>|<model2>|...
 /// ```
 ///
-/// The function extracts the genetic models associated with the provided
-/// case ID.
+/// The case identifier is ignored when parsing. This keeps the parsing logic
+/// independent of the case being loaded, which is important when loading
+/// cloned cases with a different case ID.
 ///
 /// # Arguments
 ///
 /// * `record` - VCF record containing the `GeneticModels` INFO annotation.
-/// * `case_id` - Case identifier used to select the corresponding models.
 ///
 /// # Returns
 ///
-/// A vector containing the genetic models for the specified case. Returns an
-/// empty vector if no models are found or the INFO field is missing.
-pub fn parse_genetic_models(record: &Record, case_id: &str) -> Vec<String> {
+/// A vector containing all genetic models found in the `GeneticModels` field.
+/// Returns an empty vector if the INFO field is missing or contains no valid
+/// model entries.
+pub fn parse_genetic_models(record: &Record) -> Vec<String> {
     let models_info = record
         .info(b"GeneticModels")
         .string()
@@ -37,20 +39,10 @@ pub fn parse_genetic_models(record: &Record, case_id: &str) -> Vec<String> {
         return Vec::new();
     };
 
-    for family_info in models_info.split(',') {
-        let split_info: Vec<&str> = family_info.split(':').collect();
-
-        if split_info.len() < 2 {
-            continue;
-        }
-
-        if split_info[0] == case_id {
-            return split_info[1]
-                .split('|')
-                .map(|model| model.to_string())
-                .collect();
-        }
-    }
-
-    Vec::new()
+    models_info
+        .split(',')
+        .filter_map(|family_info| family_info.split_once(':'))
+        .flat_map(|(_, models)| models.split('|'))
+        .map(str::to_string)
+        .collect()
 }
