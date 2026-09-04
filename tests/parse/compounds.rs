@@ -4,7 +4,7 @@ use scout_loader::parse::compounds::parse_compounds;
 fn test_parse_compounds() {
     let compound_info = Some("internal_id:Y_14923735_C_T>-7|Y_14898429_A_T>-3".to_string());
 
-    let compounds = parse_compounds(compound_info, "clinical");
+    let compounds = parse_compounds(compound_info, "clinical", "case_id");
 
     assert_eq!(compounds.len(), 2);
 
