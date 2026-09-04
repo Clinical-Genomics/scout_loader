@@ -33,7 +33,11 @@ use crate::loader::Loader;
 /// * `display_name` - Compound variant name without a `chr` prefix.
 /// * `variant` - MD5 identifier generated from the compound name and variant type.
 /// * `score` - Compound score provided by Genmod, or `0.0` if unavailable.
-pub fn parse_compounds(compound_info: Option<String>, variant_type: &str) -> Vec<Compound> {
+pub fn parse_compounds(
+    compound_info: Option<String>,
+    variant_type: &str,
+    case_id: &str,
+) -> Vec<Compound> {
     let mut compounds = Vec::new();
 
     let Some(compound_info) = compound_info else {
@@ -60,6 +64,7 @@ pub fn parse_compounds(compound_info: Option<String>, variant_type: &str) -> Vec
                 &compound_name
                     .split('_')
                     .chain(std::iter::once(variant_type))
+                    .chain(std::iter::once(case_id))
                     .collect::<Vec<_>>(),
             );
 
@@ -140,6 +145,7 @@ pub async fn update_compounds(
 
             let Some(referenced_variant) = referenced_variant else {
                 compound.insert("not_loaded", true);
+                println!("Compound updated successfully");
                 continue;
             };
 
