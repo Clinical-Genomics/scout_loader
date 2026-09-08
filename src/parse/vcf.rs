@@ -561,8 +561,8 @@ pub async fn process_vcf(
         let current_region = find_coding_region(
             annotations.coding_intervals,
             &coordinates.chromosome,
-            coordinates.position as i32,
-            coordinates.end as i32 + 1,
+            coordinates.position,
+            coordinates.end + 1,
         );
 
         // Decide whether the current batch should be loaded.

@@ -208,8 +208,8 @@ pub fn parse_coordinates(
             end = sv_end(
                 position,
                 &alternative,
-                parse_info_int(record, b"END").map(|v| v as i32),
-                parse_info_int(record, b"SVLEN").map(|v| v as i32),
+                parse_info_int(record, b"END"),
+                parse_info_int(record, b"SVLEN"),
             );
 
             length = sv_length(
