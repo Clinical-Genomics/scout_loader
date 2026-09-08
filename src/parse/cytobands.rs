@@ -65,8 +65,8 @@ pub fn set_cytobands(
 
         let chrom = fields[0].trim_start_matches("chr").to_string();
 
-        let start: u64 = fields[1].parse()?;
-        let end: u64 = fields[2].parse()?;
+        let start: i32 = fields[1].parse()?;
+        let end: i32 = fields[2].parse()?;
 
         cytobands.entry(chrom).or_default().push(Cytoband {
             start,

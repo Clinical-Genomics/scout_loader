@@ -8,10 +8,10 @@ use std::str::FromStr;
 #[derive(Debug)]
 pub struct Coordinates {
     pub chromosome: String,
-    pub position: u64,
-    pub end: u64,
+    pub position: i32,
+    pub end: i32,
     pub end_chrom: String,
-    pub length: i64,
+    pub length: i32,
     pub sub_category: String,
     pub mate_id: Option<String>,
     pub cytoband_start: Option<String>,

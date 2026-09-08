@@ -9,7 +9,7 @@ use std::collections::HashSet;
 fn test_variant() -> mongodb::bson::Document {
     doc! {
         "chromosome": "1",
-        "position": 100_i64,
+        "position": 100_i32,
         "reference": "A",
         "alternative": "G",
         "simple_id": "1_100_A_G",

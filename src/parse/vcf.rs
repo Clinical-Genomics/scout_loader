@@ -109,7 +109,7 @@ pub fn should_load_variant(
 
     let managed_variant_id = generate_md5_key(&[
         chromosome.to_string(),
-        variant.get_i64("position").unwrap().to_string(),
+        variant.get_i32("position").unwrap().to_string(),
         variant.get_str("reference").unwrap_or_default().to_string(),
         variant
             .get_str("alternative")
@@ -378,8 +378,8 @@ pub async fn process_vcf(
 
             "chromosome": coordinates.chromosome.clone(),
             "end_chrom": coordinates.end_chrom,
-            "position": coordinates.position as i64,
-            "end": coordinates.end as i64,
+            "position": coordinates.position,
+            "end": coordinates.end,
             "length": coordinates.length,
 
             "category": category.to_string(),
