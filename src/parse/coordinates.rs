@@ -223,7 +223,7 @@ pub fn parse_coordinates(
                     .ok()
                     .flatten()
                     .and_then(|values| values.first().copied())
-                    .map(|value| value as i32),
+                    .map(|value| value),
             );
         }
 
