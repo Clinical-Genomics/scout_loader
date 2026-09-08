@@ -143,7 +143,7 @@ async fn mongodb_parsed_variant_roundtrip() {
     );
     assert_eq!(fetched.get_str("case_id").ok(), Some(case_id));
     assert_eq!(fetched.get_str("chromosome").ok(), Some(chrom));
-    assert_eq!(fetched.get_i64("position").ok(), Some(pos as i64));
+    assert_eq!(fetched.get_i32("position").ok(), Some(pos));
 
     collection
         .drop()
