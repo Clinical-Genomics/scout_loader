@@ -110,7 +110,7 @@ async fn mongodb_parsed_variant_roundtrip() {
         "document_id": ids.document_id,
         "case_id": case_id,
         "chromosome": chrom,
-        "position": pos as i32,
+        "position": pos,
         "reference": reference,
         "alternative": alternative,
         "type": variant_type,
