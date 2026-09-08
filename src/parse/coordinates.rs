@@ -13,31 +13,20 @@ lazy_static! {
 
 const SV_TYPES: &[&str] = &["ins", "del", "dup", "cnv", "inv", "bnd"];
 
-/// Finds the cytoband overlapping a genomic coordinate.
+/// Returns the cytoband containing the given genomic position.
 ///
-/// # Arguments
-///
-/// * `cytobands` - Cytoband annotations indexed by chromosome.
-/// * `chrom` - Normalized chromosome name.
-/// * `pos` - Genomic position (1-based).
-///
-/// # Returns
-///
-/// The cytoband name if the position overlaps an interval, otherwise an empty
-/// string.
+/// The position is expected to be a 1-based genomic coordinate.
 pub fn get_cytoband_coordinates(
     cytobands: &HashMap<String, Vec<Cytoband>>,
     chrom: &str,
-    pos: u64,
+    pos: i32,
 ) -> Option<String> {
-    cytobands
-        .get(chrom)
-        .and_then(|bands| {
-            bands
-                .iter()
-                .find(|band| pos >= band.start && pos < band.end)
-        })
-        .map(|band| band.name.clone())
+    cytobands.get(chrom).and_then(|bands| {
+        bands
+            .iter()
+            .find(|band| pos >= 0 && pos >= band.start && pos < band.end)
+            .map(|band| band.name.clone())
+    })
 }
 
 /// Normalizes a chromosome name by removing an optional "chr" prefix.
@@ -105,22 +94,21 @@ fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
     unreachable!("Unable to determine SV type")
 }
 
-/// Return the end coordinate for a structural variant.
+/// Determines the end position of a structural variant.
 ///
-/// The END INFO field is usually sufficient, but some callers set END
-/// equal to POS for variants such as insertions. In those cases SVLEN
-/// can be used as a fallback.
-///
-/// Breakends (BNDs) require special handling because the end coordinate
-/// can be encoded in the ALT allele pattern.
-fn sv_end(pos: u64, alt: &str, svend: Option<i64>, svlen: Option<i64>) -> u64 {
-    let mut end = svend.map(|value| value as u64);
+/// The end position is resolved in the following order:
+/// - For breakends, use the position encoded in the ALT allele.
+/// - For symbolic alleles containing `.`, use the variant position.
+/// - Otherwise, use `SVLEN` relative to the variant position when available.
+/// - Fall back to the variant position if no end position can be determined.
+fn sv_end(pos: i32, alt: &str, svend: Option<i32>, svlen: Option<i32>) -> i32 {
+    let mut end = svend;
 
     if alt.contains(':') {
         if let Some(captures) = BND_ALT_PATTERN.captures(alt)
             && let Some(position) = captures.get(2)
         {
-            end = position.as_str().parse::<u64>().ok();
+            end = position.as_str().parse::<i32>().ok();
         }
     } else if alt.contains('.') && alt.len() > 1 {
         end = Some(pos);
@@ -129,7 +117,7 @@ fn sv_end(pos: u64, alt: &str, svend: Option<i64>, svlen: Option<i64>) -> u64 {
     if end.is_none()
         && let Some(svlen) = svlen
     {
-        end = Some((pos as i64 + svlen) as u64);
+        end = Some(pos + svlen);
     }
 
     end.unwrap_or(pos)
@@ -139,9 +127,9 @@ fn sv_end(pos: u64, alt: &str, svend: Option<i64>, svlen: Option<i64>) -> u64 {
 ///
 /// Returns a very large value for variants spanning different molecules.
 /// Uses SVLEN when available. If no length can be determined, returns -1.
-fn sv_length(pos: u64, end: u64, chrom: &str, end_chrom: &str, svlen: Option<i64>) -> i64 {
+fn sv_length(pos: i32, end: i32, chrom: &str, end_chrom: &str, svlen: Option<i32>) -> i32 {
     if chrom != end_chrom {
-        return 100_000_000_000;
+        return i32::MAX;
     }
 
     if let Some(svlen) = svlen {
@@ -152,7 +140,7 @@ fn sv_length(pos: u64, end: u64, chrom: &str, end_chrom: &str, svlen: Option<i64
         return -1;
     }
 
-    end as i64 - pos as i64
+    end - pos
 }
 
 /// Parse genomic coordinates and variant classification information.
@@ -170,7 +158,7 @@ fn sv_length(pos: u64, end: u64, chrom: &str, end_chrom: &str, svlen: Option<i64
 /// * `record` - VCF record containing variant information.
 /// * `header` - VCF header used to resolve chromosome names.
 /// * `cytobands` - Cytoband definitions used to annotate start and end positions.
-/// * `variant_type` - Variant category used to determine coordinate calculation.
+/// * `category` - Variant category used to determine coordinate calculation.
 ///
 /// # Returns
 ///
@@ -189,7 +177,7 @@ pub fn parse_coordinates(
 
     let chrom = normalize_chromosome(&chrom);
 
-    let position = (record.pos() + 1) as u64;
+    let position = (record.pos() + 1) as i32;
 
     let reference = String::from_utf8_lossy(record.alleles()[0]).to_string();
 
@@ -203,9 +191,9 @@ pub fn parse_coordinates(
     let alt_len = alternative.len();
 
     let mut sub_category = "snv".to_string();
-    let mut end = record.end() as u64;
+    let mut end = record.end() as i32;
     let mut end_chrom = chrom.clone();
-    let mut length = alt_len as i64;
+    let mut length = alt_len as i32;
 
     match category {
         VariantCategory::Sv | VariantCategory::CancerSv | VariantCategory::Fusion => {
@@ -220,8 +208,8 @@ pub fn parse_coordinates(
             end = sv_end(
                 position,
                 &alternative,
-                parse_info_int(record, b"END").map(|v| v as i64),
-                parse_info_int(record, b"SVLEN").map(|v| v as i64),
+                parse_info_int(record, b"END"),
+                parse_info_int(record, b"SVLEN"),
             );
 
             length = sv_length(
@@ -234,25 +222,24 @@ pub fn parse_coordinates(
                     .integer()
                     .ok()
                     .flatten()
-                    .and_then(|values| values.first().copied())
-                    .map(|value| value as i64),
+                    .and_then(|values| values.first().copied()),
             );
         }
 
         VariantCategory::Mei => {
             sub_category = "mei".to_string();
 
-            length = alt_len as i64;
+            length = alt_len as i32;
 
             if ref_len != alt_len {
-                length = (ref_len as i64 - alt_len as i64).abs();
+                length = (ref_len as i32 - alt_len as i32).abs();
             }
         }
 
         _ => {
             if ref_len != alt_len {
                 sub_category = "indel".to_string();
-                length = (ref_len as i64 - alt_len as i64).abs();
+                length = (ref_len as i32 - alt_len as i32).abs();
             }
         }
     }

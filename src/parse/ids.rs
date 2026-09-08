@@ -17,7 +17,7 @@ use crate::utils::hash::generate_md5_key;
 /// A `VariantIds` object containing the generated identifiers.
 pub fn parse_ids(
     chrom: &str,
-    pos: &u64,
+    pos: &i32,
     reference: &str,
     alternative: &str,
     case_id: &str,
@@ -35,7 +35,7 @@ pub fn parse_ids(
 ///
 /// The simple identifier is a human-readable representation of the variant
 /// location and alleles. It is **not** guaranteed to be unique.
-pub fn parse_simple_id(chrom: &str, pos: &u64, reference: &str, alternative: &str) -> String {
+pub fn parse_simple_id(chrom: &str, pos: &i32, reference: &str, alternative: &str) -> String {
     format!("{chrom}_{pos}_{reference}_{alternative}")
 }
 
@@ -46,7 +46,7 @@ pub fn parse_simple_id(chrom: &str, pos: &u64, reference: &str, alternative: &st
 /// and is therefore not intended to be human-readable.
 pub fn parse_variant_id(
     chrom: &str,
-    pos: &u64,
+    pos: &i32,
     reference: &str,
     alternative: &str,
     variant_type: &str,
@@ -66,7 +66,7 @@ pub fn parse_variant_id(
 /// variant in Scout.
 pub fn parse_display_name(
     chrom: &str,
-    pos: &u64,
+    pos: &i32,
     reference: &str,
     alternative: &str,
     variant_type: &str,
@@ -81,7 +81,7 @@ pub fn parse_display_name(
 /// alleles, analysis type, and case identifier.
 pub fn parse_document_id(
     chrom: &str,
-    pos: &u64,
+    pos: &i32,
     reference: &str,
     alternative: &str,
     variant_type: &str,

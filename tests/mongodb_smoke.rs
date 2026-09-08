@@ -95,7 +95,7 @@ async fn mongodb_parsed_variant_roundtrip() {
     let collection = db.collection::<Document>(&collection_name);
 
     let chrom = "1";
-    let pos = 123_456_u64;
+    let pos = 123_456_i32;
     let reference = "A";
     let alternative = "T";
     let case_id = "case_123";
@@ -110,12 +110,12 @@ async fn mongodb_parsed_variant_roundtrip() {
         "document_id": ids.document_id,
         "case_id": case_id,
         "chromosome": chrom,
-        "position": pos as i64,
+        "position": pos,
         "reference": reference,
         "alternative": alternative,
         "type": variant_type,
         "category": "snv",
-        "length": 1_i64,
+        "length": 1_i32,
     };
 
     collection
@@ -143,7 +143,7 @@ async fn mongodb_parsed_variant_roundtrip() {
     );
     assert_eq!(fetched.get_str("case_id").ok(), Some(case_id));
     assert_eq!(fetched.get_str("chromosome").ok(), Some(chrom));
-    assert_eq!(fetched.get_i64("position").ok(), Some(pos as i64));
+    assert_eq!(fetched.get_i32("position").ok(), Some(pos));
 
     collection
         .drop()
