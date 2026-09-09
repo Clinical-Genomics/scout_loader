@@ -124,10 +124,10 @@ pub fn parse_vep_transcript(entry: HashMap<String, String>) -> Option<Document> 
         let hgnc_id = hgnc_id
             .split(':')
             .next_back()
-            .and_then(|value| value.parse::<i64>().ok());
+            .and_then(|value| value.parse::<i32>().ok());
 
         if let Some(hgnc_id) = hgnc_id {
-            transcript.insert("hgnc_id", Bson::Int64(hgnc_id));
+            transcript.insert("hgnc_id", Bson::Int32(hgnc_id));
         }
     }
 
