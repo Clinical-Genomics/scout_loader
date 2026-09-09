@@ -574,13 +574,13 @@ pub async fn process_vcf(
             (Some(current), Some(previous)) if current == previous => false,
 
             // Moving between different coding regions.
-            (Some(_), Some(_)) => true,
+            (Some(_), Some(_)) => batch.len() >= BATCH_SIZE,
 
             // Moving from a coding region to an intergenic region.
-            (None, Some(_)) => true,
+            (None, Some(_)) => batch.len() >= BATCH_SIZE,
 
             // Moving from intergenic to a coding region.
-            (Some(_), None) => true,
+            (Some(_), None) => batch.len() >= BATCH_SIZE,
 
             // Consecutive intergenic variants: use the normal batch size.
             (None, None) => batch.len() >= BATCH_SIZE,
@@ -596,7 +596,6 @@ pub async fn process_vcf(
         }
 
         batch.push(variant);
-
         previous_region = current_region;
     }
 
