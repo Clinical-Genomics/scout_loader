@@ -319,12 +319,6 @@ pub async fn process_vcf(
             &variant_type,
         );
 
-        /*
-        if ids.document_id != "351eb280656c2fa1853bbe15187c01ba" {
-            continue;
-        }
-        */
-
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
 
@@ -338,11 +332,6 @@ pub async fn process_vcf(
                     .first()
                     .map(|value| String::from_utf8_lossy(value).to_string())
             });
-
-        let compounds = parse_compounds(compound_info, &variant_type, case_id);
-
-        let compounds_bson =
-            bson::to_bson(&compounds).expect("Failed to convert compounds to BSON");
 
         let (rank_score, norm_rank_score) = parse_rank_scores(&record);
 
@@ -369,12 +358,10 @@ pub async fn process_vcf(
             "case_id": case_id,
             "institute": &config.owner,
 
-            "compounds": compounds_bson,
-
             "rank_score": rank_score,
             "norm_rank_score": norm_rank_score,
 
-            "variant_type": variant_type,
+            "variant_type": &variant_type,
 
             "chromosome": coordinates.chromosome.clone(),
             "end_chrom": coordinates.end_chrom,
@@ -398,6 +385,15 @@ pub async fn process_vcf(
 
             "samples": samples,
         };
+
+        let compounds = parse_compounds(compound_info, &variant_type, case_id);
+
+        if !compounds.is_empty() {
+            let compounds_bson =
+                bson::to_bson(&compounds).expect("Failed to convert compounds to BSON");
+
+            variant.insert("compounds", compounds_bson);
+        }
 
         if coordinates.mate_id.is_some() {
             variant.insert("mate_id", coordinates.mate_id);
