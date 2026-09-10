@@ -97,9 +97,7 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
                 hgvs_identifier = transcript.get("coding_sequence_name").cloned();
             }
 
-            if exon.is_none() {
-                exon = transcript.get("exon").cloned();
-            }
+            exon = exon.or_else(|| Some(Bson::String(String::new())));
 
             if let Ok(consequences) = transcript.get_array("functional_annotations") {
                 for consequence in consequences {
