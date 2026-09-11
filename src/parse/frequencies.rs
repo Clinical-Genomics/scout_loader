@@ -55,10 +55,11 @@ pub const SWEGEN_SVA_KEYS: &[&str] = &["swegen_sva_FRQ", "swegen_sva_OCC"];
 
 /// Parse a frequency value from a VCF INFO field.
 ///
-/// Returns `None` if the field is missing or contains a placeholder value
-/// (`.`, `0`, `-1`).
+/// Returns None if the field is missing, contains a placeholder value
+/// (., 0, -1), or cannot be parsed as a frequency.
 ///
-/// Returns the frequency as `f64` otherwise.
+/// Supports both numeric INFO fields and string fields containing numeric
+/// frequency values. Returns the first frequency value as f64.
 fn parse_frequency(record: &Record, key: &[u8]) -> Option<f64> {
     record
         .info(key)
@@ -68,6 +69,20 @@ fn parse_frequency(record: &Record, key: &[u8]) -> Option<f64> {
         .and_then(|values| values.first().copied())
         .filter(|v| *v != 0.0 && *v != -1.0)
         .map(|v| v as f64)
+        .or_else(|| {
+            record
+                .info(key)
+                .string()
+                .ok()
+                .flatten()
+                .and_then(|values| {
+                    values
+                        .first()
+                        .and_then(|value| std::str::from_utf8(value).ok())
+                        .and_then(|value| value.parse::<f64>().ok())
+                })
+                .filter(|v| *v != 0.0 && *v != -1.0)
+        })
 }
 
 /// Update frequency document from VCF INFO fields.
