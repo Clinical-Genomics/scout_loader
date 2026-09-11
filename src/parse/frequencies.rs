@@ -68,6 +68,20 @@ fn parse_frequency(record: &Record, key: &[u8]) -> Option<f64> {
         .and_then(|values| values.first().copied())
         .filter(|v| *v != 0.0 && *v != -1.0)
         .map(|v| v as f64)
+        .or_else(|| {
+            record
+                .info(key)
+                .string()
+                .ok()
+                .flatten()
+                .and_then(|values| {
+                    values
+                        .first()
+                        .and_then(|value| std::str::from_utf8(value).ok())
+                        .and_then(|value| value.parse::<f64>().ok())
+                })
+                .filter(|v| *v != 0.0 && *v != -1.0)
+        })
 }
 
 /// Update frequency document from VCF INFO fields.
