@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
-## [unreleased]
+## [0.1.0]
 ### Added
 - Use the `rust-htslib` for reading VCF files (#1)
 - First Variant model and parsing modules (#2)
