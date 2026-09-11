@@ -71,6 +71,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Clean up loaded variants on failure (#122)
 - A Codecov push step on the automatic tests GitHub action (#123)
 - Codecov, license and test status badges on README page (#124, #132)
+- A Release GitHub workflow, which build and publish standalone binaries for Linux x86_64, macOS x86_64, and macOS ARM64 (#144)
 ### Changed
 - Structure of parsed entities, to reflect documents saved in the database (#20)
 - Improved and simplified code (#22)
