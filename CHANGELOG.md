@@ -4,6 +4,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
+## [0.1.1]
+### Fixed
+- Fix release workflow and versioned binaries (#148)
+
 ## [0.1.0]
 ### Added
 - Use the `rust-htslib` for reading VCF files (#1)
