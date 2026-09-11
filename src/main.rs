@@ -8,6 +8,7 @@ use std::collections::HashSet;
 use std::fs;
 
 #[derive(Parser, Debug)]
+#[command(version)]
 struct Args {
     /// Path to the case configuration YAML file.
     #[arg(long = "case-config")]
