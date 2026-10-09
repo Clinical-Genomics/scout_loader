@@ -4,6 +4,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
+## [unreleased]
+### Changed
+- Fetch cytobands directly from the scout database [#157]
+
 ## [0.1.1]
 ### Fixed
 - Fix release workflow and versioned binaries (#148)

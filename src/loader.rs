@@ -1,3 +1,4 @@
+use crate::models::cytoband::Cytoband;
 use futures::TryStreamExt;
 use mongodb::Database;
 use mongodb::bson::{Document, doc};
@@ -251,5 +252,49 @@ impl Loader {
             .await?;
 
         Ok(())
+    }
+
+    /// Loads cytoband annotations for the specified genome build.
+    ///
+    /// Fetches cytobands from MongoDB and groups them by chromosome.
+    ///
+    /// # Arguments
+    ///
+    /// * `build` - Genome build identifier, such as `"37"` or `"38"`.
+    ///
+    /// # Returns
+    ///
+    /// A mapping from chromosome name to its cytoband intervals.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the MongoDB query fails, a required field is
+    /// missing or has an unexpected type, or a coordinate cannot be parsed.
+    pub async fn get_cytobands(
+        &self,
+        build: &str,
+    ) -> Result<HashMap<String, Vec<Cytoband>>, Box<dyn std::error::Error>> {
+        let collection = self.db.collection::<Document>("cytoband");
+
+        let filter = doc! {
+            "build": build
+        };
+
+        let mut cursor = collection.find(filter).await?;
+        let mut cytobands: HashMap<String, Vec<Cytoband>> = HashMap::new();
+
+        while let Some(document) = cursor.try_next().await? {
+            let chrom = document.get_str("chrom")?.to_string();
+            let start = document.get_str("start")?.parse::<i32>()?;
+            let end = document.get_str("stop")?.parse::<i32>()?;
+            let name = document.get_str("band")?.to_string();
+
+            cytobands
+                .entry(chrom)
+                .or_default()
+                .push(Cytoband { start, end, name });
+        }
+
+        Ok(cytobands)
     }
 }

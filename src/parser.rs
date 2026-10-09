@@ -3,7 +3,6 @@ use crate::models::build::GenomeBuild;
 use crate::models::case::CaseConfig;
 use crate::models::variant::VariantAnnotations;
 use crate::models::variant::{VariantCategory, VariantType};
-use crate::parse::cytobands::set_cytobands;
 use crate::parse::vcf::process_vcf;
 use crate::updater;
 use std::path::PathBuf;
@@ -105,7 +104,9 @@ pub async fn parse(
     let genome_build = GenomeBuild::from_str(&config.human_genome_build)
         .map_err(|_| format!("Invalid genome build: {}", config.human_genome_build))?;
 
-    let cytobands = set_cytobands(genome_build.cytoband_path())
+    let cytobands = loader
+        .get_cytobands(genome_build.to_str())
+        .await
         .map_err(|error| format!("Could not load cytobands: {error}"))?;
 
     let vcfs = select_vcfs(config, categories, research);

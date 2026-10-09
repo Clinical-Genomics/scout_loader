@@ -1,15 +1,6 @@
-mod config {
-    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/config.rs"));
-}
-
-mod loader {
-    #![allow(dead_code)]
-    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/loader.rs"));
-}
-
-use loader::Loader;
 use mongodb::Client;
 use mongodb::bson::{Document, doc};
+use scout_loader::loader::Loader;
 use std::collections::HashSet;
 
 const TEST_CONFIG: &str = "tests/fixtures/test_config.toml";
@@ -177,6 +168,48 @@ async fn gene_to_panels() {
         .delete_many(doc! {})
         .await
         .expect("failed to clean gene_panel collection");
+}
+
+/// Tests that cytobands are retrieved for the requested genome build.
+#[tokio::test]
+async fn get_cytobands() {
+    let Some(client) = test_client().await else {
+        eprintln!("Skipping MongoDB Loader test: MONGODB_URI is not set");
+        return;
+    };
+
+    let db = client.database("scout_loader_test");
+    let collection = db.collection::<Document>("cytoband");
+
+    collection.delete_many(doc! {}).await.unwrap();
+    collection
+        .insert_many([
+            doc! {
+                "chrom": "1",
+                "start": "116100001",
+                "stop": "117800001",
+                "band": "p13.1",
+                "build": "37",
+            },
+            doc! {
+                "chrom": "1",
+                "start": "100000",
+                "stop": "200000",
+                "band": "p36.33",
+                "build": "38",
+            },
+        ])
+        .await
+        .unwrap();
+
+    let loader = Loader::new(TEST_CONFIG).await.unwrap();
+    let cytobands = loader.get_cytobands("37").await.unwrap();
+
+    assert_eq!(cytobands.len(), 1);
+    assert_eq!(cytobands["1"][0].name, "p13.1");
+    assert_eq!(cytobands["1"][0].start, 116100001);
+
+    collection.delete_many(doc! {}).await.unwrap();
 }
 
 /// Tests that institute_exists returns true for an existing institute
