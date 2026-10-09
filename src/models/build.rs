@@ -6,6 +6,15 @@ pub enum GenomeBuild {
     Grch38,
 }
 
+impl GenomeBuild {
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            GenomeBuild::Grch37 => "37",
+            GenomeBuild::Grch38 => "38",
+        }
+    }
+}
+
 impl FromStr for GenomeBuild {
     type Err = String;
 
@@ -14,15 +23,6 @@ impl FromStr for GenomeBuild {
             "grch37" | "37" | "hg19" => Ok(GenomeBuild::Grch37),
             "grch38" | "38" | "hg38" => Ok(GenomeBuild::Grch38),
             _ => Err(format!("Unknown genome build: {s}")),
-        }
-    }
-}
-
-impl GenomeBuild {
-    pub fn cytoband_path(&self) -> &'static str {
-        match self {
-            GenomeBuild::Grch37 => "resources/cytoBand_hg19.txt.gz",
-            GenomeBuild::Grch38 => "resources/cytoBand_hg38.txt.gz",
         }
     }
 }

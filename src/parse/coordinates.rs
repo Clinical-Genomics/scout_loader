@@ -21,6 +21,8 @@ pub fn get_cytoband_coordinates(
     chrom: &str,
     pos: i32,
 ) -> Option<String> {
+    let chrom = chrom.trim_start_matches("chr");
+
     cytobands.get(chrom).and_then(|bands| {
         bands
             .iter()
