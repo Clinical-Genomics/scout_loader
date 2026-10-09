@@ -3,7 +3,6 @@ pub mod callers;
 pub mod compounds;
 pub mod conservations;
 pub mod coordinates;
-pub mod cytobands;
 pub mod filters;
 pub mod frequencies;
 pub mod fusions;
