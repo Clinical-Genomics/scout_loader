@@ -105,7 +105,7 @@ pub async fn parse(
         .map_err(|_| format!("Invalid genome build: {}", config.human_genome_build))?;
 
     let cytobands = loader
-        .set_cytobands(genome_build.cytoband_path())
+        .get_cytobands(genome_build.cytoband_path())
         .await
         .map_err(|error| format!("Could not load cytobands: {error}"))?;
 

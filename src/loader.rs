@@ -270,7 +270,7 @@ impl Loader {
     ///
     /// Returns an error if the MongoDB query fails, a required field is
     /// missing or has an unexpected type, or a coordinate cannot be parsed.
-    pub async fn set_cytobands(
+    pub async fn get_cytobands(
         &self,
         build: &str,
     ) -> Result<HashMap<String, Vec<Cytoband>>, Box<dyn std::error::Error>> {
