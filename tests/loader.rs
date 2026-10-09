@@ -1,15 +1,6 @@
-mod config {
-    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/config.rs"));
-}
-
-mod loader {
-    #![allow(dead_code)]
-    include!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/loader.rs"));
-}
-
-use loader::Loader;
 use mongodb::Client;
 use mongodb::bson::{Document, doc};
+use scout_loader::loader::Loader;
 use std::collections::HashSet;
 
 const TEST_CONFIG: &str = "tests/fixtures/test_config.toml";
