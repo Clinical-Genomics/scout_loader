@@ -21,6 +21,8 @@ pub const GNOMAD_INFO_MAX_KEYS: &[&str] = &[
     "GNOMADAF_POPMAX",
     "GNOMADAF_MAX",
     "gnomad_popmax_af",
+    "GNOMADAF_grpmax",
+    "MAX_AF",
 ];
 
 pub const THOUSAND_GENOMES_KEYS: &[&str] = &["1000GAF"];

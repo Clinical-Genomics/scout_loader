@@ -5,8 +5,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
 ## [unreleased]
+### Fixed
+- Parse `GNOMADAF_grpmax` and `MAX_AF` from VCF info field (#)
 ### Changed
-- Fetch cytobands directly from the scout database [#157]
+- Fetch cytobands directly from the scout database (#157)
 
 ## [0.1.1]
 ### Fixed
