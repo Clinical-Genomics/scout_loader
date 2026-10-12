@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
-## [unreleased]
+## [0.1.2]
 ### Fixed
 - Parse `GNOMADAF_grpmax` and `MAX_AF` from VCF info field (#158)
 ### Changed
