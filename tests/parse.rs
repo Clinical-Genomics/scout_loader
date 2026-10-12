@@ -1,6 +1,9 @@
 #[path = "parse/compounds.rs"]
 mod compounds;
 
+#[path = "parse/frequencies.rs"]
+mod frequencies;
+
 #[path = "parse/genetic_models.rs"]
 mod genetic_models;
 
