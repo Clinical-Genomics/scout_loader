@@ -6,7 +6,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
 ## [unreleased]
 ### Fixed
-- Parse `GNOMADAF_grpmax` and `MAX_AF` from VCF info field (#)
+- Parse `GNOMADAF_grpmax` and `MAX_AF` from VCF info field (#158)
 ### Changed
 - Fetch cytobands directly from the scout database (#157)
 
