@@ -55,20 +55,26 @@ jobs:
   build-linux-glibc217:
     name: Build Linux binary (glibc 2.17)
     runs-on: ubuntu-latest
-    container:
-      image: quay.io/pypa/manylinux2014_x86_64
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-unknown-linux-gnu
-
-      - name: Build release
-        run: cargo build --release --locked --target x86_64-unknown-linux-gnu
+      # Compile inside manylinux2014, but keep GitHub Actions steps on the host.
+      - name: Build release in manylinux2014 container
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work \
+            quay.io/pypa/manylinux2014_x86_64 \
+            bash -lc '
+              set -e
+              yum install -y curl gcc gcc-c++ make perl
+              curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs |
+                sh -s -- -y --profile minimal --default-toolchain stable
+              source "$HOME/.cargo/env"
+              cargo build --release --locked --target x86_64-unknown-linux-gnu
+            '
 
       # Keep the legacy binary separate from the existing Linux release asset.
       - name: Rename binary
