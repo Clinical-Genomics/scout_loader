@@ -1,0 +1,40 @@
+# Build a Linux binary compatible with glibc 2.17 on pull requests.
+# Intended for older Linux systems such as CentOS 7.
+
+name: Build Linux glibc 2.17
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Linux (glibc 2.17)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Build release
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/work" \
+            -w /work \
+            quay.io/pypa/manylinux2014_x86_64 \
+            bash -lc '
+              set -e
+              yum install -y clang-devel llvm-devel
+
+              curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs |
+                sh -s -- -y --profile minimal
+
+              source "$HOME/.cargo/env"
+              export LIBCLANG_PATH=/usr/lib64
+
+              cargo build --release --locked
+            '
