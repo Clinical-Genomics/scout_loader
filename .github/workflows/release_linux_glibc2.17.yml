@@ -28,12 +28,15 @@ jobs:
             quay.io/pypa/manylinux2014_x86_64 \
             bash -lc '
               set -e
-              yum install -y clang-devel llvm-devel perl-core perl-IPC-Cmd
+              yum install -y perl-core perl-IPC-Cmd
 
               curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs |
                 sh -s -- -y --profile minimal
 
               source "$HOME/.cargo/env"
-              export LIBCLANG_PATH=/usr/lib64/llvm
+
+              python3 -m pip install libclang
+              export LIBCLANG_PATH="$(python3 -c "import clang.native; print(clang.native.get_library_path())")"
+
               cargo build --release --locked
             '
