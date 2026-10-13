@@ -1,27 +1,42 @@
-# Build a Linux binary compatible with glibc 2.17 on pull requests.
+# Build and publish a Linux musl binary.
 # Intended for older Linux systems such as CentOS 7.
 
-name: Build Linux glibc 2.17
+name: Release Linux musl
 
 on:
-  pull_request:
-    branches:
-      - main
+  release:
+    types: [published]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
-    name: Build Linux (musl)
+    name: Build centos7-x86_64
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
       - name: Install cross
         run: cargo install cross --locked
 
-      - name: Build Linux binary
-        run: cross build --locked --release --target x86_64-unknown-linux-musl
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: cross build --release --locked --target x86_64-unknown-linux-musl
+
+      - name: Rename binary
+        run: cp target/x86_64-unknown-linux-musl/release/scout_loader scout_loader-${{ github.event.release.tag_name }}-centos7-x86_64
+
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "scout_loader-${{ github.event.release.tag_name }}-centos7-x86_64"
