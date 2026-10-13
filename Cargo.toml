@@ -24,10 +24,3 @@ predicates = "3"
 tempfile = "3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
-[workspace.metadata.cross.target.x86_64-unknown-linux-gnu]
-image = "ghcr.io/cross-rs/x86_64-unknown-linux-gnu:main-centos"
-pre-build = [
-    "yum install -y centos-release-scl",
-    "yum install -y llvm-toolset-7",
-]
-
