@@ -13,18 +13,12 @@ permissions:
 
 jobs:
   build:
-    name: Build Linux (glibc 2.17)
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+
+      - name: Install cross
+        run: cargo install cross --locked
 
       - name: Build Linux binary
-        uses: zijiren233/cargo-cross@v1
-        env:
-          CFLAGS_x86_64_unknown_linux_gnu: -D_DEFAULT_SOURCE
-        with:
-          command: build
-          targets: x86_64-unknown-linux-gnu
-          glibc-version: "2.17"
+        run: cross build --locked --release --target x86_64-unknown-linux-gnu
