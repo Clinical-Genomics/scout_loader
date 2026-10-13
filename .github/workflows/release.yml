@@ -1,3 +1,4 @@
+
 # Build and publish standalone binaries when a GitHub Release is published.
 # Binaries are built for Linux x86_64, macOS x86_64, and macOS ARM64.
 
@@ -50,50 +51,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.event.release.tag_name }}" "scout_loader-${{ github.event.release.tag_name }}-${{ matrix.name }}"
-
-  # Build an additional Linux binary for systems using glibc 2.17 (e.g. CentOS 7).
-  build-linux-glibc217:
-    name: Build Linux binary (glibc 2.17)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      # Compile inside manylinux2014, but keep GitHub Actions steps on the host.
-      - name: Build release in manylinux2014 container
-        run: |
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/work" \
-            -w /work \
-            quay.io/pypa/manylinux2014_x86_64 \
-            bash -lc '
-              set -e
-
-              yum groupinstall -y "Development Tools"
-              yum install -y \
-                ca-certificates curl \
-                perl-core perl-devel perl-IPC-Cmd perl-Time-Piece \
-                perl-Data-Dumper make gcc gcc-c++
-
-              curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs |
-                sh -s -- -y --profile minimal --default-toolchain stable
-
-              source "$HOME/.cargo/env"
-
-              cargo build --release --locked \
-                --target x86_64-unknown-linux-gnu
-            '
-
-      # Keep the legacy binary separate from the existing Linux release asset.
-      - name: Rename binary
-        run: |
-          cp target/x86_64-unknown-linux-gnu/release/scout_loader \
-            "scout_loader-${{ github.event.release.tag_name }}-linux-x86_64-glibc217"
-
-      - name: Upload release asset
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
-            "scout_loader-${{ github.event.release.tag_name }}-linux-x86_64-glibc217"
