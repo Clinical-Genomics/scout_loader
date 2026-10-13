@@ -50,3 +50,35 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.event.release.tag_name }}" "scout_loader-${{ github.event.release.tag_name }}-${{ matrix.name }}"
+
+  # Build an additional Linux binary for systems using glibc 2.17 (e.g. CentOS 7).
+  build-linux-glibc217:
+    name: Build Linux binary (glibc 2.17)
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/pypa/manylinux2014_x86_64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Build release
+        run: cargo build --release --locked --target x86_64-unknown-linux-gnu
+
+      # Keep the legacy binary separate from the existing Linux release asset.
+      - name: Rename binary
+        run: |
+          cp target/x86_64-unknown-linux-gnu/release/scout_loader \
+            "scout_loader-${{ github.event.release.tag_name }}-linux-x86_64-glibc217"
+
+      - name: Upload release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "scout_loader-${{ github.event.release.tag_name }}-linux-x86_64-glibc217"

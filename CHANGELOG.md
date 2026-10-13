@@ -4,6 +4,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
+## [0.1.3]
+### Fixed
+- Add a Linux release binary compatible with glibc 2.17 (#161)
+
 ## [0.1.2]
 ### Fixed
 - Parse `GNOMADAF_grpmax` and `MAX_AF` from VCF info field (#158)
