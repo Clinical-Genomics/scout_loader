@@ -22,6 +22,8 @@ jobs:
 
       - name: Build Linux binary
         uses: zijiren233/cargo-cross@v1
+        env:
+          CFLAGS_x86_64_unknown_linux_gnu: -D_DEFAULT_SOURCE
         with:
           command: build
           targets: x86_64-unknown-linux-gnu
