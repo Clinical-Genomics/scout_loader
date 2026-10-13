@@ -1,5 +1,7 @@
-# Build and publish standalone binaries when a GitHub Release is published.
-# Binaries are built for Linux x86_64, macOS x86_64, and macOS ARM64.
+
+# Build standalone binaries on pull requests and publish them on GitHub Releases.
+# Binaries are built for Linux x86_64, macOS x86_64, macOS ARM64,
+# and Linux x86_64 with glibc 2.17 compatibility.
 
 name: Release
 
@@ -47,12 +49,28 @@ jobs:
         run: cargo build --release --locked --target ${{ matrix.target }}
 
       - name: Rename binary
-        run: cp target/${{ matrix.target }}/release/scout_loader scout_loader-${{ github.event.release.tag_name }}-${{ matrix.name }}
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BINARY_NAME: ${{ matrix.name }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            suffix="$RELEASE_TAG"
+          else
+            suffix="pr-${PR_NUMBER}"
+          fi
+          cp "target/${{ matrix.target }}/release/scout_loader" \
+            "scout_loader-${suffix}-${BINARY_NAME}"
 
       - name: Upload release asset
+        if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" "scout_loader-${{ github.event.release.tag_name }}-${{ matrix.name }}"
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          BINARY_NAME: ${{ matrix.name }}
+        run: |
+          gh release upload "$RELEASE_TAG" \
+            "scout_loader-${RELEASE_TAG}-${BINARY_NAME}"
 
   # Build an additional Linux binary for systems using glibc 2.17 (e.g. CentOS 7).
   build-linux-glibc217:
@@ -88,15 +106,24 @@ jobs:
                 --target x86_64-unknown-linux-gnu
             '
 
-      # Keep the legacy binary separate from the existing Linux release asset.
       - name: Rename binary
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            suffix="$RELEASE_TAG"
+          else
+            suffix="pr-${PR_NUMBER}"
+          fi
           cp target/x86_64-unknown-linux-gnu/release/scout_loader \
-            "scout_loader-${{ github.event.release.tag_name }}-linux-x86_64-glibc217"
+            "scout_loader-${suffix}-linux-x86_64-glibc217"
 
       - name: Upload release asset
+        if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
-            "scout_loader-${{ github.event.release.tag_name }}-linux-x86_64-glibc217"
+          gh release upload "$RELEASE_TAG" \
+            "scout_loader-${RELEASE_TAG}-linux-x86_64-glibc217"
