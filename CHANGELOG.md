@@ -6,7 +6,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
 ## [0.1.3]
 ### Fixed
-- Add a Linux release binary compatible with glibc 2.17 (#161)
+- Add a Linux release binary compatible with glibc 2.17 (#161, #162)
 
 ## [0.1.2]
 ### Fixed
