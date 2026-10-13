@@ -34,5 +34,6 @@ jobs:
                 sh -s -- -y --profile minimal
 
               source "$HOME/.cargo/env"
-              find /usr -name 'libclang.so*' 2>/dev/null
+              export LIBCLANG_PATH=/usr/lib64/llvm
+              cargo build --release --locked
             '
