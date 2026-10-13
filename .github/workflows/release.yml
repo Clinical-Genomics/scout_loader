@@ -69,11 +69,20 @@ jobs:
             quay.io/pypa/manylinux2014_x86_64 \
             bash -lc '
               set -e
-              yum install -y curl gcc gcc-c++ make perl perl-IPC-Cmd
+
+              yum groupinstall -y "Development Tools"
+              yum install -y \
+                ca-certificates curl \
+                perl-core perl-devel perl-IPC-Cmd perl-Time-Piece \
+                perl-Data-Dumper make gcc gcc-c++
+
               curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs |
                 sh -s -- -y --profile minimal --default-toolchain stable
+
               source "$HOME/.cargo/env"
-              cargo build --release --locked --target x86_64-unknown-linux-gnu
+
+              cargo build --release --locked \
+                --target x86_64-unknown-linux-gnu
             '
 
       # Keep the legacy binary separate from the existing Linux release asset.
