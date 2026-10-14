@@ -4,6 +4,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
+## [unreleased]
+### Added
+- Created a RELEASE.md document, describing the procedures to creare a new software release (#)
+
 ## [0.1.3]
 ### Fixed
 - Add a Linux release binary compatible with glibc 2.17 (#161, #162, #163, #164, #165)
