@@ -7,6 +7,8 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 ## [unreleased]
 ### Added
 - Created a RELEASE.md document, describing the procedures to creare a new software release (#)
+### Changed
+- Optimize compound variant lookup to avoid cloning full documents (#168)
 
 ## [0.1.3]
 ### Fixed
