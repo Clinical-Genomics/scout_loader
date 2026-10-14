@@ -9,6 +9,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Created a RELEASE.md document, describing the procedures to creare a new software release (#)
 ### Changed
 - Optimize compound variant lookup to avoid cloning full documents (#168)
+- Improve variant loading performance by using unordered bulk inserts and skipping duplicate variants without individual retries (#170)
 - Speed up VCF record counting for progress reporting (#171)
 
 ## [0.1.3]

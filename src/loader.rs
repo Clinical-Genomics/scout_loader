@@ -200,9 +200,8 @@ impl Loader {
     /// Loads a batch of variants into the database.
     ///
     /// Variants are inserted in bulk to reduce the number of database
-    /// round trips. If the bulk insertion encounters a duplicate key,
-    /// the variants are retried individually and existing variants are
-    /// skipped.
+    /// round trips. Duplicate keys are skipped while other variants
+    /// are still inserted.
     ///
     /// Returns the number of variants that were actually inserted.
     pub async fn load_variant_bulk(
@@ -214,30 +213,25 @@ impl Loader {
         }
 
         let collection = self.db.collection::<Document>("variant");
+        let batch_size = variants.len();
 
-        match collection.insert_many(variants.clone()).await {
+        match collection.insert_many(variants).ordered(false).await {
             Ok(result) => Ok(result.inserted_ids.len()),
-            Err(err) => {
-                if !err.to_string().contains("E11000") {
-                    return Err(err.into());
-                }
+            Err(err) => match *err.kind {
+                mongodb::error::ErrorKind::InsertMany(ref insert_error) => {
+                    if insert_error.write_concern_error.is_some() {
+                        return Err(err.into());
+                    }
 
-                let mut inserted = 0;
-
-                for variant in variants {
-                    match collection.insert_one(variant).await {
-                        Ok(_) => {
-                            inserted += 1;
+                    match &insert_error.write_errors {
+                        Some(errors) if errors.iter().all(|error| error.code == 11000) => {
+                            Ok(batch_size - errors.len())
                         }
-                        Err(err) if err.to_string().contains("E11000") => {
-                            // Variant already exists; skip it.
-                        }
-                        Err(err) => return Err(err.into()),
+                        _ => Err(err.into()),
                     }
                 }
-
-                Ok(inserted)
-            }
+                _ => Err(err.into()),
+            },
         }
     }
 
