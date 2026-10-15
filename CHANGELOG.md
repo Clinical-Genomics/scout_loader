@@ -14,6 +14,8 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Optimize parsing of VEP transcripts by avoiding unnecessary string allocations when parsing CSQ fields (#172)
 - Replace per-transcript HashMap allocations with VepFields to improve VEP annotation parsing performance (#173)
 - Optimize VEP parsing using precomputed field indices (#174)
+### Fixed
+- Remove leftover debug messages and fix printed sample names (#)
 
 ## [0.1.3]
 ### Fixed

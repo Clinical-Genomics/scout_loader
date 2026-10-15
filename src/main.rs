@@ -47,7 +47,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     validate_institute(&loader, &config.owner).await?;
 
     for sample in &config.samples {
-        println!("Sample: {} ({:?})", sample.sample_id, sample.sample_name);
+        println!(
+            "Sample: {} ({})",
+            sample.sample_id,
+            sample.sample_name.as_deref().unwrap_or("NA")
+        );
     }
 
     let panel_ids = config.gene_panels.as_deref().unwrap_or_default();
