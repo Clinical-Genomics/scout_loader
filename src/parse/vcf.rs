@@ -273,6 +273,13 @@ pub async fn process_vcf(
     let rank_threshold = config.rank_score_threshold.unwrap_or(5);
 
     let vep_header = parse_vep_header(&header);
+
+    let field_indices: HashMap<String, usize> = vep_header
+        .iter()
+        .enumerate()
+        .map(|(index, field)| (field.clone(), index))
+        .collect();
+
     let rank_results_header = parse_rank_results_header(&header);
 
     let local_archive_info = parse_local_archive_header(path);
@@ -516,7 +523,7 @@ pub async fn process_vcf(
         }
         log_step!("parse_sv_frequencies");
 
-        let parsed_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
+        let parsed_transcripts = parse_vep_transcripts(&record, &field_indices, &mut variant);
         log_step!("parse_vep_transcripts");
 
         let clnsig_predictions = parse_clnsig(&record, &parsed_transcripts);

@@ -15,15 +15,12 @@ use std::collections::HashSet;
 
 pub struct VepFields<'a> {
     indices: &'a HashMap<String, usize>,
-    values: Vec<&'a str>,
+    values: &'a [&'a str],
 }
 
 impl<'a> VepFields<'a> {
-    pub(crate) fn new(indices: &'a HashMap<String, usize>, transcript_info: &'a str) -> Self {
-        Self {
-            indices,
-            values: transcript_info.split('|').collect(),
-        }
+    pub(crate) fn new(indices: &'a HashMap<String, usize>, values: &'a [&'a str]) -> Self {
+        Self { indices, values }
     }
 
     pub(crate) fn get(&self, key: &str) -> Option<&'a str> {
@@ -45,32 +42,16 @@ impl<'a> VepFields<'a> {
     }
 }
 
-/// Parse VEP CSQ annotations from a VCF record.
-///
-/// Extracts transcript annotations from the CSQ INFO field using the VEP
-/// header and collects dbSNP and COSMIC identifiers at the variant level.
-///
-/// Gene identifiers are not stored in transcripts to avoid duplication.
-/// Gene-level information is parsed separately by `parse_genes`.
-///
-/// Returns the parsed transcript annotations.
 pub fn parse_vep_transcripts(
     record: &Record,
-    vep_header: &[String],
+    field_indices: &HashMap<String, usize>,
     variant: &mut Document,
 ) -> Vec<Document> {
     let mut parsed_transcripts = Vec::new();
 
-    if vep_header.is_empty() {
+    if field_indices.is_empty() {
         return parsed_transcripts;
     }
-
-    // Build the field-index map once for this call.
-    let field_indices: HashMap<String, usize> = vep_header
-        .iter()
-        .enumerate()
-        .map(|(index, field)| (field.clone(), index))
-        .collect();
 
     let mut dbsnp_ids = HashSet::new();
     let mut cosmic_ids = HashSet::new();
@@ -78,11 +59,15 @@ pub fn parse_vep_transcripts(
     if let Ok(Some(csq)) = record.info(b"CSQ").string() {
         for value in csq.iter() {
             let csq_string = String::from_utf8_lossy(value);
+            let mut field_values: Vec<&str> = Vec::new();
 
             for transcript_info in csq_string.split(',') {
-                let fields = VepFields::new(&field_indices, transcript_info);
+                field_values.clear();
+                field_values.extend(transcript_info.split('|'));
 
-                if let Some(transcript) = parse_vep_transcript(&fields) {
+                if let Some(transcript) =
+                    parse_vep_transcript_from_values(field_indices, &field_values)
+                {
                     if let Ok(values) = transcript.get_array("dbsnp") {
                         for value in values {
                             if let Bson::String(id) = value {
@@ -104,7 +89,7 @@ pub fn parse_vep_transcripts(
             }
         }
 
-        // The COSMIC INFO tag may be added by VEP and/or bcftools annotate.
+        // COSMIC identifiers may also come from VEP or bcftools annotate.
         if let Some(cosmic_tag) = parse_info_string(record, b"COSMIC") {
             cosmic_ids.extend(
                 cosmic_tag
@@ -130,6 +115,14 @@ pub fn parse_vep_transcripts(
     }
 
     parsed_transcripts
+}
+
+fn parse_vep_transcript_from_values(
+    field_indices: &HashMap<String, usize>,
+    field_values: &[&str],
+) -> Option<Document> {
+    let fields = VepFields::new(field_indices, field_values);
+    parse_vep_transcript(&fields)
 }
 
 /// Parse a single VEP transcript annotation.
