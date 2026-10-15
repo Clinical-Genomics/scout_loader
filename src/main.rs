@@ -41,7 +41,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Case: {}", config.family);
     println!("Genome build: {}", config.human_genome_build);
-    println!("Gene panels: {:?}", config.gene_panels);
+    println!(
+        "Gene panels: {:?}",
+        config.gene_panels.as_deref().unwrap_or(&[])
+    );
     println!("Institute: {:?}", config.owner);
 
     validate_institute(&loader, &config.owner).await?;
