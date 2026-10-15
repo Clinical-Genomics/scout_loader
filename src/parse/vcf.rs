@@ -36,6 +36,7 @@ use crate::parse::strs::set_str_info;
 use crate::parse::vep::clnsig::{build_clnsig, is_pathogenic, parse_clnsig};
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::transcripts::parse_vep_transcripts;
+use crate::utils::count::count_vcf_records;
 use crate::utils::custom_images::set_custom_images;
 use crate::utils::hash::generate_md5_key;
 use indicatif::ProgressBar;
@@ -244,11 +245,8 @@ pub async fn process_vcf(
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let case_id = &config.family;
 
-    // Count the VCF records so the progress bar can show processing progress.
-    let nr_variants = Reader::from_path(path)
-        .expect("couldn't open input vcf")
-        .records()
-        .count();
+    // Count VCF lines to estimate progress for the progress bar.
+    let nr_variants = count_vcf_records(path)?;
 
     let mut progress: Option<ProgressBar> = None;
 
