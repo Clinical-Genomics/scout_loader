@@ -234,8 +234,6 @@ pub fn add_hgnc_symbols(
 ///
 /// Panics if the VCF file cannot be opened, if the sample mapping cannot be
 /// created, or if a record cannot be read.
-use std::time::Instant;
-
 pub async fn process_vcf(
     path: &str,
     category: VariantCategory,
@@ -247,20 +245,16 @@ pub async fn process_vcf(
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let case_id = &config.family;
 
-    let start = Instant::now();
+    // Count VCF lines to estimate progress for the progress bar.
     let nr_variants = count_vcf_records(path)?;
-    println!(
-        "process_vcf [{}]: count_vcf_records took {:?}",
-        case_id,
-        start.elapsed()
-    );
 
     let mut progress: Option<ProgressBar> = None;
 
-    let start = Instant::now();
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
     let header = vcf.header().clone();
 
+    // Sample order can differ between VCF files, so build the mapping from
+    // the header of the current VCF.
     let vcf_samples: Vec<String> = header
         .samples()
         .iter()
@@ -282,12 +276,6 @@ pub async fn process_vcf(
         return Err(error.into());
     }
 
-    println!(
-        "process_vcf [{}]: VCF initialization and header parsing took {:?}",
-        case_id,
-        start.elapsed()
-    );
-
     let mut batch = Vec::with_capacity(BATCH_SIZE);
     let mut inserted_variants = 0;
 
@@ -297,21 +285,6 @@ pub async fn process_vcf(
 
     for result in vcf.records() {
         let record = result.unwrap();
-
-        // Time each processing step independently.
-        let mut step_started = Instant::now();
-
-        macro_rules! log_step {
-            ($step:expr) => {
-                println!(
-                    "process_vcf [{}]: {} took {:?}",
-                    case_id,
-                    $step,
-                    step_started.elapsed()
-                );
-                step_started = Instant::now();
-            };
-        }
 
         if progress.is_none() {
             let pb = ProgressBar::new(nr_variants as u64);
@@ -330,12 +303,10 @@ pub async fn process_vcf(
         }
 
         let coordinates = parse_coordinates(&record, &header, cytobands, &category);
-        log_step!("parse_coordinates");
 
         let variant_type = variant_type.to_string();
 
         let (reference, alternative) = parse_alleles(&record, category);
-        log_step!("parse_alleles");
 
         let ids = parse_ids(
             &coordinates.chromosome,
@@ -345,11 +316,9 @@ pub async fn process_vcf(
             case_id,
             &variant_type,
         );
-        log_step!("parse_ids");
 
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
-        log_step!("parse_filters_and_callers");
 
         let compound_info = record
             .info(b"Compounds")
@@ -361,16 +330,12 @@ pub async fn process_vcf(
                     .first()
                     .map(|value| String::from_utf8_lossy(value).to_string())
             });
-        log_step!("parse_compound_info");
 
         let (rank_score, norm_rank_score) = parse_rank_scores(&record);
-        log_step!("parse_rank_scores");
 
         let genetic_models = parse_genetic_models(&record);
-        log_step!("parse_genetic_models");
 
         let samples = parse_genotypes(&record, &sample_mapping, category);
-        log_step!("parse_genotypes");
 
         let str_variants_images = if category == VariantCategory::Str {
             config
@@ -381,6 +346,7 @@ pub async fn process_vcf(
             None
         };
 
+        // This structure contains fields common to all variant categories.
         let mut variant = doc! {
             "_id": ids.document_id.clone(),
             "simple_id": ids.simple_id,
@@ -417,7 +383,6 @@ pub async fn process_vcf(
 
             "samples": samples,
         };
-        log_step!("build_variant_document");
 
         let compounds = parse_compounds(compound_info, &variant_type, case_id);
 
@@ -427,7 +392,6 @@ pub async fn process_vcf(
 
             variant.insert("compounds", compounds_bson);
         }
-        log_step!("parse_and_insert_compounds");
 
         if coordinates.mate_id.is_some() {
             variant.insert("mate_id", coordinates.mate_id);
@@ -457,13 +421,9 @@ pub async fn process_vcf(
         if variant_id.contains("rs") {
             variant.insert("dbsnp_id", variant_id.to_string());
         }
-        log_step!("parse_additional_info");
 
         set_mitomap_associated_diseases(&record, &mut variant);
-        log_step!("set_mitomap_associated_diseases");
-
         set_hmtvar(&record, &mut variant);
-        log_step!("set_hmtvar");
 
         let mut frequencies = bson::Document::new();
 
@@ -476,7 +436,6 @@ pub async fn process_vcf(
 
             VariantCategory::Str => {
                 set_str_info(&record, &mut variant);
-
                 if let Ok(str_repid) = variant.get_str("str_repid")
                     && let Some(images) = str_variants_images
                 {
@@ -509,15 +468,12 @@ pub async fn process_vcf(
 
             _ => {}
         }
-        log_step!("process_category_specific_fields");
 
         if matches!(category, VariantCategory::Sv | VariantCategory::CancerSv) {
             frequencies.extend(parse_sv_frequencies(&record));
         }
-        log_step!("parse_sv_frequencies");
 
         let parsed_transcripts = parse_vep_transcripts(&record, &vep_header, &mut variant);
-        log_step!("parse_vep_transcripts");
 
         let clnsig_predictions = parse_clnsig(&record, &parsed_transcripts);
 
@@ -533,7 +489,6 @@ pub async fn process_vcf(
                 ),
             );
         }
-        log_step!("parse_and_insert_clnsig");
 
         if !should_load_variant(
             &variant,
@@ -542,10 +497,8 @@ pub async fn process_vcf(
             &annotations.managed_variant_ids,
             annotations.causative_variant_ids,
         ) {
-            log_step!("filter_variant_rejected");
             continue;
         }
-        log_step!("filter_variant_accepted");
 
         if category != VariantCategory::Fusion {
             let genes = parse_genes(&parsed_transcripts);
@@ -555,10 +508,8 @@ pub async fn process_vcf(
                 Bson::Array(genes.into_iter().map(Bson::Document).collect()),
             );
         }
-        log_step!("parse_genes");
 
         set_hgnc_ids(&mut variant, &record);
-        log_step!("set_hgnc_ids");
 
         let clnsig_onc_predictions = parse_clnsig_onc(&record);
 
@@ -573,45 +524,33 @@ pub async fn process_vcf(
                 ),
             );
         }
-        log_step!("parse_and_insert_clnsig_onc");
 
         frequencies.extend(parse_frequencies(&record, &parsed_transcripts));
-        log_step!("parse_frequencies");
 
         if !frequencies.is_empty() {
             add_frequencies(&mut variant, &frequencies);
         }
-        log_step!("add_frequencies");
 
         add_loqus_archive_frequencies(&record, &mut variant, local_archive_info.as_ref());
-        log_step!("add_loqus_archive_frequencies");
 
         set_severity_predictions(&mut variant, &record, &parsed_transcripts);
-        log_step!("set_severity_predictions");
 
         parse_conservations(&record, &parsed_transcripts, &mut variant);
-        log_step!("parse_conservations");
 
         variant.extend(callers);
-        log_step!("insert_callers");
 
         if let Some(rank_score_results) = parse_rank_result(&record, &rank_results_header) {
             variant.insert("rank_score_results", Bson::Array(rank_score_results));
         }
-        log_step!("parse_rank_results");
 
         link_gene_panels(&mut variant, annotations.gene_to_panels);
-        log_step!("link_gene_panels");
-
         add_hgnc_symbols(&mut variant, annotations.hgncid_to_gene, category);
-        log_step!("add_hgnc_symbols");
 
         if let Ok(genes) = variant.get_array("genes") {
             let genes = genes.to_vec();
 
             add_genes(&mut variant, &genes, annotations.hgncid_to_gene, category);
         }
-        log_step!("add_genes");
 
         let current_region = find_coding_region(
             annotations.coding_intervals,
@@ -619,90 +558,52 @@ pub async fn process_vcf(
             coordinates.position,
             coordinates.end + 1,
         );
-        log_step!("find_coding_region");
 
+        // Decide whether the current batch should be loaded.
+        //
+        // Variants belonging to the same coding region stay together even
+        // when the batch grows beyond BATCH_SIZE.
         let should_load = match (current_region, previous_region) {
+            // Same coding region: keep adding variants.
             (Some(current), Some(previous)) if current == previous => false,
+
+            // Moving between different coding regions.
             (Some(_), Some(_)) => batch.len() >= BATCH_SIZE,
+
+            // Moving from a coding region to an intergenic region.
             (None, Some(_)) => batch.len() >= BATCH_SIZE,
+
+            // Moving from intergenic to a coding region.
             (Some(_), None) => batch.len() >= BATCH_SIZE,
+
+            // Consecutive intergenic variants: use the normal batch size.
             (None, None) => batch.len() >= BATCH_SIZE,
         };
-        log_step!("decide_batch_loading");
 
         if should_load && !batch.is_empty() {
-            println!(
-                "process_vcf [{}]: ready to update compounds; batch size={}, time since last checkpoint={:?}",
-                case_id,
-                batch.len(),
-                step_started.elapsed()
-            );
-
             if current_region.is_some() {
-                let update_started = Instant::now();
                 update_compounds(loader, &mut batch).await?;
-                println!(
-                    "process_vcf [{}]: update_compounds took {:?}",
-                    case_id,
-                    update_started.elapsed()
-                );
             }
 
-            let load_started = Instant::now();
             inserted_variants += loader.load_variant_bulk(batch).await?;
-            println!(
-                "process_vcf [{}]: load_variant_bulk took {:?}",
-                case_id,
-                load_started.elapsed()
-            );
-
             batch = Vec::with_capacity(BATCH_SIZE);
         }
 
         batch.push(variant);
         previous_region = current_region;
-        log_step!("append_variant_to_batch");
     }
 
     if !batch.is_empty() {
-        println!(
-            "process_vcf [{}]: final batch size={}",
-            case_id,
-            batch.len()
-        );
-
         if previous_region.is_some() {
-            println!(
-                "process_vcf [{}]: final batch ready for update_compounds",
-                case_id
-            );
-
-            let update_started = Instant::now();
             update_compounds(loader, &mut batch).await?;
-            println!(
-                "process_vcf [{}]: final update_compounds took {:?}",
-                case_id,
-                update_started.elapsed()
-            );
         }
 
-        let load_started = Instant::now();
         inserted_variants += loader.load_variant_bulk(batch).await?;
-        println!(
-            "process_vcf [{}]: final load_variant_bulk took {:?}",
-            case_id,
-            load_started.elapsed()
-        );
     }
 
     if let Some(progress) = progress {
         progress.finish();
     }
-
-    println!(
-        "process_vcf [{}]: completed; total inserted variants={}",
-        case_id, inserted_variants
-    );
 
     Ok(inserted_variants)
 }
