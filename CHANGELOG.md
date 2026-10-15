@@ -11,7 +11,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Optimize compound variant lookup to avoid cloning full documents (#168)
 - Improve variant loading performance by using unordered bulk inserts and skipping duplicate variants without individual retries (#170)
 - Speed up VCF record counting for progress reporting (#171)
-- Optimize parsing of VEP transcripts (#172)
+- Optimize parsing of VEP transcripts by avoiding unnecessary string allocations when parsing CSQ fields (#172)
 
 ## [0.1.3]
 ### Fixed
