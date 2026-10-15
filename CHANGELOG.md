@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
-## [unreleased]
+## [0.1.4]
 ### Added
 - Created a RELEASE.md document, describing the procedures to creare a new software release (#)
 ### Changed
