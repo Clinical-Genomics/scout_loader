@@ -37,6 +37,10 @@ pub fn count_vcf_records(path: &str) -> Result<usize, Box<dyn Error>> {
         return Err(io::Error::other("Failed to count VCF lines").into());
     }
 
-    let count = String::from_utf8(output.stdout)?.trim().parse::<usize>()?;
+    let count = String::from_utf8(output.stdout)?
+        .split_whitespace()
+        .next()
+        .ok_or_else(|| io::Error::other("Failed to parse VCF line count"))?
+        .parse::<usize>()?;
     Ok(count)
 }
