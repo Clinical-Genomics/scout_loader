@@ -30,44 +30,43 @@ pub fn parse_vep_transcripts(
 ) -> Vec<Document> {
     let mut parsed_transcripts = Vec::new();
 
-    let mut dbsnp_ids = HashSet::new();
-    let mut cosmic_ids = HashSet::new();
-
     if vep_header.is_empty() {
         return parsed_transcripts;
     }
 
+    let mut dbsnp_ids = HashSet::new();
+    let mut cosmic_ids = HashSet::new();
+
     if let Ok(Some(csq)) = record.info(b"CSQ").string() {
-        let csq_string = csq
-            .iter()
-            .map(|value| String::from_utf8_lossy(value))
-            .collect::<Vec<_>>()
-            .join(",");
-        for transcript_info in csq_string.split(',') {
-            let raw_transcript: HashMap<String, String> = vep_header
-                .iter()
-                .zip(transcript_info.split('|'))
-                .map(|(key, value)| (key.clone(), value.to_string()))
-                .collect();
+        for value in csq.iter() {
+            let csq_string = String::from_utf8_lossy(value);
 
-            if let Some(transcript) = parse_vep_transcript(raw_transcript) {
-                if let Ok(values) = transcript.get_array("dbsnp") {
-                    for value in values {
-                        if let Bson::String(id) = value {
-                            dbsnp_ids.insert(id.clone());
+            for transcript_info in csq_string.split(',') {
+                let raw_transcript: HashMap<String, String> = vep_header
+                    .iter()
+                    .zip(transcript_info.split('|'))
+                    .map(|(key, value)| (key.clone(), value.to_string()))
+                    .collect();
+
+                if let Some(transcript) = parse_vep_transcript(raw_transcript) {
+                    if let Ok(values) = transcript.get_array("dbsnp") {
+                        for value in values {
+                            if let Bson::String(id) = value {
+                                dbsnp_ids.insert(id.clone());
+                            }
                         }
                     }
-                }
 
-                if let Ok(values) = transcript.get_array("cosmic") {
-                    for value in values {
-                        if let Bson::String(id) = value {
-                            cosmic_ids.insert(id.clone());
+                    if let Ok(values) = transcript.get_array("cosmic") {
+                        for value in values {
+                            if let Bson::String(id) = value {
+                                cosmic_ids.insert(id.clone());
+                            }
                         }
                     }
-                }
 
-                parsed_transcripts.push(transcript);
+                    parsed_transcripts.push(transcript);
+                }
             }
         }
 
@@ -84,14 +83,14 @@ pub fn parse_vep_transcripts(
         if !cosmic_ids.is_empty() {
             variant.insert(
                 "cosmic_ids",
-                Bson::Array(cosmic_ids.iter().cloned().map(Bson::String).collect()),
+                Bson::Array(cosmic_ids.into_iter().map(Bson::String).collect()),
             );
         }
 
         if !dbsnp_ids.is_empty() && !variant.contains_key("dbsnp_id") {
             variant.insert(
                 "dbsnp_id",
-                Bson::String(dbsnp_ids.iter().cloned().collect::<Vec<_>>().join(";")),
+                Bson::String(dbsnp_ids.into_iter().collect::<Vec<_>>().join(";")),
             );
         }
     }
