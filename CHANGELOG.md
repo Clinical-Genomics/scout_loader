@@ -12,6 +12,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Improve variant loading performance by using unordered bulk inserts and skipping duplicate variants without individual retries (#170)
 - Speed up VCF record counting for progress reporting (#171)
 - Optimize parsing of VEP transcripts by avoiding unnecessary string allocations when parsing CSQ fields (#172)
+- Replace per-transcript HashMap allocations with VepFields to improve VEP annotation parsing performance (#173)
 
 ## [0.1.3]
 ### Fixed
