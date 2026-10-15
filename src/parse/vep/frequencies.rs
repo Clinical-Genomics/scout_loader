@@ -1,11 +1,11 @@
+use crate::parse::vep::transcripts::VepFields;
 use mongodb::bson::{Bson, Document};
-use std::collections::HashMap;
 
 /// Parse mitochondrial gnomAD allele frequencies from a VEP transcript.
 ///
 /// Extracts homoplasmic and heteroplasmic mitochondrial allele frequencies
 /// when available.
-pub fn parse_mt_frequencies(transcript: &mut Document, entry: &HashMap<String, String>) {
+pub fn parse_mt_frequencies(transcript: &mut Document, entry: &VepFields<'_>) {
     if let Some(value) = entry
         .get("GNOMAD_MT_AF_HOM")
         .filter(|value| !value.is_empty())
@@ -28,7 +28,7 @@ pub fn parse_mt_frequencies(transcript: &mut Document, entry: &HashMap<String, S
 /// Supports VEP v90+ frequency fields, including 1000 Genomes, gnomAD,
 /// and ExAC frequencies. Stores specific allele frequencies and calculates
 /// maximum frequencies across population-specific annotations.
-pub fn parse_variant_frequencies(transcript: &mut Document, entry: &HashMap<String, String>) {
+pub fn parse_variant_frequencies(transcript: &mut Document, entry: &VepFields<'_>) {
     let gnomad_csq_keys = [
         "GNOMAD_AF",
         "GNOMADG_AF",
@@ -41,8 +41,8 @@ pub fn parse_variant_frequencies(transcript: &mut Document, entry: &HashMap<Stri
     let mut thousandg_freqs: Vec<f64> = Vec::new();
     let mut gnomad_freqs: Vec<f64> = Vec::new();
 
-    for (key, value) in entry {
-        // Frequency fields end with AF or POPMAX
+    for (key, value) in entry.iter() {
+        // Frequency fields end with AF or POPMAX.
         if !(key.ends_with("AF") || key.ends_with("POPMAX")) {
             continue;
         }
@@ -55,12 +55,12 @@ pub fn parse_variant_frequencies(transcript: &mut Document, entry: &HashMap<Stri
             continue;
         };
 
-        if thousand_genomes_csq_keys.contains(&key.as_str()) {
+        if thousand_genomes_csq_keys.contains(&key) {
             transcript.insert("thousand_g_maf", Bson::Double(freq));
             continue;
         }
 
-        if gnomad_csq_keys.contains(&key.as_str()) {
+        if gnomad_csq_keys.contains(&key) {
             transcript.insert("gnomad_maf", Bson::Double(freq));
             continue;
         }
@@ -71,7 +71,7 @@ pub fn parse_variant_frequencies(transcript: &mut Document, entry: &HashMap<Stri
             continue;
         }
 
-        // Remaining population-specific frequencies
+        // Remaining population-specific frequencies.
         if key.contains("GNOMAD") {
             gnomad_freqs.push(freq);
         } else {
