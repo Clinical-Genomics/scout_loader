@@ -1,5 +1,5 @@
+use crate::parse::vep::transcripts::VepFields;
 use mongodb::bson::{Bson, Document};
-use std::collections::HashMap;
 
 /// Extract a prediction from VEP transcript annotations.
 ///
@@ -7,9 +7,9 @@ use std::collections::HashMap;
 /// `prediction(score)`, for example `deleterious(0.01)`.
 /// Returns only the prediction label. If none of the provided fields
 /// are available or contain a value, `"unknown"` is returned.
-pub fn get_prediction(entry: &HashMap<String, String>, fields: &[&str]) -> String {
+pub fn get_prediction(entry: &VepFields<'_>, fields: &[&str]) -> String {
     for field in fields {
-        if let Some(value) = entry.get(*field).filter(|value| !value.is_empty()) {
+        if let Some(value) = entry.get(field).filter(|value| !value.is_empty()) {
             return value.split('(').next().unwrap_or("unknown").to_string();
         }
     }
@@ -17,12 +17,10 @@ pub fn get_prediction(entry: &HashMap<String, String>, fields: &[&str]) -> Strin
     "unknown".to_string()
 }
 
-/// Parse SpliceAI annotations from a VEP transcript entry.
-///
 /// Extracts SpliceAI delta scores and positions from VEP CSQ fields.
 /// The maximum delta score is stored together with its corresponding
 /// position. Also stores a summary of all splice predictions.
-pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &HashMap<String, String>) {
+pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &VepFields<'_>) {
     let spliceai_positions = [
         ("SPLICEAI_PRED_DP_AG", "spliceai_dp_ag"),
         ("SPLICEAI_PRED_DP_AL", "spliceai_dp_al"),

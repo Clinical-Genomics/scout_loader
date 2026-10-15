@@ -1,11 +1,11 @@
 use crate::models::consequence::SO_TERMS;
+use crate::parse::vep::transcripts::VepFields;
 use mongodb::bson::{Bson, Document};
-use std::collections::HashMap;
 use std::collections::HashSet;
 
 /// Get strand information from a VEP transcript entry.
-pub fn get_strand(entry: &HashMap<String, String>) -> Option<String> {
-    match entry.get("STRAND").map(String::as_str) {
+pub fn get_strand(entry: &VepFields<'_>) -> Option<String> {
+    match entry.get("STRAND") {
         Some("1") => Some("+".to_string()),
         Some("-1") => Some("-".to_string()),
         _ => None,
@@ -44,28 +44,31 @@ pub fn get_regional_annotation(functional_annotations: &[String]) -> Vec<String>
 /// Extracts MANE Select and MANE Plus Clinical transcript identifiers from
 /// VEP v103/MANE v0.92 annotations. Falls back to the older `MANE` field
 /// used by previous VEP versions.
-pub fn parse_mane_annotations(transcript: &mut Document, entry: &HashMap<String, String>) {
+pub fn parse_mane_annotations(transcript: &mut Document, entry: &VepFields<'_>) {
     if entry.contains_key("MANE_SELECT") {
         if let Some(mane_select) = entry.get("MANE_SELECT").filter(|v| !v.is_empty()) {
-            transcript.insert("mane_select_transcript", Bson::String(mane_select.clone()));
+            transcript.insert(
+                "mane_select_transcript",
+                Bson::String(mane_select.to_string()),
+            );
         }
 
         if let Some(mane_plus_clinical) = entry.get("MANE_PLUS_CLINICAL").filter(|v| !v.is_empty())
         {
             transcript.insert(
                 "mane_plus_clinical_transcript",
-                Bson::String(mane_plus_clinical.clone()),
+                Bson::String(mane_plus_clinical.to_string()),
             );
         }
     } else if entry.contains_key("MANE")
         && let Some(mane) = entry.get("MANE").filter(|v| !v.is_empty())
     {
-        transcript.insert("mane_select_transcript", Bson::String(mane.clone()));
+        transcript.insert("mane_select_transcript", Bson::String(mane.to_string()));
     }
 }
 
 /// Parse genomic superdups fractional match values from a VEP transcript entry.
-pub fn parse_superdups_fracmatch(transcript: &mut Document, entry: &HashMap<String, String>) {
+pub fn parse_superdups_fracmatch(transcript: &mut Document, entry: &VepFields<'_>) {
     if let Some(superdups_fractmatch) = entry
         .get("GENOMIC_SUPERDUPS_FRAC_MATCH")
         .filter(|value| !value.is_empty())
@@ -85,11 +88,11 @@ pub fn parse_superdups_fracmatch(transcript: &mut Document, entry: &HashMap<Stri
 ///
 /// Extracts ClinVar variation identifiers, clinical significance, review
 /// status, and clinical significance terms when available.
-pub fn parse_clinvar_annotations(transcript: &mut Document, entry: &HashMap<String, String>) {
+pub fn parse_clinvar_annotations(transcript: &mut Document, entry: &VepFields<'_>) {
     let clinvar_id = entry.get("CLINVAR_CLNVID").or_else(|| entry.get("CLINVAR"));
 
     if let Some(clinvar_id) = clinvar_id {
-        transcript.insert("clinvar_clnvid", Bson::String(clinvar_id.clone()));
+        transcript.insert("clinvar_clnvid", Bson::String(clinvar_id.to_string()));
 
         if let Some(clnsig) = entry.get("CLINVAR_CLNSIG") {
             transcript.insert("clinvar_clnsig", Bson::String(clnsig.to_lowercase()));
@@ -122,7 +125,7 @@ pub fn parse_clinvar_annotations(transcript: &mut Document, entry: &HashMap<Stri
 /// Supports different VEP versions where dbSNP identifiers can be stored
 /// in `EXISTING_VARIATION`, `RS_DBSNP150`, or `RS_DBSNP`. Only identifiers
 /// starting with `rs` are retained.
-pub fn parse_dbsnp(transcript: &mut Document, entry: &HashMap<String, String>) {
+pub fn parse_dbsnp(transcript: &mut Document, entry: &VepFields<'_>) {
     let dbsnp_keys = ["EXISTING_VARIATION", "RS_DBSNP150", "RS_DBSNP"];
 
     let mut dbsnp_ids: HashSet<String> = HashSet::new();
@@ -147,7 +150,7 @@ pub fn parse_dbsnp(transcript: &mut Document, entry: &HashMap<String, String>) {
 ///
 /// Extracts COSMIC identifiers from `EXISTING_VARIATION` (COSM/COSV
 /// prefixes) and from the dedicated `COSMIC` field when available.
-pub fn parse_cosmic(transcript: &mut Document, entry: &HashMap<String, String>) {
+pub fn parse_cosmic(transcript: &mut Document, entry: &VepFields<'_>) {
     let mut cosmic_ids: Vec<Bson> = Vec::new();
 
     if let Some(variant_ids) = entry.get("EXISTING_VARIATION") {

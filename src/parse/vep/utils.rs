@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use crate::parse::vep::transcripts::VepFields;
 
 /// Return the highest float value from a string with numbers possibly
 /// separated by `&`.
@@ -17,12 +17,9 @@ pub fn get_highest_float_score_in_string(value: &str) -> Option<f64> {
 /// The VEP fields `HGVSC` and `HGVSP` are formatted as
 /// `transcript:sequence`. This function returns only the sequence part.
 /// Returns `None` if the field is missing or does not contain `:`.
-pub fn get_sequence_aux(entry: &HashMap<String, String>, name: &str) -> Option<String> {
-    let sequence_entry = entry.get(name)?.split(':').collect::<Vec<&str>>();
+pub fn get_sequence_aux(entry: &VepFields<'_>, name: &str) -> Option<String> {
+    let value = entry.get(name)?;
+    let (_, sequence) = value.rsplit_once(':')?;
 
-    if sequence_entry.len() > 1 {
-        Some(sequence_entry.last()?.to_string())
-    } else {
-        None
-    }
+    Some(sequence.to_string())
 }

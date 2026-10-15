@@ -13,16 +13,47 @@ use rust_htslib::bcf::Record;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
+pub struct VepFields<'a> {
+    indices: &'a HashMap<String, usize>,
+    values: Vec<&'a str>,
+}
+
+impl<'a> VepFields<'a> {
+    pub(crate) fn new(indices: &'a HashMap<String, usize>, transcript_info: &'a str) -> Self {
+        Self {
+            indices,
+            values: transcript_info.split('|').collect(),
+        }
+    }
+
+    pub(crate) fn get(&self, key: &str) -> Option<&'a str> {
+        self.indices
+            .get(key)
+            .and_then(|&index| self.values.get(index).copied())
+    }
+
+    pub(crate) fn contains_key(&self, key: &str) -> bool {
+        self.indices
+            .get(key)
+            .is_some_and(|&index| index < self.values.len())
+    }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &str)> + '_ {
+        self.indices
+            .iter()
+            .filter_map(|(key, &index)| self.values.get(index).map(|value| (key.as_str(), *value)))
+    }
+}
+
 /// Parse VEP CSQ annotations from a VCF record.
 ///
 /// Extracts transcript annotations from the CSQ INFO field using the VEP
-/// header, collects dbSNP and COSMIC identifiers, and builds gene-level
-/// information separately from transcript-level information.
+/// header and collects dbSNP and COSMIC identifiers at the variant level.
 ///
 /// Gene identifiers are not stored in transcripts to avoid duplication.
-/// They are passed separately to `parse_genes`.
+/// Gene-level information is parsed separately by `parse_genes`.
 ///
-/// Returns the parsed transcripts and gene annotations.
+/// Returns the parsed transcript annotations.
 pub fn parse_vep_transcripts(
     record: &Record,
     vep_header: &[String],
@@ -34,6 +65,13 @@ pub fn parse_vep_transcripts(
         return parsed_transcripts;
     }
 
+    // Build the field-index map once for this call.
+    let field_indices: HashMap<String, usize> = vep_header
+        .iter()
+        .enumerate()
+        .map(|(index, field)| (field.clone(), index))
+        .collect();
+
     let mut dbsnp_ids = HashSet::new();
     let mut cosmic_ids = HashSet::new();
 
@@ -42,13 +80,9 @@ pub fn parse_vep_transcripts(
             let csq_string = String::from_utf8_lossy(value);
 
             for transcript_info in csq_string.split(',') {
-                let raw_transcript: HashMap<String, String> = vep_header
-                    .iter()
-                    .zip(transcript_info.split('|'))
-                    .map(|(key, value)| (key.clone(), value.to_string()))
-                    .collect();
+                let fields = VepFields::new(&field_indices, transcript_info);
 
-                if let Some(transcript) = parse_vep_transcript(raw_transcript) {
+                if let Some(transcript) = parse_vep_transcript(&fields) {
                     if let Ok(values) = transcript.get_array("dbsnp") {
                         for value in values {
                             if let Bson::String(id) = value {
@@ -105,7 +139,7 @@ pub fn parse_vep_transcripts(
 /// separately by the gene parser.
 ///
 /// Returns None if no transcript ID is available.
-pub fn parse_vep_transcript(entry: HashMap<String, String>) -> Option<Document> {
+pub fn parse_vep_transcript(entry: &VepFields<'_>) -> Option<Document> {
     let transcript_id = entry
         .get("FEATURE")
         .map(|id| id.split(':').next().unwrap_or(""))
@@ -130,7 +164,6 @@ pub fn parse_vep_transcript(entry: HashMap<String, String>) -> Option<Document> 
         }
     }
 
-    // HGNC symbol
     if let Some(symbol) = entry.get("SYMBOL")
         && !symbol.is_empty()
     {
@@ -138,14 +171,12 @@ pub fn parse_vep_transcript(entry: HashMap<String, String>) -> Option<Document> 
     }
 
     transcript.insert("transcript_id", transcript_id.to_string());
+    transcript.insert("protein_id", entry.get("ENSP").unwrap_or("").to_string());
 
-    transcript.insert("protein_id", entry.get("ENSP").cloned().unwrap_or_default());
-
-    let polyphen = get_prediction(&entry, &["POLYPHEN"]);
-
+    let polyphen = get_prediction(entry, &["POLYPHEN"]);
     transcript.insert("polyphen_prediction", Bson::String(polyphen));
 
-    let sift = get_prediction(&entry, &["SIFT", "SIFT_PRED"]);
+    let sift = get_prediction(entry, &["SIFT", "SIFT_PRED"]);
     transcript.insert("sift_prediction", Bson::String(sift));
 
     if let Some(value) = entry.get("REVEL_RANKSCORE").filter(|v| !v.is_empty())
@@ -160,7 +191,7 @@ pub fn parse_vep_transcript(entry: HashMap<String, String>) -> Option<Document> 
         transcript.insert("revel_raw_score", Bson::Double(score));
     }
 
-    parse_transcripts_spliceai(&mut transcript, &entry);
+    parse_transcripts_spliceai(&mut transcript, entry);
 
     transcript.insert(
         "swiss_prot",
@@ -168,8 +199,8 @@ pub fn parse_vep_transcript(entry: HashMap<String, String>) -> Option<Document> 
             entry
                 .get("SWISSPROT")
                 .filter(|value| !value.is_empty())
-                .cloned()
-                .unwrap_or_else(|| "unknown".to_string()),
+                .unwrap_or("unknown")
+                .to_string(),
         ),
     );
 
@@ -179,39 +210,36 @@ pub fn parse_vep_transcript(entry: HashMap<String, String>) -> Option<Document> 
         ("PHYLOP100WAY_VERTEBRATE", "phylop"),
     ] {
         if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
-            transcript.insert(target, Bson::String(value.clone()));
+            transcript.insert(target, Bson::String(value.to_string()));
         }
     }
 
-    parse_domains(&mut transcript, &entry);
+    parse_domains(&mut transcript, entry);
 
-    if let Some(coding_sequence) = get_sequence_aux(&entry, "HGVSC") {
+    if let Some(coding_sequence) = get_sequence_aux(entry, "HGVSC") {
         transcript.insert("coding_sequence_name", Bson::String(coding_sequence));
     }
 
-    if let Some(coding_sequence) = get_sequence_aux(&entry, "HGVSP") {
-        transcript.insert("protein_sequence_name", Bson::String(coding_sequence));
+    if let Some(protein_sequence) = get_sequence_aux(entry, "HGVSP") {
+        transcript.insert("protein_sequence_name", Bson::String(protein_sequence));
     }
 
-    transcript.insert(
-        "biotype",
-        Bson::String(entry.get("BIOTYPE").cloned().unwrap_or_default()),
-    );
+    transcript.insert("biotype", entry.get("BIOTYPE").unwrap_or("").to_string());
 
     for (source, target) in [("EXON", "exon"), ("INTRON", "intron")] {
         if let Some(value) = entry.get(source).filter(|v| !v.is_empty()) {
-            transcript.insert(target, Bson::String(value.clone()));
+            transcript.insert(target, Bson::String(value.to_string()));
         }
     }
 
-    if let Some(strand) = get_strand(&entry) {
+    if let Some(strand) = get_strand(entry) {
         transcript.insert("strand", Bson::String(strand));
     }
 
     let functional_annotations: Vec<String> = entry
         .get("CONSEQUENCE")
         .filter(|value| !value.is_empty())
-        .map(|value| value.split('&').map(String::from).collect())
+        .map(|value| value.split('&').map(str::to_string).collect())
         .unwrap_or_default();
 
     if !functional_annotations.is_empty() {
@@ -235,29 +263,17 @@ pub fn parse_vep_transcript(entry: HashMap<String, String>) -> Option<Document> 
 
     transcript.insert(
         "is_canonical",
-        Bson::Boolean(
-            entry
-                .get("CANONICAL")
-                .map(|value| value == "YES")
-                .unwrap_or(false),
-        ),
+        Bson::Boolean(entry.get("CANONICAL") == Some("YES")),
     );
 
-    parse_mane_annotations(&mut transcript, &entry);
-
-    parse_cadd(&mut transcript, &entry);
-
-    parse_superdups_fracmatch(&mut transcript, &entry);
-
-    parse_mt_frequencies(&mut transcript, &entry);
-
-    parse_variant_frequencies(&mut transcript, &entry);
-
-    parse_clinvar_annotations(&mut transcript, &entry);
-
-    parse_dbsnp(&mut transcript, &entry);
-
-    parse_cosmic(&mut transcript, &entry);
+    parse_mane_annotations(&mut transcript, entry);
+    parse_cadd(&mut transcript, entry);
+    parse_superdups_fracmatch(&mut transcript, entry);
+    parse_mt_frequencies(&mut transcript, entry);
+    parse_variant_frequencies(&mut transcript, entry);
+    parse_clinvar_annotations(&mut transcript, entry);
+    parse_dbsnp(&mut transcript, entry);
+    parse_cosmic(&mut transcript, entry);
 
     Some(transcript)
 }

@@ -1,20 +1,15 @@
+use crate::parse::vep::transcripts::VepFields;
 use mongodb::bson::{Bson, Document};
-use std::collections::HashMap;
 
 /// Parse protein domain annotations from a VEP transcript entry.
 ///
 /// Extracts supported protein domains from the VEP `DOMAINS` field.
-pub fn parse_domains(transcript: &mut Document, entry: &HashMap<String, String>) {
+pub fn parse_domains(transcript: &mut Document, entry: &VepFields<'_>) {
     if let Some(domains) = entry.get("DOMAINS").filter(|v| !v.is_empty()) {
         for annotation in domains.split('&') {
-            let parts: Vec<&str> = annotation.split(':').collect();
-
-            if parts.len() < 2 {
+            let Some((domain_name, domain_id)) = annotation.split_once(':') else {
                 continue;
-            }
-
-            let domain_name = parts[0];
-            let domain_id = parts[1];
+            };
 
             match domain_name {
                 "Pfam_domain" => {
