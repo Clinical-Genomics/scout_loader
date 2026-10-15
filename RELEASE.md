@@ -28,17 +28,8 @@ For example:
 
 Ensure that all changes intended for this release are documented in the corresponding section.
 
-## 3. Update dependencies
 
-Run the following command to update the Rust dependencies recorded in `Cargo.lock`:
-
-```bash
-cargo update
-```
-
-Run the relevant tests to verify that the project still builds and works correctly.
-
-## 4. Update the version in the TOML file
+## 3. Update the version in the TOML file
 
 Update the package version in `Cargo.toml` to match the intended release version.
 
@@ -50,6 +41,16 @@ version = "0.1.2"
 ```
 
 Make sure the version is consistent across `Cargo.toml`, `CHANGELOG.md`, and the planned GitHub release tag.
+
+## 4. Update dependencies
+
+Run the following command to update the Rust dependencies recorded in `Cargo.lock`:
+
+```bash
+cargo update
+```
+
+Run the relevant tests to verify that the project still builds and works correctly.
 
 ## 5. Commit and push the release branch
 
