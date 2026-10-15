@@ -15,6 +15,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Replace per-transcript HashMap allocations with VepFields to improve VEP annotation parsing performance (#173)
 ### Fixed
 - Remove leftover debug messages and fix printed sample names and panel IDs (#174)
+- Order of actions to create a new release in `RELEASE.md` file (#175)
 
 ## [0.1.3]
 ### Fixed
