@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
 ## [unreleased]
+### Added
+- Loading MT variants from a separate file (#180)
 ### Fixed
 - Fix incorrect rank_score conversion that caused all variants to be loaded (#177)
 - Introduce an early variant inclusion check to avoid unnecessary processing (#177)
