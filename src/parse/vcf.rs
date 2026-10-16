@@ -260,12 +260,16 @@ pub async fn process_vcf(
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let case_id = &config.family;
 
+    // Count VCF lines to estimate progress for the progress bar
     let nr_variants = count_vcf_records(path)?;
+
     let mut progress: Option<ProgressBar> = None;
 
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
     let header = vcf.header().clone();
 
+    // Sample order can differ between VCF files, so build the mapping from
+    // the header of the current VCF.
     let vcf_samples: Vec<String> = header
         .samples()
         .iter()
@@ -295,6 +299,9 @@ pub async fn process_vcf(
 
     let mut batch = Vec::with_capacity(BATCH_SIZE);
     let mut inserted_variants = 0;
+
+    // Keep track of the coding region associated with the previous variant.
+    // Variants in the same coding region must remain in the same batch
     let mut previous_region = None;
 
     for result in vcf.records() {
@@ -383,6 +390,7 @@ pub async fn process_vcf(
             None
         };
 
+        // This structure contains fields common to all variant categories
         let mut variant = doc! {
             "_id": ids.document_id.clone(),
             "simple_id": &ids.simple_id,
@@ -584,10 +592,19 @@ pub async fn process_vcf(
 
         // Keep variants belonging to the same coding region together.
         let should_load = match (current_region, previous_region) {
+            // Same coding region: keep adding variants.
             (Some(current), Some(previous)) if current == previous => false,
+
+            // Moving between different coding regions.
             (Some(_), Some(_)) => batch.len() >= BATCH_SIZE,
+
+            // Moving from a coding region to an intergenic region.
             (None, Some(_)) => batch.len() >= BATCH_SIZE,
+
+            // Moving from intergenic to a coding region.
             (Some(_), None) => batch.len() >= BATCH_SIZE,
+
+            // Consecutive intergenic variants: use the normal batch size.
             (None, None) => batch.len() >= BATCH_SIZE,
         };
 
