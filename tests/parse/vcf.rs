@@ -29,7 +29,7 @@ fn test_should_load_variant() {
         (
             {
                 let mut variant = test_variant();
-                variant.insert("rank_score", 6);
+                variant.insert("rank_score", 6.0);
                 variant
             },
             VariantCategory::Snv,
@@ -39,7 +39,7 @@ fn test_should_load_variant() {
         (
             {
                 let mut variant = test_variant();
-                variant.insert("rank_score", 5);
+                variant.insert("rank_score", 5.0);
                 variant
             },
             VariantCategory::Snv,
@@ -49,7 +49,7 @@ fn test_should_load_variant() {
         (
             {
                 let mut variant = test_variant();
-                variant.insert("rank_score", 4);
+                variant.insert("rank_score", 4.0);
                 variant
             },
             VariantCategory::Snv,
@@ -60,7 +60,7 @@ fn test_should_load_variant() {
             {
                 let mut variant = test_variant();
                 variant.insert("chromosome", "MT");
-                variant.insert("rank_score", 1);
+                variant.insert("rank_score", 1.0);
                 variant
             },
             VariantCategory::Snv,
@@ -70,7 +70,7 @@ fn test_should_load_variant() {
         (
             {
                 let mut variant = test_variant();
-                variant.insert("rank_score", 1);
+                variant.insert("rank_score", 1.0);
                 variant
             },
             VariantCategory::Str,
@@ -80,7 +80,7 @@ fn test_should_load_variant() {
         (
             {
                 let mut variant = test_variant();
-                variant.insert("rank_score", 1);
+                variant.insert("rank_score", 1.0);
                 variant.insert(
                     "clnsig",
                     vec![doc! {
