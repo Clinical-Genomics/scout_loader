@@ -29,7 +29,7 @@ fn test_should_load_variant() {
         (
             {
                 let mut variant = test_variant();
-                variant.insert("rank_score", 6);
+                variant.insert("rank_score", 6.0);
                 variant
             },
             VariantCategory::Snv,
@@ -39,7 +39,7 @@ fn test_should_load_variant() {
         (
             {
                 let mut variant = test_variant();
-                variant.insert("rank_score", 5);
+                variant.insert("rank_score", 5.0);
                 variant
             },
             VariantCategory::Snv,
@@ -49,7 +49,7 @@ fn test_should_load_variant() {
         (
             {
                 let mut variant = test_variant();
-                variant.insert("rank_score", 4);
+                variant.insert("rank_score", 4.0);
                 variant
             },
             VariantCategory::Snv,
@@ -60,7 +60,7 @@ fn test_should_load_variant() {
             {
                 let mut variant = test_variant();
                 variant.insert("chromosome", "MT");
-                variant.insert("rank_score", 1);
+                variant.insert("rank_score", 1.0);
                 variant
             },
             VariantCategory::Snv,
@@ -70,7 +70,7 @@ fn test_should_load_variant() {
         (
             {
                 let mut variant = test_variant();
-                variant.insert("rank_score", 1);
+                variant.insert("rank_score", 1.0);
                 variant
             },
             VariantCategory::Str,
@@ -80,13 +80,8 @@ fn test_should_load_variant() {
         (
             {
                 let mut variant = test_variant();
-                variant.insert("rank_score", 1);
-                variant.insert(
-                    "clnsig",
-                    vec![doc! {
-                        "value": "pathogenic",
-                    }],
-                );
+                variant.insert("rank_score", 1.0);
+                variant.insert("is_pathogenic", true);
                 variant
             },
             VariantCategory::Snv,
@@ -95,6 +90,13 @@ fn test_should_load_variant() {
     ];
 
     for (variant, category, expected) in cases {
+        println!(
+            "Testing category={:?}, rank_score={:?}, expected={}",
+            category,
+            variant.get("rank_score"),
+            expected
+        );
+
         assert_eq!(
             should_load_variant(
                 &variant,

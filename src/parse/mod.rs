@@ -1,5 +1,6 @@
 pub mod alleles;
 pub mod callers;
+pub mod clinvar_pathogenic;
 pub mod compounds;
 pub mod conservations;
 pub mod coordinates;
