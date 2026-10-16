@@ -10,41 +10,52 @@ use std::path::PathBuf;
 #[derive(Debug, Deserialize)]
 pub struct CaseConfig {
     pub owner: String,
-
     pub family: String,
-
     pub human_genome_build: String,
-
     pub gene_panels: Option<Vec<String>>,
-
     pub samples: Vec<SampleConfig>,
-
     pub rank_score_threshold: Option<i32>,
 
+    #[serde(default)]
     pub vcf_snv: Option<PathBuf>,
+    #[serde(default)]
     pub vcf_snv_research: Option<PathBuf>,
-
+    #[serde(default)]
     pub vcf_snv_mt: Option<PathBuf>,
+    #[serde(default)]
     pub vcf_snv_research_mt: Option<PathBuf>,
 
+    #[serde(default)]
     pub vcf_sv: Option<PathBuf>,
+    #[serde(default)]
     pub vcf_sv_research: Option<PathBuf>,
 
+    #[serde(default)]
     pub vcf_str: Option<PathBuf>,
+    #[serde(default)]
     pub vcf_str_research: Option<PathBuf>,
 
+    #[serde(default)]
     pub vcf_mei: Option<PathBuf>,
+    #[serde(default)]
     pub vcf_mei_research: Option<PathBuf>,
 
+    #[serde(default)]
     pub vcf_cancer: Option<PathBuf>,
+    #[serde(default)]
     pub vcf_cancer_research: Option<PathBuf>,
 
+    #[serde(default)]
     pub vcf_cancer_sv: Option<PathBuf>,
+    #[serde(default)]
     pub vcf_cancer_sv_research: Option<PathBuf>,
 
+    #[serde(default)]
     pub vcf_fusion: Option<PathBuf>,
+    #[serde(default)]
     pub vcf_fusion_research: Option<PathBuf>,
 
+    #[serde(default)]
     pub custom_images: Option<CustomImages>,
 }
 
