@@ -105,7 +105,7 @@ pub fn should_load_variant(
     managed_variant_ids: &HashSet<String>,
     causative_variant_ids: &HashSet<String>,
 ) -> bool {
-    let rank_score = variant.get_i32("rank_score").ok();
+    let rank_score = variant.get_f64("rank_score").ok();
     let chromosome = variant.get_str("chromosome").unwrap_or_default();
 
     let managed_variant_id = generate_md5_key(&[
@@ -127,10 +127,9 @@ pub fn should_load_variant(
         || causative_variant_ids.contains(&research_variant);
 
     rank_score.is_none()
-        || rank_score.is_some_and(|score| score > rank_threshold)
+        || rank_score.is_some_and(|score| score > rank_threshold as f64)
         || chromosome.contains('M')
         || category == VariantCategory::Str
-        || is_pathogenic(variant)
         || managed_variant_ids.contains(&managed_variant_id)
         || is_causative_other_case
 }
@@ -199,41 +198,50 @@ pub fn add_hgnc_symbols(
     );
 }
 
-/// Processes a VCF file and loads parsed variants in batches.
+/// Processes a VCF file and loads included variants into the database in batches.
 ///
-/// The function reads the VCF file at the provided path, determines the sample
-/// order from the VCF header, and builds a sample mapping using the samples
-/// configured for the case. The mapping is created separately for each VCF
-/// because sample order may differ between VCF files.
+/// The function parses each VCF record and first constructs a minimal variant
+/// document to evaluate the existing inclusion criteria. Records that do not
+/// meet these criteria are skipped before the remaining variant fields are
+/// parsed and populated.
 ///
-/// Parsed variants are accumulated into batches and passed to the loader for
-/// insertion. Variants belonging to the same coding region are kept in the
-/// same batch, even if the batch exceeds `BATCH_SIZE`. Intergenic variants are
-/// loaded in batches of `BATCH_SIZE`.
+/// For included variants, the function parses additional annotations, transcript
+/// information, gene data, frequencies, and compound information before adding
+/// the completed variant to a batch for insertion.
 ///
-/// A progress bar shows the percentage of VCF records that have been
-/// processed. The bar is only displayed once processing has started.
+/// Variants belonging to the same coding region are kept in the same batch,
+/// even if the batch exceeds `BATCH_SIZE`. Intergenic variants are loaded in
+/// batches of `BATCH_SIZE`.
+///
+/// A progress bar shows the percentage of VCF records processed.
 ///
 /// # Arguments
 ///
 /// * `path` - Path to the input VCF file.
-/// * `category` - Variant category used to select the appropriate parser.
-/// * `variant_type` - Variant type for the VCF.
-/// * `config` - Case configuration containing the case identifier and
+/// * `category` - Variant category used to select the appropriate parsers and
+///   inclusion criteria.
+/// * `variant_type` - Variant type associated with the VCF.
+/// * `config` - Case configuration containing the case identifier, owner, and
 ///   configured samples.
 /// * `cytobands` - Parsed cytobands corresponding to the case genome build.
-/// * `annotations` - Gene, gene-panel, and coding-region annotations used
-///   when building and batching variants.
-/// * `loader` - Loader used to persist batches of parsed variants.
+/// * `annotations` - Gene, gene-panel, coding-region, and variant inclusion
+///   annotations used when processing variants.
+/// * `loader` - Loader used to persist variant batches and update compound
+///   relationships.
+///
+/// # Returns
+///
+/// The number of variants inserted into the database.
 ///
 /// # Errors
 ///
-/// Returns an error if a batch cannot be loaded into the database.
+/// Returns an error if VCF record counting, BSON serialization, or batch
+/// loading fails.
 ///
 /// # Panics
 ///
-/// Panics if the VCF file cannot be opened, if the sample mapping cannot be
-/// created, or if a record cannot be read.
+/// Panics if the VCF file cannot be opened, a sample mapping cannot be created,
+/// or a VCF record cannot be read.
 pub async fn process_vcf(
     path: &str,
     category: VariantCategory,
@@ -245,16 +253,12 @@ pub async fn process_vcf(
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let case_id = &config.family;
 
-    // Count VCF lines to estimate progress for the progress bar.
     let nr_variants = count_vcf_records(path)?;
-
     let mut progress: Option<ProgressBar> = None;
 
     let mut vcf = Reader::from_path(path).expect("couldn't open input vcf");
     let header = vcf.header().clone();
 
-    // Sample order can differ between VCF files, so build the mapping from
-    // the header of the current VCF.
     let vcf_samples: Vec<String> = header
         .samples()
         .iter()
@@ -275,7 +279,6 @@ pub async fn process_vcf(
         .collect();
 
     let rank_results_header = parse_rank_results_header(&header);
-
     let local_archive_info = parse_local_archive_header(path);
 
     if let Err(error) = validate_sample_mapping(vcf.header(), &sample_mapping) {
@@ -285,9 +288,6 @@ pub async fn process_vcf(
 
     let mut batch = Vec::with_capacity(BATCH_SIZE);
     let mut inserted_variants = 0;
-
-    // Keep track of the coding region associated with the previous variant.
-    // Variants in the same coding region must remain in the same batch.
     let mut previous_region = None;
 
     for result in vcf.records() {
@@ -310,8 +310,7 @@ pub async fn process_vcf(
         }
 
         let coordinates = parse_coordinates(&record, &header, cytobands, &category);
-
-        let variant_type = variant_type.to_string();
+        let variant_type_str = variant_type.to_string();
 
         let (reference, alternative) = parse_alleles(&record, category);
 
@@ -321,9 +320,32 @@ pub async fn process_vcf(
             &reference,
             &alternative,
             case_id,
-            &variant_type,
+            &variant_type_str,
         );
 
+        // Build the minimal document required for the existing inclusion check.
+        let (rank_score, norm_rank_score) = parse_rank_scores(&record);
+
+        let inclusion_variant = doc! {
+            "simple_id": &ids.simple_id,
+            "rank_score": rank_score,
+            "chromosome": &coordinates.chromosome,
+            "position": coordinates.position,
+            "reference": &reference,
+            "alternative": &alternative,
+        };
+
+        if !should_load_variant(
+            &inclusion_variant,
+            category,
+            rank_threshold,
+            &annotations.managed_variant_ids,
+            annotations.causative_variant_ids,
+        ) {
+            continue;
+        }
+
+        // Only variants that pass inclusion criteria are fully processed.
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
 
@@ -338,10 +360,7 @@ pub async fn process_vcf(
                     .map(|value| String::from_utf8_lossy(value).to_string())
             });
 
-        let (rank_score, norm_rank_score) = parse_rank_scores(&record);
-
         let genetic_models = parse_genetic_models(&record);
-
         let samples = parse_genotypes(&record, &sample_mapping, category);
 
         let str_variants_images = if category == VariantCategory::Str {
@@ -353,55 +372,52 @@ pub async fn process_vcf(
             None
         };
 
-        // This structure contains fields common to all variant categories.
         let mut variant = doc! {
             "_id": ids.document_id.clone(),
-            "simple_id": ids.simple_id,
-            "variant_id": ids.variant_id,
-            "display_name": ids.display_name,
-            "document_id": ids.document_id,
+            "simple_id": &ids.simple_id,
+            "variant_id": &ids.variant_id,
+            "display_name": &ids.display_name,
+            "document_id": &ids.document_id,
             "case_id": case_id,
             "institute": &config.owner,
 
             "rank_score": rank_score,
             "norm_rank_score": norm_rank_score,
 
-            "variant_type": &variant_type,
+            "variant_type": &variant_type_str,
 
-            "chromosome": coordinates.chromosome.clone(),
-            "end_chrom": coordinates.end_chrom,
+            "chromosome": &coordinates.chromosome,
+            "end_chrom": &coordinates.end_chrom,
             "position": coordinates.position,
             "end": coordinates.end,
             "length": coordinates.length,
 
             "category": category.to_string(),
-            "sub_category": coordinates.sub_category,
+            "sub_category": &coordinates.sub_category,
 
-            "reference": reference,
-            "alternative": alternative,
+            "reference": &reference,
+            "alternative": &alternative,
 
-            "cytoband_start": coordinates.cytoband_start,
-            "cytoband_end": coordinates.cytoband_end,
+            "cytoband_start": &coordinates.cytoband_start,
+            "cytoband_end": &coordinates.cytoband_end,
 
             "filters": filters,
             "quality": record.qual(),
 
             "genetic_models": genetic_models,
-
             "samples": samples,
         };
 
-        let compounds = parse_compounds(compound_info, &variant_type, case_id);
+        let compounds = parse_compounds(compound_info, &variant_type_str, case_id);
 
         if !compounds.is_empty() {
             let compounds_bson =
                 bson::to_bson(&compounds).expect("Failed to convert compounds to BSON");
-
             variant.insert("compounds", compounds_bson);
         }
 
         if coordinates.mate_id.is_some() {
-            variant.insert("mate_id", coordinates.mate_id);
+            variant.insert("mate_id", coordinates.mate_id.clone());
         }
 
         let azlength =
@@ -443,6 +459,7 @@ pub async fn process_vcf(
 
             VariantCategory::Str => {
                 set_str_info(&record, &mut variant);
+
                 if let Ok(str_repid) = variant.get_str("str_repid")
                     && let Some(images) = str_variants_images
                 {
@@ -497,16 +514,6 @@ pub async fn process_vcf(
             );
         }
 
-        if !should_load_variant(
-            &variant,
-            category,
-            rank_threshold,
-            &annotations.managed_variant_ids,
-            annotations.causative_variant_ids,
-        ) {
-            continue;
-        }
-
         if category != VariantCategory::Fusion {
             let genes = parse_genes(&parsed_transcripts);
 
@@ -541,7 +548,6 @@ pub async fn process_vcf(
         add_loqus_archive_frequencies(&record, &mut variant, local_archive_info.as_ref());
 
         set_severity_predictions(&mut variant, &record, &parsed_transcripts);
-
         parse_conservations(&record, &parsed_transcripts, &mut variant);
 
         variant.extend(callers);
@@ -555,7 +561,6 @@ pub async fn process_vcf(
 
         if let Ok(genes) = variant.get_array("genes") {
             let genes = genes.to_vec();
-
             add_genes(&mut variant, &genes, annotations.hgncid_to_gene, category);
         }
 
@@ -566,24 +571,12 @@ pub async fn process_vcf(
             coordinates.end + 1,
         );
 
-        // Decide whether the current batch should be loaded.
-        //
-        // Variants belonging to the same coding region stay together even
-        // when the batch grows beyond BATCH_SIZE.
+        // Keep variants belonging to the same coding region together.
         let should_load = match (current_region, previous_region) {
-            // Same coding region: keep adding variants.
             (Some(current), Some(previous)) if current == previous => false,
-
-            // Moving between different coding regions.
             (Some(_), Some(_)) => batch.len() >= BATCH_SIZE,
-
-            // Moving from a coding region to an intergenic region.
             (None, Some(_)) => batch.len() >= BATCH_SIZE,
-
-            // Moving from intergenic to a coding region.
             (Some(_), None) => batch.len() >= BATCH_SIZE,
-
-            // Consecutive intergenic variants: use the normal batch size.
             (None, None) => batch.len() >= BATCH_SIZE,
         };
 
