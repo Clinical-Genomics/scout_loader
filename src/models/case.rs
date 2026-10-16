@@ -24,6 +24,9 @@ pub struct CaseConfig {
     pub vcf_snv: Option<PathBuf>,
     pub vcf_snv_research: Option<PathBuf>,
 
+    pub vcf_snv_mt: Option<PathBuf>,
+    pub vcf_snv_research_mt: Option<PathBuf>,
+
     pub vcf_sv: Option<PathBuf>,
     pub vcf_sv_research: Option<PathBuf>,
 

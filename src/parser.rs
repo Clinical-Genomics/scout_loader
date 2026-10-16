@@ -35,6 +35,15 @@ pub fn select_vcfs<'a>(
         ),
         (
             if research {
+                &config.vcf_snv_research_mt
+            } else {
+                &config.vcf_snv_mt
+            },
+            VariantCategory::Snv,
+            "snv",
+        ),
+        (
+            if research {
                 &config.vcf_sv_research
             } else {
                 &config.vcf_sv
