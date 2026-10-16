@@ -4,6 +4,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
+## [unreleased]
+### Fixed
+- Fix incorrect rank_score conversion that caused all variants to be loaded (#177)
+- Introduce an early variant inclusion check to avoid unnecessary processing (#177)
+- Refactor `update_compounds` to improve variant lookup and reduce MongoDB queries (#177)
+
 ## [0.1.4]
 ### Added
 - Created a RELEASE.md document, describing the procedures to creare a new software release (#)
