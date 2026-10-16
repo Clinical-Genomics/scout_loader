@@ -9,6 +9,7 @@ use crate::models::variant::VariantCategory;
 use crate::models::variant::VariantType;
 use crate::parse::alleles::parse_alleles;
 use crate::parse::callers::parse_callers;
+use crate::parse::clinvar_pathogenic::{is_pathogenic_info, is_pathogenic_transcripts};
 use crate::parse::compounds::parse_compounds;
 use crate::parse::compounds::update_compounds;
 use crate::parse::conservations::parse_conservations;
@@ -33,7 +34,7 @@ use crate::parse::rank_scores::{parse_rank_result, parse_rank_score_other, parse
 use crate::parse::regions::find_coding_region;
 use crate::parse::severity::set_severity_predictions;
 use crate::parse::strs::set_str_info;
-use crate::parse::vep::clnsig::{build_clnsig, is_pathogenic, parse_clnsig};
+use crate::parse::vep::clnsig::{build_clnsig, parse_clnsig};
 use crate::parse::vep::genes::{parse_genes, set_hgnc_ids};
 use crate::parse::vep::transcripts::parse_vep_transcripts;
 use crate::utils::count::count_vcf_records;
@@ -83,21 +84,26 @@ pub fn parse_sample_mapping(
 /// Determines whether a variant should be loaded into the database.
 ///
 /// A variant is loaded if it has no rank score, its rank score is above the
-/// configured threshold, its chromosome contains `M`, it belongs to the STR
-/// category, is pathogenic, is a managed variant, or has been marked
-/// causative in another case.
+/// configured threshold, its chromosome contains M, it belongs to the STR
+/// category, has a pathogenic ClinVar classification, is a managed variant,
+/// or has been marked causative in another case.
+///
+/// Pathogenicity is determined from the VCF INFO field and transcript
+/// annotations beforehand and stored in the is_pathogenic field.
 ///
 /// # Arguments
 ///
-/// * `variant` - Parsed variant document.
-/// * `category` - Variant category.
-/// * `rank_threshold` - Minimum rank score required for loading.
-/// * `managed_variant_ids` - IDs of variants on the managed list.
-/// * `causative_variant_ids` - IDs of variants marked causative in other cases.
+/// * variant - Variant document containing the fields required for inclusion
+///   criteria, including the precomputed is_pathogenic flag.
+/// * category - Variant category.
+/// * rank_threshold - Minimum rank score required for loading.
+/// * managed_variant_ids - IDs of variants on the managed list.
+/// * causative_variant_ids - IDs of variants marked causative in other cases.
 ///
 /// # Returns
 ///
-/// `true` if the variant should be loaded, otherwise `false`.
+/// true if the variant meets at least one inclusion criterion, otherwise
+/// false.
 pub fn should_load_variant(
     variant: &bson::Document,
     category: VariantCategory,
@@ -130,6 +136,7 @@ pub fn should_load_variant(
         || rank_score.is_some_and(|score| score > rank_threshold as f64)
         || chromosome.contains('M')
         || category == VariantCategory::Str
+        || variant.get_bool("is_pathogenic").unwrap_or(false)
         || managed_variant_ids.contains(&managed_variant_id)
         || is_causative_other_case
 }
@@ -326,6 +333,9 @@ pub async fn process_vcf(
         // Build the minimal document required for the existing inclusion check.
         let (rank_score, norm_rank_score) = parse_rank_scores(&record);
 
+        let pathogenic =
+            is_pathogenic_info(&record) || is_pathogenic_transcripts(&record, &field_indices);
+
         let inclusion_variant = doc! {
             "simple_id": &ids.simple_id,
             "rank_score": rank_score,
@@ -333,6 +343,7 @@ pub async fn process_vcf(
             "position": coordinates.position,
             "reference": &reference,
             "alternative": &alternative,
+            "is_pathogenic": pathogenic,
         };
 
         if !should_load_variant(
