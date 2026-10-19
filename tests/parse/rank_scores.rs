@@ -22,8 +22,8 @@ fn test_parse_rank_scores() {
 
     let (rank_score, norm_rank_score) = parse_rank_scores(&record);
 
-    assert_eq!(rank_score, -20.0);
-    assert_eq!(norm_rank_score, -0.5);
+    assert_eq!(rank_score, Some(-20.0));
+    assert_eq!(norm_rank_score, Some(-0.5));
 }
 
 #[test]

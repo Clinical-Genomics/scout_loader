@@ -12,8 +12,7 @@ pub const GICAM_SCORE_KEY: &str = "GicamScore";
 /// The case identifier stored in the annotation is ignored; the score
 /// is taken from the first `<identifier>:<score>` entry.
 ///
-/// Missing or invalid scores are replaced with default values:
-/// `0.0` for both scores.
+/// Missing or invalid scores are returned as `None`.
 ///
 /// # Arguments
 ///
@@ -21,42 +20,28 @@ pub const GICAM_SCORE_KEY: &str = "GicamScore";
 ///
 /// # Returns
 ///
-/// A tuple containing:
-///
-/// * `rank_score` - The rank score as a floating-point value.
-/// * `norm_rank_score` - The normalized rank score as a floating-point value.
-pub fn parse_rank_scores(record: &Record) -> (f64, f64) {
-    let rank_score_entry = record
-        .info(b"RankScore")
-        .string()
-        .ok()
-        .flatten()
-        .and_then(|values| {
-            values
-                .first()
-                .map(|value| String::from_utf8_lossy(value).to_string())
-        });
+/// A tuple containing the optional rank score and normalized rank score.
+pub fn parse_rank_scores(record: &Record) -> (Option<f64>, Option<f64>) {
+    let parse_entry = |tag: &[u8]| {
+        record
+            .info(tag)
+            .string()
+            .ok()
+            .flatten()
+            .and_then(|values| {
+                values
+                    .first()
+                    .map(|value| String::from_utf8_lossy(value).to_string())
+            })
+            .as_deref()
+            .and_then(|entry| parse_score_entry(Some(entry)))
+            .and_then(|score| score.parse::<f64>().ok())
+    };
 
-    let norm_rank_score_entry = record
-        .info(b"RankScoreNormalized")
-        .string()
-        .ok()
-        .flatten()
-        .and_then(|values| {
-            values
-                .first()
-                .map(|value| String::from_utf8_lossy(value).to_string())
-        });
-
-    let rank_score = parse_score_entry(rank_score_entry.as_deref())
-        .and_then(|score| score.parse::<f64>().ok())
-        .unwrap_or(0.0);
-
-    let norm_rank_score = parse_score_entry(norm_rank_score_entry.as_deref())
-        .and_then(|score| score.parse::<f64>().ok())
-        .unwrap_or(0.0);
-
-    (rank_score, norm_rank_score)
+    (
+        parse_entry(b"RankScore"),
+        parse_entry(b"RankScoreNormalized"),
+    )
 }
 
 /// Extracts the score from a rank score annotation.
