@@ -1,3 +1,6 @@
+#[path = "parse/clinvar_pathogenic.rs"]
+mod clinvar_pathogenic;
+
 #[path = "parse/compounds.rs"]
 mod compounds;
 
