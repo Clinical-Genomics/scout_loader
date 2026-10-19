@@ -12,7 +12,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Introduce an early variant inclusion check to avoid unnecessary processing (#177)
 - Refactor `update_compounds` to improve variant lookup and reduce MongoDB queries (#177)
 - Fix pathogenic variant filtering by matching VEP ClinVar significance fields case-insensitively (#182)
-- Fix MEI variant filtering to load all mobile element insertions regardless of rank score ()
+- Fix MEI variant filtering to load all mobile element insertions regardless of rank score (#184)
 
 ## [0.1.4]
 ### Added
