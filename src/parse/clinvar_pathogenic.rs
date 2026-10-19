@@ -29,19 +29,16 @@ pub fn is_pathogenic_info(record: &Record) -> bool {
 /// `true` if any transcript has a pathogenic, likely pathogenic, or conflicting
 /// pathogenic classification; otherwise, `false`.
 pub fn is_pathogenic_transcripts(record: &Record, field_indices: &HashMap<String, usize>) -> bool {
-    let clnsig_idx = field_indices
-        .iter()
-        .find(|(field, _)| field.eq_ignore_ascii_case("clnsig"))
-        .map(|(_, &index)| index);
+    let get_index = |name: &str| {
+        field_indices
+            .iter()
+            .find(|(field, _)| field.eq_ignore_ascii_case(name))
+            .map(|(_, &index)| index)
+    };
 
-    let clinvar_clnsig_idx = field_indices
+    let indices: Vec<usize> = ["clnsig", "clinvar_clnsig"]
         .iter()
-        .find(|(field, _)| field.eq_ignore_ascii_case("clinvar_clnsig"))
-        .map(|(_, &index)| index);
-
-    let indices: Vec<usize> = [clnsig_idx, clinvar_clnsig_idx]
-        .into_iter()
-        .flatten()
+        .filter_map(|name| get_index(name))
         .collect();
 
     if indices.is_empty() {
