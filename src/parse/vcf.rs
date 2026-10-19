@@ -136,6 +136,7 @@ pub fn should_load_variant(
         || rank_score.is_some_and(|score| score > rank_threshold as f64)
         || chromosome.contains('M')
         || category == VariantCategory::Str
+        || category == VariantCategory::Mei
         || variant.get_bool("is_pathogenic").unwrap_or(false)
         || managed_variant_ids.contains(&managed_variant_id)
         || is_causative_other_case
@@ -607,6 +608,10 @@ pub async fn process_vcf(
             // Consecutive intergenic variants: use the normal batch size.
             (None, None) => batch.len() >= BATCH_SIZE,
         };
+
+        if category == VariantCategory::Mei {
+            println!("MEI should_load_variant: {}", should_load);
+        }
 
         if should_load && !batch.is_empty() {
             if current_region.is_some() {
