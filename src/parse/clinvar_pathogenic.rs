@@ -16,8 +16,8 @@ pub fn is_pathogenic_info(record: &Record) -> bool {
 
 /// Checks whether any VEP transcript contains a pathogenic ClinVar classification.
 ///
-/// Extracts only the ClinVar significance fields from the VCF `CSQ` INFO
-/// annotation, without constructing full transcript documents.
+/// Extracts ClinVar significance fields from the VCF `CSQ` INFO annotation,
+/// without constructing full transcript documents.
 ///
 /// # Arguments
 ///
@@ -29,12 +29,21 @@ pub fn is_pathogenic_info(record: &Record) -> bool {
 /// `true` if any transcript has a pathogenic, likely pathogenic, or conflicting
 /// pathogenic classification; otherwise, `false`.
 pub fn is_pathogenic_transcripts(record: &Record, field_indices: &HashMap<String, usize>) -> bool {
-    let (Some(&clnsig_idx), Some(&clinvar_clnsig_idx)) = (
-        field_indices.get("clnsig"),
-        field_indices.get("clinvar_clnsig"),
-    ) else {
-        return false;
+    let get_index = |name: &str| {
+        field_indices
+            .iter()
+            .find(|(field, _)| field.eq_ignore_ascii_case(name))
+            .map(|(_, &index)| index)
     };
+
+    let indices: Vec<usize> = ["clnsig", "clinvar_clnsig"]
+        .iter()
+        .filter_map(|name| get_index(name))
+        .collect();
+
+    if indices.is_empty() {
+        return false;
+    }
 
     let Ok(Some(csq)) = record.info(b"CSQ").string() else {
         return false;
@@ -44,7 +53,7 @@ pub fn is_pathogenic_transcripts(record: &Record, field_indices: &HashMap<String
         String::from_utf8_lossy(value).split(',').any(|transcript| {
             let fields: Vec<&str> = transcript.split('|').collect();
 
-            [clnsig_idx, clinvar_clnsig_idx]
+            indices
                 .iter()
                 .filter_map(|&idx| fields.get(idx))
                 .any(|value| is_pathogenic_value(value))
@@ -53,16 +62,15 @@ pub fn is_pathogenic_transcripts(record: &Record, field_indices: &HashMap<String
 }
 
 /// Checks whether a ClinVar significance value indicates pathogenicity.
-///
-/// Recognizes pathogenic, likely pathogenic, conflicting pathogenic
-/// classifications, and their numeric codes.
 fn is_pathogenic_value(value: &str) -> bool {
     value
         .to_lowercase()
         .split(['/', '|', '&', ','])
         .any(|term| {
+            let normalized = term.trim().trim_start_matches('_').replace(' ', "_");
+
             matches!(
-                term.trim().trim_start_matches('_'),
+                normalized.as_str(),
                 "pathogenic"
                     | "likely_pathogenic"
                     | "conflicting_classifications_of_pathogenicity"

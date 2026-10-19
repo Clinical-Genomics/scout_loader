@@ -11,6 +11,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Fix incorrect rank_score conversion that caused all variants to be loaded (#177)
 - Introduce an early variant inclusion check to avoid unnecessary processing (#177)
 - Refactor `update_compounds` to improve variant lookup and reduce MongoDB queries (#177)
+- Fix pathogenic variant filtering by matching VEP ClinVar significance fields case-insensitively (#182)
 
 ## [0.1.4]
 ### Added
