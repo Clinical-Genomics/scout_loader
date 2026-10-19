@@ -609,10 +609,6 @@ pub async fn process_vcf(
             (None, None) => batch.len() >= BATCH_SIZE,
         };
 
-        if category == VariantCategory::Mei {
-            println!("MEI should_load_variant: {}", should_load);
-        }
-
         if should_load && !batch.is_empty() {
             if current_region.is_some() {
                 update_compounds(loader, &mut batch).await?;
