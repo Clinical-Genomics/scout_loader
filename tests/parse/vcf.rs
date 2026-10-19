@@ -24,7 +24,14 @@ fn test_should_load_variant() {
 
     let cases = [
         // No rank score.
-        (test_variant(), VariantCategory::Snv, true),
+        (
+            {
+                let mut variant = test_variant();
+                variant.remove("rank_score");
+                variant
+            },
+            true,
+        ),
         // Rank score above threshold.
         (
             {
@@ -32,7 +39,6 @@ fn test_should_load_variant() {
                 variant.insert("rank_score", 6.0);
                 variant
             },
-            VariantCategory::Snv,
             true,
         ),
         // Rank score equal to threshold.
@@ -42,7 +48,6 @@ fn test_should_load_variant() {
                 variant.insert("rank_score", 5.0);
                 variant
             },
-            VariantCategory::Snv,
             false,
         ),
         // Rank score below threshold.
@@ -52,7 +57,6 @@ fn test_should_load_variant() {
                 variant.insert("rank_score", 4.0);
                 variant
             },
-            VariantCategory::Snv,
             false,
         ),
         // Mitochondrial variant.
@@ -63,17 +67,6 @@ fn test_should_load_variant() {
                 variant.insert("rank_score", 1.0);
                 variant
             },
-            VariantCategory::Snv,
-            true,
-        ),
-        // STR variant.
-        (
-            {
-                let mut variant = test_variant();
-                variant.insert("rank_score", 1.0);
-                variant
-            },
-            VariantCategory::Str,
             true,
         ),
         // Pathogenic variant.
@@ -84,15 +77,13 @@ fn test_should_load_variant() {
                 variant.insert("is_pathogenic", true);
                 variant
             },
-            VariantCategory::Snv,
             true,
         ),
     ];
 
-    for (variant, category, expected) in cases {
+    for (variant, expected) in cases {
         println!(
-            "Testing category={:?}, rank_score={:?}, expected={}",
-            category,
+            "Testing rank_score={:?}, expected={}",
             variant.get("rank_score"),
             expected
         );
@@ -100,7 +91,6 @@ fn test_should_load_variant() {
         assert_eq!(
             should_load_variant(
                 &variant,
-                category,
                 threshold,
                 &managed_variant_ids,
                 &causative_variant_ids,
@@ -127,7 +117,6 @@ fn should_load_managed_variant() {
 
     assert!(should_load_variant(
         &variant,
-        VariantCategory::Snv,
         5,
         &managed_variant_ids,
         &causative_variant_ids,
@@ -143,13 +132,11 @@ fn should_load_causative_variant() {
 
     assert!(should_load_variant(
         &variant,
-        VariantCategory::Snv,
         5,
         &managed_variant_ids,
         &causative_variant_ids,
     ));
 }
-
 #[test]
 fn test_selects_all_clinical_vcfs_by_default() {
     let config = test_case_config();
