@@ -295,6 +295,8 @@ pub async fn process_vcf(
     }
 
     let mut batch = Vec::with_capacity(BATCH_SIZE);
+    let mut batch_indices: HashMap<String, (usize, Option<f64>)> =
+        HashMap::with_capacity(BATCH_SIZE);
     let mut inserted_variants = 0;
 
     // Keep track of the coding region associated with the previous variant.
@@ -359,7 +361,57 @@ pub async fn process_vcf(
             continue;
         }
 
-        // Only variants that pass inclusion criteria are fully processed.
+        let current_region = find_coding_region(
+            annotations.coding_intervals,
+            &coordinates.chromosome,
+            coordinates.position,
+            coordinates.end + 1,
+        );
+
+        // Keep variants belonging to the same coding region together.
+        let should_load = match (current_region, previous_region) {
+            // Same coding region: keep adding variants.
+            (Some(current), Some(previous)) if current == previous => false,
+
+            // Moving between different coding regions.
+            (Some(_), Some(_)) => batch.len() >= BATCH_SIZE,
+
+            // Moving from a coding region to an intergenic region.
+            (None, Some(_)) => batch.len() >= BATCH_SIZE,
+
+            // Moving from intergenic to a coding region.
+            (Some(_), None) => batch.len() >= BATCH_SIZE,
+
+            // Consecutive intergenic variants: use the normal batch size.
+            (None, None) => batch.len() >= BATCH_SIZE,
+        };
+
+        if should_load && !batch.is_empty() {
+            if current_region.is_some() {
+                update_compounds(loader, &mut batch).await?;
+            }
+
+            inserted_variants += loader.load_variant_bulk(batch).await?;
+            batch = Vec::with_capacity(BATCH_SIZE);
+            batch_indices.clear();
+        }
+
+        // Skip duplicates unless the incoming variant has a higher rank score.
+        let duplicate_index = match batch_indices.get(&ids.document_id) {
+            None => None,
+            Some((index, Some(existing_score)))
+                if rank_score.is_some_and(|score| score > *existing_score) =>
+            {
+                Some(*index)
+            }
+            Some(_) => {
+                previous_region = current_region;
+                continue;
+            }
+        };
+
+        // Only variants that pass inclusion criteria and duplicate checks
+        // are fully processed.
         let filters = parse_filters(&record, &header);
         let callers = parse_callers(&record, category, &filters);
 
@@ -579,41 +631,15 @@ pub async fn process_vcf(
             add_genes(&mut variant, &genes, annotations.hgncid_to_gene, category);
         }
 
-        let current_region = find_coding_region(
-            annotations.coding_intervals,
-            &coordinates.chromosome,
-            coordinates.position,
-            coordinates.end + 1,
-        );
-
-        // Keep variants belonging to the same coding region together.
-        let should_load = match (current_region, previous_region) {
-            // Same coding region: keep adding variants.
-            (Some(current), Some(previous)) if current == previous => false,
-
-            // Moving between different coding regions.
-            (Some(_), Some(_)) => batch.len() >= BATCH_SIZE,
-
-            // Moving from a coding region to an intergenic region.
-            (None, Some(_)) => batch.len() >= BATCH_SIZE,
-
-            // Moving from intergenic to a coding region.
-            (Some(_), None) => batch.len() >= BATCH_SIZE,
-
-            // Consecutive intergenic variants: use the normal batch size.
-            (None, None) => batch.len() >= BATCH_SIZE,
-        };
-
-        if should_load && !batch.is_empty() {
-            if current_region.is_some() {
-                update_compounds(loader, &mut batch).await?;
-            }
-
-            inserted_variants += loader.load_variant_bulk(batch).await?;
-            batch = Vec::with_capacity(BATCH_SIZE);
+        if let Some(index) = duplicate_index {
+            batch[index] = variant;
+            batch_indices.insert(ids.document_id.clone(), (index, rank_score));
+        } else {
+            let index = batch.len();
+            batch_indices.insert(ids.document_id.clone(), (index, rank_score));
+            batch.push(variant);
         }
 
-        batch.push(variant);
         previous_region = current_region;
     }
 
