@@ -8,7 +8,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - Loading MT variants from a separate file (#180)
 ### Changed
-- Keep the highest-scoring variant when duplicate IDs occur within loading batch (#187)
+- Keep the highest-scoring variant when duplicate IDs occur within loading batch (#188)
 ### Fixed
 - Fix incorrect rank_score conversion that caused all variants to be loaded (#177)
 - Introduce an early variant inclusion check to avoid unnecessary processing (#177)
