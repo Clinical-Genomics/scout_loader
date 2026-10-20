@@ -469,11 +469,15 @@ pub async fn process_vcf(
             "cytoband_end": &coordinates.cytoband_end,
 
             "filters": filters,
-            "quality": record.qual(),
 
             "genetic_models": genetic_models,
             "samples": samples,
         };
+
+        let quality = record.qual();
+        if quality.is_finite() {
+            variant.insert("quality", quality);
+        }
 
         let compounds = parse_compounds(compound_info, &variant_type_str, case_id);
 
