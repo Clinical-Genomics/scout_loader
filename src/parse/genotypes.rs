@@ -276,6 +276,8 @@ fn parse_genotype(
         }
     }
 
+    println!("GT:{:?}", gt_obj);
+
     gt_obj
 }
 
@@ -292,39 +294,52 @@ fn genotype_allele_to_string(allele: Option<&GenotypeAllele>) -> &'static str {
     }
 }
 
-/// Parse a FORMAT entry containing reference and alternative values.
+/// Parse a FORMAT entry into reference and alternate values.
 ///
-/// The FORMAT field can contain either one value (ALT only) or two values
-/// (REF and ALT). Missing or negative values are returned as None.
+/// Supports integer-valued fields and string-valued fields containing
+/// slash- or comma-separated pairs. Missing, zero, or invalid values are represented as `None`.
 fn parse_format_entry(
     record: &Record,
-    sample_pos: usize,
+    pos: usize,
     format_entry_name: &[u8],
 ) -> (Option<i32>, Option<i32>) {
-    let mut ref_value = None;
-    let mut alt_value = None;
+    if let Ok(values) = record.format(format_entry_name).integer() {
+        if let Some(values) = values.get(pos) {
+            if values.len() >= 2 {
+                let ref_value = if values[0] > 0 { Some(values[0]) } else { None };
+                let alt_value = if values[1] > 0 { Some(values[1]) } else { None };
 
-    let values = match record.format(format_entry_name).integer() {
-        Ok(values) => values,
-        Err(_) => return (None, None),
-    };
-
-    let sample_values = values.get(sample_pos);
-
-    if let Some(values) = sample_values {
-        if values.len() > 1 {
-            if values[0] >= 0 {
-                ref_value = Some(values[0]);
+                return (ref_value, alt_value);
             }
-            if values[1] >= 0 {
-                alt_value = Some(values[1]);
-            }
-        } else if values.len() == 1 && values[0] >= 0 {
-            alt_value = Some(values[0]);
         }
     }
 
-    (ref_value, alt_value)
+    if let Ok(values) = record.format(format_entry_name).string() {
+        if let Some(value) = values.get(pos) {
+            let value = String::from_utf8_lossy(value);
+            let value = value.trim_end_matches('\0');
+
+            if value.is_empty() || value == "." {
+                return (None, None);
+            }
+
+            let mut parts = value.split(['/', ',']);
+            let first = parts.next().unwrap_or("");
+            let first = first.parse::<i32>().ok().filter(|value| *value > 0);
+
+            if let Some(second) = parts.next() {
+                let second = second.parse::<i32>().ok().filter(|value| *value > 0);
+
+                return (first, second);
+            }
+
+            (None, first)
+        } else {
+            (None, None)
+        }
+    } else {
+        (None, None)
+    }
 }
 
 /// Get the STR Sequence Ontology (SO) annotation for a sample.
@@ -651,6 +666,19 @@ fn get_alt_depth(
     clip5_alt: Option<i32>,
     clip3_alt: Option<i32>,
 ) -> i32 {
+    println!(
+        "get_alt_depth: pos={}, paired_end_alt={:?}, split_read_alt={:?}, spanning_alt={:?}, flanking_alt={:?}, inrepeat_alt={:?}, sd_alt={:?}, clip5_alt={:?}, clip3_alt={:?}",
+        pos,
+        paired_end_alt,
+        split_read_alt,
+        spanning_alt,
+        flanking_alt,
+        inrepeat_alt,
+        sd_alt,
+        clip5_alt,
+        clip3_alt,
+    );
+
     let mut alt_depth = get_gt_allele_depth(record, pos, 1).unwrap_or(-1);
 
     if alt_depth != -1 {
@@ -681,6 +709,7 @@ fn get_alt_depth(
         }
     }
 
+    println!("ALT DEPTH is {:?}", alt_depth);
     alt_depth
 }
 

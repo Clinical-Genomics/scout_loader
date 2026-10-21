@@ -15,6 +15,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Refactor `update_compounds` to improve variant lookup and reduce MongoDB queries (#177)
 - Fix pathogenic variant filtering by matching VEP ClinVar significance fields case-insensitively (#182)
 - Fix MEI variant filtering to load all mobile element insertions regardless of rank score (#184)
+- Parsing of STRs genotypes ()
 
 ## [0.1.4]
 ### Added
