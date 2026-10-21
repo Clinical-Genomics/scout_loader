@@ -296,7 +296,7 @@ fn genotype_allele_to_string(allele: Option<&GenotypeAllele>) -> &'static str {
 ///
 /// Supports integer-valued fields and string-valued fields containing
 /// slash- or comma-separated pairs. Missing, zero, or invalid values are represented as `None`.
-fn parse_format_entry(
+pub fn parse_format_entry(
     record: &Record,
     pos: usize,
     format_entry_name: &[u8],

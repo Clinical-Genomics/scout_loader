@@ -10,6 +10,9 @@ mod frequencies;
 #[path = "parse/genetic_models.rs"]
 mod genetic_models;
 
+#[path = "parse/genotypes.rs"]
+mod genotypes;
+
 #[path = "parse/ids.rs"]
 mod ids;
 
