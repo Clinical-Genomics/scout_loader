@@ -301,15 +301,14 @@ fn parse_format_entry(
     pos: usize,
     format_entry_name: &[u8],
 ) -> (Option<i32>, Option<i32>) {
-    if let Ok(values) = record.format(format_entry_name).integer() {
-        if let Some(values) = values.get(pos) {
-            if values.len() >= 2 {
-                let ref_value = if values[0] > 0 { Some(values[0]) } else { None };
-                let alt_value = if values[1] > 0 { Some(values[1]) } else { None };
+    if let Ok(values) = record.format(format_entry_name).integer()
+        && let Some(values) = values.get(pos)
+        && values.len() >= 2
+    {
+        let ref_value = if values[0] > 0 { Some(values[0]) } else { None };
+        let alt_value = if values[1] > 0 { Some(values[1]) } else { None };
 
-                return (ref_value, alt_value);
-            }
-        }
+        return (ref_value, alt_value);
     }
 
     if let Ok(values) = record.format(format_entry_name).string() {
