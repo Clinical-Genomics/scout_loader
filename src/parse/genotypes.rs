@@ -276,8 +276,6 @@ fn parse_genotype(
         }
     }
 
-    println!("GT:{:?}", gt_obj);
-
     gt_obj
 }
 
@@ -666,19 +664,6 @@ fn get_alt_depth(
     clip5_alt: Option<i32>,
     clip3_alt: Option<i32>,
 ) -> i32 {
-    println!(
-        "get_alt_depth: pos={}, paired_end_alt={:?}, split_read_alt={:?}, spanning_alt={:?}, flanking_alt={:?}, inrepeat_alt={:?}, sd_alt={:?}, clip5_alt={:?}, clip3_alt={:?}",
-        pos,
-        paired_end_alt,
-        split_read_alt,
-        spanning_alt,
-        flanking_alt,
-        inrepeat_alt,
-        sd_alt,
-        clip5_alt,
-        clip3_alt,
-    );
-
     let mut alt_depth = get_gt_allele_depth(record, pos, 1).unwrap_or(-1);
 
     if alt_depth != -1 {
@@ -709,7 +694,6 @@ fn get_alt_depth(
         }
     }
 
-    println!("ALT DEPTH is {:?}", alt_depth);
     alt_depth
 }
 
