@@ -124,10 +124,9 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
 
                     most_severe_polyphen = transcript.get("polyphen_prediction").cloned();
 
-                    most_severe_spliceai_score = transcript.get("spliceai_delta_score").cloned();
+                    most_severe_spliceai_score = transcript.get("spliceai_score").cloned();
 
-                    most_severe_spliceai_position =
-                        transcript.get("spliceai_delta_position").cloned();
+                    most_severe_spliceai_position = transcript.get("spliceai_position").cloned();
 
                     spliceai_prediction = transcript.get("spliceai_prediction").cloned();
                 }

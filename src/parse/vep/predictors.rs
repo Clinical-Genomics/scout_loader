@@ -18,67 +18,48 @@ pub fn get_prediction(entry: &VepFields<'_>, fields: &[&str]) -> String {
 }
 
 /// Extracts SpliceAI delta scores and positions from VEP CSQ fields.
-/// The maximum delta score is stored together with its corresponding
-/// position. Also stores a summary of all splice predictions.
+/// Stores the maximum delta score with its corresponding position,
+/// along with a summary of all splice predictions.
 pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &VepFields<'_>) {
-    let spliceai_positions = [
-        ("SPLICEAI_PRED_DP_AG", "spliceai_dp_ag"),
-        ("SPLICEAI_PRED_DP_AL", "spliceai_dp_al"),
-        ("SPLICEAI_PRED_DP_DG", "spliceai_dp_dg"),
-        ("SPLICEAI_PRED_DP_DL", "spliceai_dp_dl"),
-    ];
-
-    let spliceai_delta_scores = [
-        ("SPLICEAI_PRED_DS_AG", "spliceai_ds_ag"),
-        ("SPLICEAI_PRED_DS_AL", "spliceai_ds_al"),
-        ("SPLICEAI_PRED_DS_DG", "spliceai_ds_dg"),
-        ("SPLICEAI_PRED_DS_DL", "spliceai_ds_dl"),
-    ];
-
-    for (source, target) in spliceai_positions {
-        if let Some(value) = entry.get(source).filter(|v| !v.is_empty())
-            && let Ok(position) = value.parse::<i32>()
-        {
-            transcript.insert(target, Bson::Int32(position));
-        }
-    }
-
-    for (source, target) in spliceai_delta_scores {
-        if let Some(value) = entry.get(source).filter(|v| !v.is_empty())
-            && let Ok(score) = value.parse::<f64>()
-        {
-            transcript.insert(target, Bson::Double(score));
-        }
-    }
-
-    let spliceai_pairs = [
-        ("spliceai_ds_ag", "spliceai_dp_ag"),
-        ("spliceai_ds_al", "spliceai_dp_al"),
-        ("spliceai_ds_dg", "spliceai_dp_dg"),
-        ("spliceai_ds_dl", "spliceai_dp_dl"),
+    let spliceai_fields = [
+        ("AG", "SPLICEAI_PRED_DS_AG", "SPLICEAI_PRED_DP_AG"),
+        ("AL", "SPLICEAI_PRED_DS_AL", "SPLICEAI_PRED_DP_AL"),
+        ("DG", "SPLICEAI_PRED_DS_DG", "SPLICEAI_PRED_DP_DG"),
+        ("DL", "SPLICEAI_PRED_DS_DL", "SPLICEAI_PRED_DP_DL"),
     ];
 
     let mut max_score: Option<f64> = None;
     let mut max_position: Option<i32> = None;
     let mut predictions = Vec::new();
 
-    for (score_key, position_key) in spliceai_pairs {
-        let score = transcript.get_f64(score_key).ok();
-        let position = transcript.get_i32(position_key).ok();
+    for (suffix, score_field, position_field) in spliceai_fields {
+        let score = entry
+            .get(score_field)
+            .filter(|value| !value.is_empty())
+            .and_then(|value| value.parse::<f64>().ok());
 
-        if let Some(score) = score
-            && max_score.is_none_or(|current| score > current)
-        {
-            max_score = Some(score);
-            max_position = position;
+        let position = entry
+            .get(position_field)
+            .filter(|value| !value.is_empty())
+            .and_then(|value| value.parse::<i32>().ok());
+
+        if let Some(score) = score {
+            transcript.insert(format!("spliceai_ds_{suffix}"), Bson::Double(score));
+
+            if max_score.is_none_or(|current| score > current) {
+                max_score = Some(score);
+                max_position = position;
+            }
+        }
+
+        if let Some(position) = position {
+            transcript.insert(format!("spliceai_dp_{suffix}"), Bson::Int32(position));
         }
 
         predictions.push(format!(
-            "{} {} {} {}",
-            score_key,
-            score.map(|x| x.to_string()).unwrap_or("-".to_string()),
-            position_key,
-            position.map(|x| x.to_string()).unwrap_or("-".to_string()),
+            "spliceai_ds_{suffix} {} spliceai_dp_{suffix} {}",
+            score.map_or_else(|| "-".to_string(), |value| value.to_string()),
+            position.map_or_else(|| "-".to_string(), |value| value.to_string()),
         ));
     }
 
@@ -88,10 +69,10 @@ pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &VepFields<'
         if let Some(position) = max_position {
             transcript.insert("spliceai_position", Bson::Int32(position));
         }
-
-        transcript.insert(
-            "spliceai_prediction",
-            Bson::Array(predictions.into_iter().map(Bson::String).collect()),
-        );
     }
+
+    transcript.insert(
+        "spliceai_prediction",
+        Bson::Array(predictions.into_iter().map(Bson::String).collect()),
+    );
 }
