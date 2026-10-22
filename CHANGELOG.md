@@ -17,7 +17,6 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Fix pathogenic variant filtering by matching VEP ClinVar significance fields case-insensitively (#182)
 - Fix MEI variant filtering to load all mobile element insertions regardless of rank score (#184)
 - Parsing of STRs genotypes (#190)
-- Format of clnsig accession Int64 -> Int32 (#194)
 
 ## [0.1.4]
 ### Added

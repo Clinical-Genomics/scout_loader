@@ -109,7 +109,7 @@ pub fn parse_clnsig(record: &Record, transcripts: &[Document]) -> Vec<Document> 
     }
 
     // New ClinVar format: accession is numeric and significance is textual
-    if let Ok(accession) = acc.parse::<i32>() {
+    if let Ok(accession) = acc.parse::<i64>() {
         let revstat_groups = revstat
             .replace('&', ",")
             .split(',')
