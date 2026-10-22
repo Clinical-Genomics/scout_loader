@@ -18,7 +18,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Fix MEI variant filtering to load all mobile element insertions regardless of rank score (#184)
 - Parsing of STRs genotypes (#190)
 - Format of clnsig accession Int64 -> Int32 (#194)
-- Parsing of `spliceai_score` and `spliceai_position` in gene documents (#)
+- Parsing of `spliceai_score` and `spliceai_position` in gene documents (#195)
 
 ## [0.1.4]
 ### Added

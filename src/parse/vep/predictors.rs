@@ -56,10 +56,16 @@ pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &VepFields<'
             transcript.insert(format!("spliceai_dp_{suffix}"), Bson::Int32(position));
         }
 
+        let suffix = suffix.to_lowercase();
+
         predictions.push(format!(
             "spliceai_ds_{suffix} {} spliceai_dp_{suffix} {}",
-            score.map_or_else(|| "-".to_string(), |value| value.to_string()),
-            position.map_or_else(|| "-".to_string(), |value| value.to_string()),
+            score
+                .filter(|value| *value != 0.0)
+                .map_or_else(|| "-".to_string(), |value| value.to_string()),
+            position
+                .filter(|value| *value != 0)
+                .map_or_else(|| "-".to_string(), |value| value.to_string()),
         ));
     }
 
