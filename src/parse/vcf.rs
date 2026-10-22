@@ -585,7 +585,7 @@ pub async fn process_vcf(
             );
         }
 
-        if category != VariantCategory::Fusion {
+        if category != VariantCategory::Fusion && category != VariantCategory::Str {
             let genes = parse_genes(&parsed_transcripts);
 
             variant.insert(
@@ -619,7 +619,10 @@ pub async fn process_vcf(
         add_loqus_archive_frequencies(&record, &mut variant, local_archive_info.as_ref());
 
         set_severity_predictions(&mut variant, &record, &parsed_transcripts);
-        parse_conservations(&record, &parsed_transcripts, &mut variant);
+
+        if category != VariantCategory::Str {
+            parse_conservations(&record, &parsed_transcripts, &mut variant);
+        }
 
         variant.extend(callers);
 
