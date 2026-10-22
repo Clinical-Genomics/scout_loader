@@ -31,6 +31,7 @@ pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &VepFields<'
     let mut max_score: Option<f64> = None;
     let mut max_position: Option<i32> = None;
     let mut predictions = Vec::new();
+    let mut has_prediction = false;
 
     for (suffix, score_field, position_field) in spliceai_fields {
         let score = entry
@@ -56,6 +57,10 @@ pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &VepFields<'
             transcript.insert(format!("spliceai_dp_{suffix}"), Bson::Int32(position));
         }
 
+        if score.is_some_and(|value| value != 0.0) || position.is_some_and(|value| value != 0) {
+            has_prediction = true;
+        }
+
         let suffix = suffix.to_lowercase();
 
         predictions.push(format!(
@@ -79,6 +84,10 @@ pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &VepFields<'
 
     transcript.insert(
         "spliceai_prediction",
-        Bson::Array(predictions.into_iter().map(Bson::String).collect()),
+        if has_prediction {
+            Bson::Array(predictions.into_iter().map(Bson::String).collect())
+        } else {
+            Bson::Null
+        },
     );
 }
