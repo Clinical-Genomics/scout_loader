@@ -1,5 +1,24 @@
+use crate::parse::info::parse_info_int;
 use mongodb::bson::{Bson, Document};
 use rust_htslib::bcf::Record;
+
+pub const CG_KEYS: &[&str] = &["clinical_genomics_mipAF", "clinical_genomics_mipOCC"];
+
+pub const CLINGEN_BENIGN_KEYS: &[&str] = &[
+    "clingen_cgh_benignAF",
+    "clingen_cgh_benign",
+    "clingen_cgh_benignOCC",
+];
+
+pub const CLINGEN_NGI_KEYS: &[&str] = &["clingen_ngi", "clingen_ngiAF", "clingen_ngiOCC"];
+
+pub const CLINGEN_PATHOGENIC_KEYS: &[&str] = &[
+    "clingen_cgh_pathogenicAF",
+    "clingen_cgh_pathogenic",
+    "clingen_cgh_pathogenicOCC",
+];
+
+pub const DECIPHER_KEYS: &[&str] = &["decipherAF", "decipher"];
 
 pub const EXAC_KEYS: &[&str] = &["EXACAF"];
 
@@ -13,8 +32,6 @@ pub const GNOMAD_INFO_KEYS: &[&str] = &[
     "gnomad_af",
 ];
 
-pub const SWEGEN_KEYS: &[&str] = &["SWEGENAF", "swegenAF", "swegen"];
-
 pub const GNOMAD_INFO_MAX_KEYS: &[&str] = &[
     "gnomADg_AF_POPMAX",
     "GNOMADAF_popmax",
@@ -25,27 +42,27 @@ pub const GNOMAD_INFO_MAX_KEYS: &[&str] = &[
     "MAX_AF",
 ];
 
-pub const THOUSAND_GENOMES_KEYS: &[&str] = &["1000GAF"];
+pub const GNOMAD_NHOMALT: &[&str] = &["GNOMAD_nhomalt"];
 
-pub const THOUSAND_GENOMES_MAX_KEYS: &[&str] = &["1000G_MAX_AF"];
+pub const GNOMAD_NHOMALT_XX: &[&str] = &["GNOMAD_nhomalt_XX"];
 
-pub const CLINGEN_BENIGN_KEYS: &[&str] = &[
-    "clingen_cgh_benignAF",
-    "clingen_cgh_benign",
-    "clingen_cgh_benignOCC",
-];
+pub const GNOMAD_NHOMALT_XY: &[&str] = &["GNOMAD_nhomalt_XY"];
 
-pub const CLINGEN_PATHOGENIC_KEYS: &[&str] = &[
-    "clingen_cgh_pathogenicAF",
-    "clingen_cgh_pathogenic",
-    "clingen_cgh_pathogenicOCC",
-];
+pub const GNOMAD_OBS: &[&str] = &["GNOMADAC"];
 
-pub const CLINGEN_NGI_KEYS: &[&str] = &["clingen_ngi", "clingen_ngiAF", "clingen_ngiOCC"];
+pub const GNOMAD_WES: &[&str] = &["GNOMAD_WES_AF"];
 
-pub const DECIPHER_KEYS: &[&str] = &["decipherAF", "decipher"];
+pub const GNOMAD_WES_MAX: &[&str] = &["GNOMAD_WES_AF_grpmax"];
 
-pub const CG_KEYS: &[&str] = &["clinical_genomics_mipAF", "clinical_genomics_mipOCC"];
+pub const GNOMAD_WES_NHOMALT: &[&str] = &["GNOMAD_WES_nhomalt"];
+
+pub const GNOMAD_WES_NHOMALT_XX: &[&str] = &["GNOMAD_WES_nhomalt_XX"];
+
+pub const GNOMAD_WES_NHOMALT_XY: &[&str] = &["GNOMAD_WES_nhomalt_XY"];
+
+pub const GNOMAD_WES_OBS: &[&str] = &["GNOMAD_WES_AC"];
+
+pub const SWEGEN_KEYS: &[&str] = &["SWEGENAF", "swegenAF", "swegen"];
 
 pub const SWEGEN_ALU_KEYS: &[&str] = &["swegen_alu_FRQ", "swegen_alu_OCC"];
 
@@ -54,6 +71,10 @@ pub const SWEGEN_HERV_KEYS: &[&str] = &["swegen_herv_FRQ", "swegen_herv_OCC"];
 pub const SWEGEN_L1_KEYS: &[&str] = &["swegen_l1_FRQ", "swegen_l1_OCC"];
 
 pub const SWEGEN_SVA_KEYS: &[&str] = &["swegen_sva_FRQ", "swegen_sva_OCC"];
+
+pub const THOUSAND_GENOMES_KEYS: &[&str] = &["1000GAF"];
+
+pub const THOUSAND_GENOMES_MAX_KEYS: &[&str] = &["1000G_MAX_AF"];
 
 /// Parse a frequency value from a VCF INFO field.
 ///
@@ -134,10 +155,32 @@ pub fn parse_frequencies(record: &Record, transcripts: &[Document]) -> Document 
         (&["left_1000GAF"][..], "thousand_g_left"),
         (&["right_1000GAF"][..], "thousand_g_right"),
         (&["colorsdb_af"][..], "colorsdb_af"),
+        (GNOMAD_WES, "gnomad_wes"),
+        (GNOMAD_WES_MAX, "gnomad_wes_max"),
     ];
 
     for (keys, name) in frequency_fields {
         update_frequency_from_vcf(&mut frequencies, record, keys, name);
+    }
+
+    let integer_fields = [
+        (GNOMAD_OBS, "gnomad_obs"),
+        (GNOMAD_NHOMALT, "gnomad_nhomalt"),
+        (GNOMAD_NHOMALT_XX, "gnomad_nhomalt_XX"),
+        (GNOMAD_NHOMALT_XY, "gnomad_nhomalt_XY"),
+        (GNOMAD_WES_OBS, "gnomad_wes_obs"),
+        (GNOMAD_WES_NHOMALT, "gnomad_wes_nhomalt"),
+        (GNOMAD_WES_NHOMALT_XX, "gnomad_wes_nhomalt_XX"),
+        (GNOMAD_WES_NHOMALT_XY, "gnomad_wes_nhomalt_XY"),
+    ];
+
+    for (keys, name) in integer_fields {
+        for key in keys {
+            if let Some(value) = parse_info_int(record, key.as_bytes()) {
+                frequencies.insert(name, Bson::Int32(value));
+                break;
+            }
+        }
     }
 
     if frequencies.is_empty() {
@@ -211,20 +254,30 @@ fn add_frequency_field(
 /// * `frequencies` - Document containing parsed frequency annotations.
 pub fn add_frequencies(variant: &mut Document, frequencies: &Document) {
     let mappings = [
+        ("colorsdb_af", "colorsdb_af"),
         ("exac", "exac_frequency"),
+        ("exac_max", "max_exac_frequency"),
         ("gnomad", "gnomad_frequency"),
+        ("gnomad_max", "max_gnomad_frequency"),
         (
             "gnomad_mt_heteroplasmic",
             "gnomad_mt_heteroplasmic_frequency",
         ),
         ("gnomad_mt_homoplasmic", "gnomad_mt_homoplasmic_frequency"),
-        ("exac_max", "max_exac_frequency"),
-        ("gnomad_max", "max_gnomad_frequency"),
-        ("thousand_g_max", "max_thousand_genomes_frequency"),
+        ("gnomad_nhomalt", "gnomad_nhomalt_frequency"),
+        ("gnomad_nhomalt_XX", "gnomad_nhomalt_xx_frequency"),
+        ("gnomad_nhomalt_XY", "gnomad_nhomalt_xy_frequency"),
+        ("gnomad_obs", "gnomad_obs"),
+        ("gnomad_wes", "gnomad_wes_frequency"),
+        ("gnomad_wes_nhomalt", "gnomad_wes_nhomalt_frequency"),
+        ("gnomad_wes_nhomalt_XX", "gnomad_wes_nhomalt_xx_frequency"),
+        ("gnomad_wes_nhomalt_XY", "gnomad_wes_nhomalt_xy_frequency"),
+        ("gnomad_wes_obs", "gnomad_wes_obs"),
+        ("gnomad_wes_max", "max_gnomad_wes_frequency"),
         ("thousand_g", "thousand_genomes_frequency"),
         ("thousand_g_left", "thousand_genomes_frequency_left"),
+        ("thousand_g_max", "max_thousand_genomes_frequency"),
         ("thousand_g_right", "thousand_genomes_frequency_right"),
-        ("colorsdb_af", "colorsdb_af"),
     ];
 
     for (source, target) in mappings {
