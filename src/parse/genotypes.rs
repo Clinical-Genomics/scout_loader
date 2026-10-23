@@ -843,7 +843,7 @@ fn get_genotype_quality(record: &Record, pos: usize) -> i32 {
 /// Get copy number from the CN FORMAT field.
 ///
 /// Returns None if CN is missing, invalid, or represents a missing value.
-fn get_copy_number(record: &Record, pos: usize) -> Option<i32> {
+pub fn get_copy_number(record: &Record, pos: usize) -> Option<i32> {
     let values = record.format(b"CN").integer().ok()?;
 
     let cn_value = values.get(pos).and_then(|sample| sample.first())?;
