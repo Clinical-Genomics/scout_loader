@@ -4,7 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
-## [unreleased]
+## [0.2]
 ### Added
 - Loading MT variants from a separate file (#180)
 - Parse additional gnomAD fields from the VCF INFO field (#200)
