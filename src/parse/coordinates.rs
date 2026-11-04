@@ -172,10 +172,19 @@ pub fn parse_coordinates(
     cytobands: &HashMap<String, Vec<Cytoband>>,
     category: &VariantCategory,
 ) -> Coordinates {
-    let rid = record.rid().expect("missing chromosome");
-
-    let chrom =
-        String::from_utf8_lossy(header.rid2name(rid).expect("unknown chromosome")).to_string();
+    let chrom = match record.rid() {
+        Some(rid) if header.contig_count() > 0 => {
+            String::from_utf8_lossy(header.rid2name(rid).expect("unknown chromosome")).to_string()
+        }
+        _ => record
+            .info(b"CHRA")
+            .string()
+            .ok()
+            .flatten()
+            .and_then(|values| values.first().copied())
+            .map(|value| String::from_utf8_lossy(value).to_string())
+            .expect("missing chromosome information"),
+    };
 
     let chrom = normalize_chromosome(&chrom);
 

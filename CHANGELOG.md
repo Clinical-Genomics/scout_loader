@@ -7,6 +7,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 ## [unreleased]
 ### Fixed
 - Reintroduced missing categories in list of loaded variants: Fusion, Cancer and CancerSv) (#209)
+- Handle fusion VCFs without contig declarations by falling back to the CHRA INFO field when resolving chromosome names (#210)
 
 ## [0.2]
 ### Added
