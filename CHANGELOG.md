@@ -22,6 +22,8 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Format of clnsig accession Int64 -> Int32 (#194)
 - Parsing of `spliceai_score` and `spliceai_position` in gene documents (#195)
 - Fix copy number parsing by reading the CN FORMAT field as an integer instead of a float (#199)
+- Reintroduced missing categories in list of loaded variants: Fusion, Cancer and CancerSv) ()
+
 
 ## [0.1.4]
 ### Added

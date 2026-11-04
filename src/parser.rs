@@ -69,6 +69,33 @@ pub fn select_vcfs<'a>(
             VariantCategory::Str,
             "str",
         ),
+        (
+            if research {
+                &config.vcf_fusion_research
+            } else {
+                &config.vcf_fusion
+            },
+            VariantCategory::Fusion,
+            "fusion",
+        ),
+        (
+            if research {
+                &config.vcf_cancer_research
+            } else {
+                &config.vcf_cancer
+            },
+            VariantCategory::Cancer,
+            "cancer",
+        ),
+        (
+            if research {
+                &config.vcf_cancer_sv_research
+            } else {
+                &config.vcf_cancer_sv
+            },
+            VariantCategory::CancerSv,
+            "cancer_sv",
+        ),
     ];
 
     vcfs.into_iter()
