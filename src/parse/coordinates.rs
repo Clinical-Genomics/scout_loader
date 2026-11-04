@@ -176,14 +176,15 @@ pub fn parse_coordinates(
         Some(rid) if header.contig_count() > 0 => {
             String::from_utf8_lossy(header.rid2name(rid).expect("unknown chromosome")).to_string()
         }
-        _ => record
-            .info(b"CHRA")
-            .string()
-            .ok()
-            .flatten()
-            .and_then(|values| values.first().copied())
-            .map(|value| String::from_utf8_lossy(value).to_string())
-            .expect("missing chromosome information"),
+        _ => {
+            let chrom = record
+                .info(b"CHRA")
+                .string()
+                .expect("invalid CHRA")
+                .expect("missing CHRA");
+
+            String::from_utf8_lossy(chrom[0]).to_string()
+        }
     };
 
     let chrom = normalize_chromosome(&chrom);
