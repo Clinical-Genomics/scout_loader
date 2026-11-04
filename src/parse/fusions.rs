@@ -80,10 +80,15 @@ fn set_fusion_genes(record: &Record, variant: &mut Document) {
     let mut genes = Vec::new();
     let mut hgnc_ids = Vec::new();
     let mut hgnc_symbols = Vec::new();
+    let mut fusion_genes = Vec::new();
 
     for suffix in ["A", "B"] {
         let gene =
             parse_info_string(record, format!("GENE{suffix}").as_bytes()).unwrap_or_default();
+
+        if !gene.is_empty() {
+            fusion_genes.push(Bson::String(gene.clone()));
+        }
 
         let hgnc_id = parse_info_float(record, format!("HGNC_ID_{suffix}").as_bytes())
             .map(|value| value as i32)
@@ -143,4 +148,5 @@ fn set_fusion_genes(record: &Record, variant: &mut Document) {
     variant.insert("genes", Bson::Array(genes));
     variant.insert("hgnc_ids", Bson::Array(hgnc_ids));
     variant.insert("hgnc_symbols", Bson::Array(hgnc_symbols));
+    variant.insert("fusion_genes", Bson::Array(fusion_genes));
 }
