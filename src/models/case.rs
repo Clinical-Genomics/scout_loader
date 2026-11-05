@@ -90,4 +90,7 @@ pub struct SampleConfig {
 
     /// Human-readable sample name, if provided.
     pub sample_name: Option<String>,
+
+    /// Individual phenotype, e.g. affected or unaffected.
+    pub phenotype: Option<String>,
 }

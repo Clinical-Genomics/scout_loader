@@ -5,4 +5,7 @@ pub struct SampleInfo {
 
     /// Zero-based index of the sample in the VCF header.
     pub vcf_index: usize,
+
+    /// Cancer sample role: case or control.
+    pub sample_type: Option<String>,
 }

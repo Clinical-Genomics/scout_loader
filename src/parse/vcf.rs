@@ -57,6 +57,7 @@ const BATCH_SIZE: usize = 10_000;
 pub fn parse_sample_mapping(
     samples: &[SampleConfig],
     vcf_samples: &[String],
+    category: VariantCategory,
 ) -> Result<HashMap<String, SampleInfo>, Box<dyn std::error::Error>> {
     let mut sample_mapping = HashMap::new();
 
@@ -66,6 +67,21 @@ pub fn parse_sample_mapping(
             .position(|vcf_sample| vcf_sample == &sample.sample_id)
             .ok_or_else(|| format!("Sample {} not found in VCF", sample.sample_id))?;
 
+        let sample_type = if matches!(
+            category,
+            VariantCategory::Cancer | VariantCategory::CancerSv
+        ) {
+            Some(
+                if matches!(sample.phenotype.as_deref(), Some("affected") | Some("2")) {
+                    "case".to_string()
+                } else {
+                    "control".to_string()
+                },
+            )
+        } else {
+            None
+        };
+
         sample_mapping.insert(
             sample.sample_id.clone(),
             SampleInfo {
@@ -74,6 +90,7 @@ pub fn parse_sample_mapping(
                     .clone()
                     .unwrap_or_else(|| sample.sample_id.clone()),
                 vcf_index: sample_index,
+                sample_type,
             },
         );
     }
@@ -273,8 +290,8 @@ pub async fn process_vcf(
         .map(|sample| String::from_utf8_lossy(sample).to_string())
         .collect();
 
-    let sample_mapping = parse_sample_mapping(&config.samples, &vcf_samples)
-        .expect("Failed to build sample mapping");
+    let sample_mapping = parse_sample_mapping(&config.samples, &vcf_samples, category)
+        .map_err(|e| format!("Failed to parse sample mapping: {e}"))?;
 
     let rank_threshold = config.rank_score_threshold.unwrap_or(5);
 
@@ -427,7 +444,7 @@ pub async fn process_vcf(
             });
 
         let genetic_models = parse_genetic_models(&record);
-        let samples = parse_genotypes(&record, &sample_mapping, category);
+        let (genotypes, tumor, normal) = parse_genotypes(&record, &sample_mapping, category);
 
         let str_variants_images = if category == VariantCategory::Str {
             config
@@ -471,8 +488,16 @@ pub async fn process_vcf(
             "filters": filters,
 
             "genetic_models": genetic_models,
-            "samples": samples,
+            "samples": genotypes,
         };
+
+        if let Some(tumor) = tumor {
+            variant.insert("tumor", tumor);
+        }
+
+        if let Some(normal) = normal {
+            variant.insert("normal", normal);
+        }
 
         let quality = record.qual();
         if quality.is_finite() {
