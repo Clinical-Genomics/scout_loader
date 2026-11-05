@@ -620,7 +620,7 @@ pub async fn process_vcf(
 
         set_severity_predictions(&mut variant, &record, &parsed_transcripts);
 
-        if category != VariantCategory::Str {
+        if category != VariantCategory::Str && category != VariantCategory::Fusion {
             parse_conservations(&record, &parsed_transcripts, &mut variant);
         }
 
