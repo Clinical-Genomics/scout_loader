@@ -39,6 +39,10 @@ pub fn parse_genes(transcripts: &[Document]) -> Vec<Document> {
             _ => None,
         };
 
+        if hgnc_id.is_none() {
+            continue;
+        }
+
         let hgnc_symbol = transcript
             .get_str("hgnc_symbol")
             .ok()
