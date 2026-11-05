@@ -224,28 +224,32 @@ pub fn parse_coordinates(
                 parse_info_int(record, b"SVLEN"),
             );
 
-            length = sv_length(
-                position,
-                end,
-                &chrom,
-                &end_chrom,
-                record
-                    .info(b"SVLEN")
-                    .integer()
-                    .ok()
-                    .flatten()
-                    .and_then(|values| values.first().copied()),
-            );
+            length = if chrom != end_chrom {
+                1_000_000_000
+            } else {
+                sv_length(
+                    position,
+                    end,
+                    &chrom,
+                    &end_chrom,
+                    record
+                        .info(b"SVLEN")
+                        .integer()
+                        .ok()
+                        .flatten()
+                        .and_then(|values| values.first().copied()),
+                )
+            };
         }
 
         VariantCategory::Mei => {
             sub_category = "mei".to_string();
 
-            length = alt_len as i32;
-
-            if ref_len != alt_len {
-                length = (ref_len as i32 - alt_len as i32).abs();
-            }
+            length = if ref_len != alt_len {
+                (ref_len as i32 - alt_len as i32).abs()
+            } else {
+                alt_len as i32
+            };
         }
 
         _ => {
