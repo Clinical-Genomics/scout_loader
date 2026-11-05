@@ -4,9 +4,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
-## [unreleased]
+## [0.2.1]
 ### Changed
-- Handle interchromosomal variant lengths and skip conservation parsing for STRs and fusions (#)
+- Handle interchromosomal variant lengths and skip conservation parsing for STRs and fusions (#214)
 ### Fixed
 - Reintroduced missing categories in list of loaded variants: Fusion, Cancer and CancerSv) (#209)
 - Handle fusion VCFs without contig declarations by falling back to the CHRA INFO field when resolving chromosome names (#210)
