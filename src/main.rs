@@ -51,9 +51,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for sample in &config.samples {
         println!(
-            "Sample: {} ({})",
+            "Sample: {} ({}), phenotype: {}",
             sample.sample_id,
-            sample.sample_name.as_deref().unwrap_or("NA")
+            sample.sample_name.as_deref().unwrap_or("NA"),
+            sample.phenotype.as_deref().unwrap_or("NA"),
         );
     }
 

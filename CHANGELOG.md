@@ -13,6 +13,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Fix CHRA INFO byte-to-string conversion when parsing fusion variants (#212)
 - Fix missing `fusion_genes` key in saved documents for fusion variants (#213)
 - Do not include a gene in the `genes` array if it doesn't have a valid `hgnc_id` (#217) 
+- Save correctlt genotypes for tumor/normal cancer cases, when available (#219)
 
 ## [0.2]
 ### Added

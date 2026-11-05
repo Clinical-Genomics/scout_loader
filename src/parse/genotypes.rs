@@ -46,22 +46,40 @@ pub fn parse_genotypes(
     record: &Record,
     sample_mapping: &HashMap<String, SampleInfo>,
     category: VariantCategory,
-) -> Vec<Document> {
+) -> (Vec<Document>, Option<Document>, Option<Document>) {
     let mut genotypes = Vec::new();
+    let mut tumor = None;
+    let mut normal = None;
 
     for (sample_id, sample_info) in sample_mapping {
-        let pos = sample_info.vcf_index;
-
-        genotypes.push(parse_genotype(
+        let genotype = parse_genotype(
             record,
             sample_id,
             &sample_info.display_name,
-            pos,
+            sample_info.vcf_index,
             category,
-        ));
+        );
+
+        if let Some(sample_type) = &sample_info.sample_type {
+            let sample = doc! {
+                "alt_depth": genotype.get("alt_depth").cloned(),
+                "ref_depth": genotype.get("ref_depth").cloned(),
+                "read_depth": genotype.get("read_depth").cloned(),
+                "alt_freq": genotype.get("alt_frequency").cloned(),
+                "ind_id": sample_id,
+            };
+
+            match sample_type.as_str() {
+                "case" => tumor = Some(sample),
+                "control" => normal = Some(sample),
+                _ => {}
+            }
+        }
+
+        genotypes.push(genotype);
     }
 
-    genotypes
+    (genotypes, tumor, normal)
 }
 
 /// Parse genotype information for a single sample.
@@ -249,6 +267,8 @@ fn parse_genotype(
         "sample_id": gt_call.get("sample_id"),
         "display_name": gt_call.get("display_name"),
         "genotype_call": gt_call.get("genotype_call"),
+        "alt_depth": gt_call.get("alt_depth"),
+        "ref_depth": gt_call.get("ref_depth"),
         "allele_depths": [
             gt_call.get("ref_depth"),
             gt_call.get("alt_depth"),
