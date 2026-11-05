@@ -588,10 +588,12 @@ pub async fn process_vcf(
         if category != VariantCategory::Fusion && category != VariantCategory::Str {
             let genes = parse_genes(&parsed_transcripts);
 
-            variant.insert(
-                "genes",
-                Bson::Array(genes.into_iter().map(Bson::Document).collect()),
-            );
+            if !genes.is_empty() {
+                variant.insert(
+                    "genes",
+                    Bson::Array(genes.into_iter().map(Bson::Document).collect()),
+                );
+            }
         }
 
         set_hgnc_ids(&mut variant, &record);
