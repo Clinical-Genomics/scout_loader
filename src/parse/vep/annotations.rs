@@ -150,6 +150,9 @@ pub fn parse_dbsnp(transcript: &mut Document, entry: &VepFields<'_>) {
 ///
 /// Extracts COSMIC identifiers from `EXISTING_VARIATION` (COSM/COSV
 /// prefixes) and from the dedicated `COSMIC` field when available.
+/// Empty identifiers are ignored.
+///
+/// Inserts the `cosmic` field only when at least one identifier is found.
 pub fn parse_cosmic(transcript: &mut Document, entry: &VepFields<'_>) {
     let mut cosmic_ids: Vec<Bson> = Vec::new();
 
@@ -162,10 +165,12 @@ pub fn parse_cosmic(transcript: &mut Document, entry: &VepFields<'_>) {
     }
 
     if let Some(cosmic_ids_entry) = entry.get("COSMIC") {
-        for cosmic_id in cosmic_ids_entry.split('&') {
+        for cosmic_id in cosmic_ids_entry.split('&').filter(|id| !id.is_empty()) {
             cosmic_ids.push(Bson::String(cosmic_id.to_string()));
         }
     }
 
-    transcript.insert("cosmic", Bson::Array(cosmic_ids));
+    if !cosmic_ids.is_empty() {
+        transcript.insert("cosmic", Bson::Array(cosmic_ids));
+    }
 }
