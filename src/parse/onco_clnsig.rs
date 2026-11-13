@@ -12,8 +12,8 @@ pub const ONC_CLNSIG: &[&str] = &[
 
 /// Remove leading underscores and split grouped ClinVar annotations.
 ///
-/// The input may contain comma or ampersand separated groups, with multiple
-/// values inside each group separated by `/`.
+/// The input may contain comma, ampersand, or URL-encoded comma (`%2c`)
+/// separated groups, with multiple values inside each group separated by `/`.
 /// Spaces are replaced with underscores.
 ///
 /// # Arguments
@@ -26,6 +26,8 @@ pub const ONC_CLNSIG: &[&str] = &[
 pub fn split_groups(value: &str) -> Vec<String> {
     value
         .replace('&', ",")
+        .replace("%2c", ",")
+        .replace("%2C", ",")
         .split(',')
         .flat_map(|group| group.split('/'))
         .map(|item| item.trim_start_matches('_').replace(' ', "_"))
@@ -70,16 +72,11 @@ pub fn parse_clnsig_onc(record: &Record) -> Vec<Document> {
     let onc_revstat = split_groups(
         &parse_info_string(record, b"ONCREVSTAT")
             .unwrap_or_default()
-            .to_lowercase()
-            .replace("%2c", ","),
+            .to_lowercase(),
     )
     .join(",");
 
-    let onc_dn_groups = split_groups(
-        &parse_info_string(record, b"ONCDN")
-            .unwrap_or_default()
-            .replace("%2C", ","),
-    );
+    let onc_dn_groups = split_groups(&parse_info_string(record, b"ONCDN").unwrap_or_default());
 
     let mut onc_clnsig_accessions = Vec::new();
 
