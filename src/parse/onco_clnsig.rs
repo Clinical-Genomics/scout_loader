@@ -4,9 +4,9 @@ use rust_htslib::bcf::Record;
 
 pub const ONC_CLNSIG: &[&str] = &[
     "Oncogenic",
-    "Likely oncogenic",
-    "Uncertain significance",
-    "Likely benign",
+    "Likely_oncogenic",
+    "Uncertain_significance",
+    "Likely_benign",
     "Benign",
 ];
 
@@ -70,11 +70,16 @@ pub fn parse_clnsig_onc(record: &Record) -> Vec<Document> {
     let onc_revstat = split_groups(
         &parse_info_string(record, b"ONCREVSTAT")
             .unwrap_or_default()
-            .to_lowercase(),
+            .to_lowercase()
+            .replace("%2c", ","),
     )
     .join(",");
 
-    let onc_dn_groups = split_groups(&parse_info_string(record, b"ONCDN").unwrap_or_default());
+    let onc_dn_groups = split_groups(
+        &parse_info_string(record, b"ONCDN")
+            .unwrap_or_default()
+            .replace("%2C", ","),
+    );
 
     let mut onc_clnsig_accessions = Vec::new();
 
@@ -84,6 +89,7 @@ pub fn parse_clnsig_onc(record: &Record) -> Vec<Document> {
         let normalized = capitalize(onc_sig);
 
         if !ONC_CLNSIG.contains(&normalized.as_str()) {
+            println!("ONC_CLNSIG does not contain: {}", normalized);
             continue;
         }
 
