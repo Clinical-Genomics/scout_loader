@@ -19,6 +19,9 @@ mod ids;
 #[path = "parse/vcf.rs"]
 mod vcf;
 
+#[path = "parse/onco_clnsig.rs"]
+mod clinvar_oncogenicity;
+
 #[path = "parse/rank_scores.rs"]
 mod rank_scores;
 

@@ -4,16 +4,16 @@ use rust_htslib::bcf::Record;
 
 pub const ONC_CLNSIG: &[&str] = &[
     "Oncogenic",
-    "Likely oncogenic",
-    "Uncertain significance",
-    "Likely benign",
+    "Likely_oncogenic",
+    "Uncertain_significance",
+    "Likely_benign",
     "Benign",
 ];
 
 /// Remove leading underscores and split grouped ClinVar annotations.
 ///
-/// The input may contain comma or ampersand separated groups, with multiple
-/// values inside each group separated by `/`.
+/// The input may contain comma, ampersand, or URL-encoded comma (`%2c`)
+/// separated groups, with multiple values inside each group separated by `/`.
 /// Spaces are replaced with underscores.
 ///
 /// # Arguments
@@ -26,6 +26,8 @@ pub const ONC_CLNSIG: &[&str] = &[
 pub fn split_groups(value: &str) -> Vec<String> {
     value
         .replace('&', ",")
+        .replace("%2c", ",")
+        .replace("%2C", ",")
         .split(',')
         .flat_map(|group| group.split('/'))
         .map(|item| item.trim_start_matches('_').replace(' ', "_"))
@@ -84,6 +86,7 @@ pub fn parse_clnsig_onc(record: &Record) -> Vec<Document> {
         let normalized = capitalize(onc_sig);
 
         if !ONC_CLNSIG.contains(&normalized.as_str()) {
+            println!("ONC_CLNSIG does not contain: {}", normalized);
             continue;
         }
 
