@@ -7,7 +7,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 ## [unreleased]
 ### Fixed
 - Ignore empty COSMIC identifiers when parsing VEP annotations (#222)
-- Parsing of ClinVar oncogenicity significance, when containing underscore. Replace ONCREVSTAT and ONCDN separator with comma ()
+- Parsing of ClinVar oncogenicity significance, when containing underscore. Replace ONCREVSTAT and ONCDN separator with comma (#226)
 
 ## [0.2.1]
 ### Changed
