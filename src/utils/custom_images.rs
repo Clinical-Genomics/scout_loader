@@ -1,39 +1,58 @@
-use std::path::Path;
+use glob::glob;
 
 use crate::models::case::CustomImage;
 
-/// Gets the custom images matching an STR variant.
+/// Expands custom STR images using REPID and TRID wildcards.
 ///
-/// Images with a `str_repid` matching the variant are included directly.
-/// Images using the `{REPID}` placeholder are resolved using the variant's
-/// `str_repid` and included only if the resulting image file exists on disk.
+/// Images using `{REPID}` or `{TRID}` are expanded for each matching file.
+/// The wildcard is replaced in the path, title, and description.
 ///
-/// # Arguments
-///
-/// * `images` - Configured custom STR variant images.
-/// * `str_repid` - The STR replicon ID of the variant.
-///
-/// # Returns
-///
-/// A vector containing the custom images applicable to the STR variant.
-pub fn set_custom_images(images: &[CustomImage], str_repid: &str) -> Vec<CustomImage> {
+/// Images without wildcards are included unchanged.
+pub fn set_custom_images(images: &[CustomImage]) -> Vec<CustomImage> {
     let mut custom_images = Vec::new();
 
     for image in images {
-        if image.str_repid == str_repid {
-            custom_images.push(image.clone());
-        } else if image.str_repid == "{REPID}" {
-            let path = image.path.replace("{REPID}", str_repid);
-
-            if !Path::new(&path).exists() {
+        let (identifier, is_repid) = match (image.str_repid.as_deref(), image.str_trid.as_deref()) {
+            (Some("{REPID}"), _) => ("{REPID}", true),
+            (_, Some("{TRID}")) => ("{TRID}", false),
+            _ => {
+                custom_images.push(image.clone());
                 continue;
             }
+        };
+
+        let Some((prefix, suffix)) = image.path.split_once(identifier) else {
+            continue;
+        };
+
+        let pattern = format!("{prefix}*{suffix}");
+
+        let Ok(paths) = glob(&pattern) else {
+            continue;
+        };
+
+        for path in paths.flatten() {
+            let path = path.to_string_lossy().to_string();
+
+            let Some(matched_id) = path
+                .strip_prefix(prefix)
+                .and_then(|value| value.strip_suffix(suffix))
+                .map(str::to_string)
+            else {
+                continue;
+            };
 
             let mut new_image = image.clone();
-            new_image.str_repid = str_repid.to_string();
+
+            if is_repid {
+                new_image.str_repid = Some(matched_id.clone());
+            } else {
+                new_image.str_trid = Some(matched_id.clone());
+            }
+
             new_image.path = path;
-            new_image.title = image.title.replace("{REPID}", str_repid);
-            new_image.description = image.description.replace("{REPID}", str_repid);
+            new_image.title = image.title.replace(identifier, &matched_id);
+            new_image.description = image.description.replace(identifier, &matched_id);
 
             custom_images.push(new_image);
         }

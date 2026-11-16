@@ -3,7 +3,6 @@ use crate::parse::onco_clnsig::split_groups;
 use mongodb::bson::{Bson, Document, doc};
 use rust_htslib::bcf::Record;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::sync::LazyLock;
 
 pub static REV_CLINSIG_MAP: LazyLock<HashMap<&'static str, i32>> = LazyLock::new(|| {
@@ -64,7 +63,7 @@ pub fn parse_clnsig(record: &Record, transcripts: &[Document]) -> Vec<Document> 
         .unwrap_or_default()
         .to_lowercase();
 
-    let mut transcripts_clnsig = HashSet::new();
+    let mut transcripts_clnsig = Vec::new();
     let mut clnsig_accessions = Vec::new();
 
     if sig.is_empty()
@@ -78,8 +77,8 @@ pub fn parse_clnsig(record: &Record, transcripts: &[Document]) -> Vec<Document> 
 
                 for value in annotation.split('/') {
                     let value = value.trim_start_matches('_');
-                    if !value.is_empty() {
-                        transcripts_clnsig.insert(value.to_string());
+                    if !value.is_empty() && !transcripts_clnsig.contains(&value.to_string()) {
+                        transcripts_clnsig.push(value.to_string());
                     }
                 }
             }
