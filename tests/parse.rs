@@ -22,6 +22,9 @@ mod genotypes;
 #[path = "parse/ids.rs"]
 mod ids;
 
+#[path = "parse/info.rs"]
+mod info;
+
 #[path = "parse/vcf.rs"]
 mod vcf;
 
@@ -39,6 +42,9 @@ mod clinvar_oncogenicity;
 
 #[path = "parse/rank_scores.rs"]
 mod rank_scores;
+
+#[path = "parse/regions.rs"]
+mod regions;
 
 #[path = "fixtures/case.rs"]
 mod case;
