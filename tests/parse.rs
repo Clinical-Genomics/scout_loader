@@ -1,3 +1,6 @@
+#[path = "parse/callers.rs"]
+mod callers;
+
 #[path = "parse/clinvar_pathogenic.rs"]
 mod clinvar_pathogenic;
 
@@ -33,3 +36,9 @@ mod rank_scores;
 
 #[path = "fixtures/case.rs"]
 mod case;
+
+#[path = "parse/coordinates.rs"]
+mod coordinates;
+
+#[path = "fixtures/vcf_record.rs"]
+mod vcf_record;
