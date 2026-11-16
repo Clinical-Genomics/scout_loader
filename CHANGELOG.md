@@ -8,6 +8,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - Support custom image matching for both STR repetitions (REPID) and tandem repeat IDs (TRID), allowing images to be automatically discovered and associated with the corresponding variants (#228)
 - Parse AlphaMissense predictions from VEP annotations (#230)
+- Parse AVI scores (`AVI_PHRED`, `AVI_RAW`) from VEP annotations (#XXX)
 ### Fixed
 - Ignore empty COSMIC identifiers when parsing VEP annotations (#222)
 - Parsing of ClinVar oncogenicity significance, when containing underscore. Replace ONCREVSTAT and ONCDN separator with comma (#226)
