@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
 ## [unreleased]
+### Added
+- Parse phase set (FORMAT PS) into the `phase_set` genotype field for phased variants, as in Scout (#225)
 ### Fixed
 - Ignore empty COSMIC identifiers when parsing VEP annotations (#222)
 - Parsing of ClinVar oncogenicity significance, when containing underscore. Replace ONCREVSTAT and ONCDN separator with comma (#226)

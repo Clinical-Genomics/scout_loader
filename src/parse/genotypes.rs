@@ -263,6 +263,10 @@ fn parse_genotype(
         gt_call.insert("copy_number", copy_number);
     }
 
+    if let Some(phase_set) = get_phase_set(record, pos) {
+        gt_call.insert("phase_set", phase_set);
+    }
+
     let mut gt_obj = doc! {
         "sample_id": gt_call.get("sample_id"),
         "display_name": gt_call.get("display_name"),
@@ -286,6 +290,7 @@ fn parse_genotype(
         "copy_number",
         "edr",
         "ffpm",
+        "phase_set",
         "sdp",
         "sdr",
         "so",
@@ -873,4 +878,28 @@ pub fn get_copy_number(record: &Record, pos: usize) -> Option<i32> {
     }
 
     Some(*cn_value)
+}
+
+/// Get the phase set identifier from the PS FORMAT field.
+///
+/// ##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phase set identifier">
+///
+/// By convention the phase set is the position of the first variant in the
+/// haplotype block. Phased genotypes (e.g. `0|1`) are only comparable to
+/// other phased genotypes within the same phase set, sample and chromosome.
+///
+/// The field is normally declared as an Integer, but a String declaration
+/// with a numeric value is also accepted. Returns None if PS is absent,
+/// missing ("."), or not a valid non-negative integer.
+pub fn get_phase_set(record: &Record, pos: usize) -> Option<i32> {
+    if let Ok(values) = record.format(b"PS").integer() {
+        let value = values.get(pos)?.first()?;
+        return (*value >= 0).then_some(*value);
+    }
+
+    parse_format_entry_single_string(record, pos, b"PS")?
+        .trim_end_matches('\0')
+        .parse::<i32>()
+        .ok()
+        .filter(|value| *value >= 0)
 }
