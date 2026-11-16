@@ -1,9 +1,9 @@
 use crate::parse::info::parse_info_string;
+use crate::parse::onco_clnsig::split_groups;
 use mongodb::bson::{Bson, Document, doc};
 use rust_htslib::bcf::Record;
 use std::collections::HashMap;
 use std::collections::HashSet;
-
 use std::sync::LazyLock;
 
 pub static REV_CLINSIG_MAP: LazyLock<HashMap<&'static str, i32>> = LazyLock::new(|| {
@@ -64,33 +64,24 @@ pub fn parse_clnsig(record: &Record, transcripts: &[Document]) -> Vec<Document> 
         .unwrap_or_default()
         .to_lowercase();
 
+    let mut transcripts_clnsig = HashSet::new();
     let mut clnsig_accessions = Vec::new();
 
-    // VEP transcript-level ClinVar annotations
-    if acc.is_empty()
+    if sig.is_empty()
         && let Some(first) = transcripts.first()
     {
-        if first.get_array("clnsig").is_ok() {
-            let mut values = HashSet::new();
+        if let Ok(annotations) = first.get_array("clnsig") {
+            for annotation in annotations {
+                let Some(annotation) = annotation.as_str() else {
+                    continue;
+                };
 
-            for transcript in transcripts {
-                if let Ok(annotations) = transcript.get_array("clnsig") {
-                    for annotation in annotations {
-                        let Some(annotation) = annotation.as_str() else {
-                            continue;
-                        };
-
-                        for value in annotation.split('/') {
-                            values.insert(value.trim_start_matches('_').to_string());
-                        }
+                for value in annotation.split('/') {
+                    let value = value.trim_start_matches('_');
+                    if !value.is_empty() {
+                        transcripts_clnsig.insert(value.to_string());
                     }
                 }
-            }
-
-            for value in values {
-                clnsig_accessions.push(doc! {
-                    "value": value,
-                });
             }
         }
 
@@ -108,36 +99,44 @@ pub fn parse_clnsig(record: &Record, transcripts: &[Document]) -> Vec<Document> 
         }
     }
 
-    // New ClinVar format: accession is numeric and significance is textual
-    if let Ok(accession) = acc.parse::<i32>() {
-        let revstat_groups = revstat
-            .replace('&', ",")
-            .split(',')
-            .filter(|value| !value.is_empty())
-            .map(|value| value.trim_start_matches('_').to_string())
-            .collect::<Vec<_>>();
+    // There are some versions where ClinVar uses integers to represent terms
+    if (acc.is_empty() || acc.parse::<i32>().is_ok())
+        && (!sig.is_empty() || !transcripts_clnsig.is_empty())
+    {
+        let revstat_groups = split_groups(&revstat);
 
-        let mut sig_groups = Vec::new();
+        let mut sig_groups = split_groups(&sig);
+        sig_groups.retain(|value| !value.is_empty());
 
-        for significance in sig.replace('&', ",").split(',') {
-            for term in significance.trim_start_matches('_').split('/') {
-                sig_groups.push(term.split_whitespace().collect::<Vec<_>>().join("_"));
-            }
+        if sig_groups.is_empty() {
+            sig_groups.extend(transcripts_clnsig);
         }
 
         let sig_groups = parse_clnsig_low_penetrance(sig_groups);
 
         for value in sig_groups {
-            clnsig_accessions.push(doc! {
+            if value.is_empty() {
+                continue;
+            }
+
+            let mut clnsig = doc! {
                 "value": value,
-                "accession": accession,
-                "revstat": revstat_groups.join(","),
-            });
+            };
+
+            if let Ok(accession) = acc.parse::<i32>() {
+                clnsig.insert("accession", accession);
+            }
+
+            if !revstat_groups.is_empty() {
+                clnsig.insert("revstat", revstat_groups.join(","));
+            }
+
+            clnsig_accessions.push(clnsig);
         }
     }
 
     // Old ClinVar format
-    if !acc.is_empty() && clnsig_accessions.is_empty() {
+    if !acc.is_empty() && !sig.is_empty() && clnsig_accessions.is_empty() {
         let acc_groups = acc.split('|');
         let sig_groups = sig.split('|');
         let revstat_groups = revstat.split('|');
@@ -207,12 +206,19 @@ pub fn parse_clnsig_low_penetrance(sig_groups: Vec<String>) -> Vec<String> {
 pub fn build_clnsig(clnsig_info: Document) -> Document {
     let value = clnsig_info.get("value");
 
-    let sign_number = match value {
-        Some(Bson::String(value)) => REV_CLINSIG_MAP.get(value.as_str()).copied().unwrap_or(255),
-        Some(Bson::Int32(value)) => *value,
-        Some(Bson::Int64(value)) => *value as i32,
-        _ => 255,
-    };
+    let sign_number =
+        match value {
+            Some(Bson::String(value)) => REV_CLINSIG_MAP
+                .get(value.as_str())
+                .copied()
+                .unwrap_or_else(|| {
+                    println!("WARNING: Unknown ClinVar significance value: {value}");
+                    255
+                }),
+            Some(Bson::Int32(value)) => *value,
+            Some(Bson::Int64(value)) => *value as i32,
+            _ => 255,
+        };
 
     let mut clnsig_obj = doc! {
         "value": sign_number,

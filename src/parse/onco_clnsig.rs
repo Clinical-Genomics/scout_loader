@@ -25,12 +25,13 @@ pub const ONC_CLNSIG: &[&str] = &[
 /// A vector of normalized annotation values.
 pub fn split_groups(value: &str) -> Vec<String> {
     value
-        .replace('&', ",")
+        .replace(['&', '|'], ",")
         .replace("%2c", ",")
         .replace("%2C", ",")
         .split(',')
         .flat_map(|group| group.split('/'))
         .map(|item| item.trim_start_matches('_').replace(' ', "_"))
+        .filter(|item| !item.is_empty())
         .collect()
 }
 
