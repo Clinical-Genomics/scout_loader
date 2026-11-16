@@ -5,6 +5,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 About changelog [here](https://keepachangelog.com/en/1.0.0/)
 
 ## [unreleased]
+### Added
+- Support custom image matching for both STR repetitions (REPID) and tandem repeat IDs (TRID), allowing images to be automatically discovered and associated with the corresponding variants (#228)
 ### Fixed
 - Ignore empty COSMIC identifiers when parsing VEP annotations (#222)
 - Parsing of ClinVar oncogenicity significance, when containing underscore. Replace ONCREVSTAT and ONCDN separator with comma (#226)
