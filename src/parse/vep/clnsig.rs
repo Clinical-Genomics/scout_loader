@@ -1,4 +1,5 @@
 use crate::parse::info::parse_info_string;
+use crate::parse::onco_clnsig::split_groups;
 use mongodb::bson::{Bson, Document, doc};
 use rust_htslib::bcf::Record;
 use std::collections::HashMap;
@@ -102,9 +103,9 @@ pub fn parse_clnsig(record: &Record, transcripts: &[Document]) -> Vec<Document> 
     if (acc.is_empty() || acc.parse::<i32>().is_ok())
         && (!sig.is_empty() || !transcripts_clnsig.is_empty())
     {
-        let revstat_groups = parse_clnsig_groups(&revstat);
+        let revstat_groups = split_groups(&revstat);
 
-        let mut sig_groups = parse_clnsig_groups(&sig);
+        let mut sig_groups = split_groups(&sig);
 
         if sig_groups.is_empty() {
             sig_groups.extend(transcripts_clnsig);
@@ -156,20 +157,6 @@ pub fn parse_clnsig(record: &Record, transcripts: &[Document]) -> Vec<Document> 
     }
 
     clnsig_accessions
-}
-
-/// Split ClinVar groups using the supported separators.
-fn parse_clnsig_groups(value: &str) -> Vec<String> {
-    value
-        .replace("%2c_", ",")
-        .replace("%2C_", ",")
-        .replace('&', ",")
-        .replace('|', ",")
-        .replace('/', ",")
-        .split(',')
-        .filter(|value| !value.is_empty())
-        .map(|value| value.trim_start_matches('_').replace(' ', "_"))
-        .collect()
 }
 
 /// Merge `low_penetrance` clinical significance terms.
