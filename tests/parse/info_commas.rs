@@ -38,7 +38,7 @@ const META: &str = "\
 
 fn record(info: &str) -> Record {
     let mut file = NamedTempFile::new().unwrap();
-    write!(file, "{META}1\t100\t.\tA\tG\t.\tPASS\t{info}\n").unwrap();
+    writeln!(file, "{META}1\t100\t.\tA\tG\t.\tPASS\t{info}").unwrap();
 
     let mut reader = Reader::from_path(file.path()).unwrap();
     reader.records().next().unwrap().unwrap()
