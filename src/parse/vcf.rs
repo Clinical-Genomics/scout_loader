@@ -446,15 +446,6 @@ pub async fn process_vcf(
         let genetic_models = parse_genetic_models(&record);
         let (genotypes, tumor, normal) = parse_genotypes(&record, &sample_mapping, category);
 
-        let str_variants_images = if category == VariantCategory::Str {
-            config
-                .custom_images
-                .as_ref()
-                .and_then(|images| images.str_variants_images.as_ref())
-        } else {
-            None
-        };
-
         // This structure contains fields common to all variant categories
         let mut variant = doc! {
             "_id": ids.document_id.clone(),
@@ -556,10 +547,23 @@ pub async fn process_vcf(
             VariantCategory::Str => {
                 set_str_info(&record, &mut variant);
 
-                if let Ok(str_repid) = variant.get_str("str_repid")
-                    && let Some(images) = str_variants_images
+                if let Some(images) = config
+                    .custom_images
+                    .as_ref()
+                    .and_then(|images| images.str_variants_images.as_ref())
                 {
-                    let custom_images = set_custom_images(images, str_repid);
+                    let images = set_custom_images(images);
+
+                    let str_repid = variant.get_str("str_repid").ok();
+                    let str_trid = variant.get_str("str_trid").ok();
+
+                    let custom_images: Vec<_> = images
+                        .into_iter()
+                        .filter(|image| {
+                            image.str_repid.as_deref() == str_repid
+                                || image.str_trid.as_deref() == str_trid
+                        })
+                        .collect();
 
                     if !custom_images.is_empty() {
                         variant.insert("custom_images", bson::to_bson(&custom_images)?);

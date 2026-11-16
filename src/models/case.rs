@@ -67,7 +67,10 @@ pub struct CustomImages {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CustomImage {
     pub title: String,
-    pub str_repid: String,
+    #[serde(default)]
+    pub str_repid: Option<String>,
+    #[serde(default)]
+    pub str_trid: Option<String>,
     pub description: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub width: Option<u32>,
