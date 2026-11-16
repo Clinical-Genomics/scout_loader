@@ -5,7 +5,9 @@ use crate::parse::vep::annotations::{
 };
 use crate::parse::vep::domains::parse_domains;
 use crate::parse::vep::frequencies::{parse_mt_frequencies, parse_variant_frequencies};
-use crate::parse::vep::predictors::{get_prediction, parse_transcripts_spliceai};
+use crate::parse::vep::predictors::{
+    get_prediction, parse_transcripts_alphamissense, parse_transcripts_spliceai,
+};
 use crate::parse::vep::scores::parse_cadd;
 use crate::parse::vep::utils::{get_highest_float_score_in_string, get_sequence_aux};
 use mongodb::bson::{Bson, Document};
@@ -42,6 +44,12 @@ impl<'a> VepFields<'a> {
     }
 }
 
+/// Parse VEP transcript annotations from a VCF record.
+///
+/// Extracts transcript annotations from the CSQ INFO field and collects
+/// variant-level dbSNP and COSMIC identifiers.
+///
+/// Returns the parsed transcripts.
 pub fn parse_vep_transcripts(
     record: &Record,
     field_indices: &HashMap<String, usize>,
@@ -185,6 +193,7 @@ pub fn parse_vep_transcript(entry: &VepFields<'_>) -> Option<Document> {
     }
 
     parse_transcripts_spliceai(&mut transcript, entry);
+    parse_transcripts_alphamissense(&mut transcript, entry);
 
     transcript.insert(
         "swiss_prot",
