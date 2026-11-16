@@ -106,6 +106,7 @@ pub fn parse_clnsig(record: &Record, transcripts: &[Document]) -> Vec<Document> 
         let revstat_groups = split_groups(&revstat);
 
         let mut sig_groups = split_groups(&sig);
+        sig_groups.retain(|value| !value.is_empty());
 
         if sig_groups.is_empty() {
             sig_groups.extend(transcripts_clnsig);
@@ -114,6 +115,10 @@ pub fn parse_clnsig(record: &Record, transcripts: &[Document]) -> Vec<Document> 
         let sig_groups = parse_clnsig_low_penetrance(sig_groups);
 
         for value in sig_groups {
+            if value.is_empty() {
+                continue;
+            }
+
             let mut clnsig = doc! {
                 "value": value,
             };
@@ -201,12 +206,19 @@ pub fn parse_clnsig_low_penetrance(sig_groups: Vec<String>) -> Vec<String> {
 pub fn build_clnsig(clnsig_info: Document) -> Document {
     let value = clnsig_info.get("value");
 
-    let sign_number = match value {
-        Some(Bson::String(value)) => REV_CLINSIG_MAP.get(value.as_str()).copied().unwrap_or(255),
-        Some(Bson::Int32(value)) => *value,
-        Some(Bson::Int64(value)) => *value as i32,
-        _ => 255,
-    };
+    let sign_number =
+        match value {
+            Some(Bson::String(value)) => REV_CLINSIG_MAP
+                .get(value.as_str())
+                .copied()
+                .unwrap_or_else(|| {
+                    println!("WARNING: Unknown ClinVar significance value: {value}");
+                    255
+                }),
+            Some(Bson::Int32(value)) => *value,
+            Some(Bson::Int64(value)) => *value as i32,
+            _ => 255,
+        };
 
     let mut clnsig_obj = doc! {
         "value": sign_number,
