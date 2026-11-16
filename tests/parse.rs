@@ -1,6 +1,9 @@
 #[path = "parse/callers.rs"]
 mod callers;
 
+#[path = "parse/conservations.rs"]
+mod conservations;
+
 #[path = "parse/clinvar_pathogenic.rs"]
 mod clinvar_pathogenic;
 
@@ -27,6 +30,9 @@ mod vep_clnsig;
 
 #[path = "parse/vep/predictors.rs"]
 mod vep_predictors;
+
+#[path = "parse/vep/transcripts.rs"]
+mod vep_transcripts;
 
 #[path = "parse/onco_clnsig.rs"]
 mod clinvar_oncogenicity;

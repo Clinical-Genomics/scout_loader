@@ -59,3 +59,41 @@ pub fn record(meta_lines: &[&str], data_line: &str) -> Record {
 
     record_from_vcf(&vcf)
 }
+
+/// Build a VEP-annotated record from a CSQ format string and a CSQ value.
+///
+/// The CSQ header is written the way VEP does it (`... Format: A|B|C`) and the
+/// field indices are derived with the loader's own `parse_vep_header`, so the
+/// returned indices match what `parse_vcf` would use for the same file.
+///
+/// `extra_info` is appended to the INFO column (e.g. `"COSMIC=COSV1"`); any
+/// keys used there must be declared in `extra_meta`.
+pub fn vep_record(
+    csq_format: &str,
+    csq: &str,
+    extra_meta: &[&str],
+    extra_info: &str,
+) -> (Record, std::collections::HashMap<String, usize>) {
+    let csq_header = format!(
+        "##INFO=<ID=CSQ,Number=.,Type=String,Description=\"Consequence annotations from Ensembl VEP. Format: {csq_format}\">"
+    );
+
+    let mut meta = vec!["##contig=<ID=1,length=249250621>", csq_header.as_str()];
+    meta.extend_from_slice(extra_meta);
+
+    let info = if extra_info.is_empty() {
+        format!("CSQ={csq}")
+    } else {
+        format!("CSQ={csq};{extra_info}")
+    };
+
+    let record = record(&meta, &format!("1\t38592898\t.\tT\tC\t.\tPASS\t{info}"));
+
+    let field_indices = scout_loader::parse::header::parse_vep_header(record.header())
+        .into_iter()
+        .enumerate()
+        .map(|(index, field)| (field, index))
+        .collect();
+
+    (record, field_indices)
+}
