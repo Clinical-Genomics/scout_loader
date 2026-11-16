@@ -20,7 +20,10 @@ mod ids;
 mod vcf;
 
 #[path = "parse/vep/clnsig.rs"]
-mod clnsig;
+mod vep_clnsig;
+
+#[path = "parse/vep/predictors.rs"]
+mod vep_predictors;
 
 #[path = "parse/onco_clnsig.rs"]
 mod clinvar_oncogenicity;
