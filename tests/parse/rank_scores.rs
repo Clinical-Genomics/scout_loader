@@ -1,30 +1,17 @@
 use mongodb::bson::{Bson, doc};
-use rust_htslib::bcf::{Read, Reader};
 use scout_loader::parse::rank_scores::{
     parse_rank_result, parse_rank_score_other, parse_rank_scores, parse_score_entry,
 };
-use std::io::Write;
-use tempfile::NamedTempFile;
 
 #[test]
 fn test_parse_rank_scores() {
-    let vcf = b"##fileformat=VCFv4.2
-##INFO=<ID=RankScore,Number=1,Type=String,Description=\"Rank score\">
-##INFO=<ID=RankScoreNormalized,Number=1,Type=String,Description=\"Normalized rank score\">
-#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO
-1\t100\t.\tA\tT\t.\t.\tRankScore=internal_id:-20;RankScoreNormalized=internal_id:-0.5
-";
+    // GIVEN a variant with a rank score and a normalized rank score
+    let record = rank_record("RankScore=internal_id:-20;RankScoreNormalized=internal_id:-0.5");
 
-    let mut file = NamedTempFile::new().unwrap();
-    file.write_all(vcf).unwrap();
-
-    let mut reader = Reader::from_path(file.path()).unwrap();
-    let mut record = reader.empty_record();
-
-    let _ = reader.read(&mut record).unwrap();
-
+    // WHEN parsing the rank scores
     let (rank_score, norm_rank_score) = parse_rank_scores(&record);
 
+    // THEN both scores are parsed
     assert_eq!(rank_score, Some(-20.0));
     assert_eq!(norm_rank_score, Some(-0.5));
 }
