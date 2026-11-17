@@ -9,6 +9,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Support custom image matching for both STR repetitions (REPID) and tandem repeat IDs (TRID), allowing images to be automatically discovered and associated with the corresponding variants (#228)
 - Parse AlphaMissense predictions from VEP annotations (#230)
 ### Fixed
+- Read STR `PathologicStruc` in both the old `[0, 1, 2, 6]` and the new Integer list format, and percent-decode stranger catalog annotations, ahead of Clinical-Genomics/stranger#124. All motif indexes are now used for TRGT motif counts, not only the first (#PRNUM)
 - Ignore empty COSMIC identifiers when parsing VEP annotations (#222)
 - Parsing of ClinVar oncogenicity significance, when containing underscore. Replace ONCREVSTAT and ONCDN separator with comma (#226)
 - Fix germline ClinVar significance parsing to correctly retrieve VEP transcript annotations when INFO significance is missing (#227)
