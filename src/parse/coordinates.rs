@@ -67,9 +67,10 @@ fn get_end_chrom(alt: &str, chrom: &str) -> String {
 /// The SVTYPE INFO tag is deprecated in the VCF standard but may still
 /// be present. If available, it is preferred. Otherwise, the type is
 /// inferred from the ALT allele.
-fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
+fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> Option<String> {
     if let Ok(Some(values)) = record.info(b"SVTYPE").string()
         && let Some(value) = values.first()
+        && !value.is_empty()
     {
         let mut svtype = String::from_utf8_lossy(value).to_lowercase();
 
@@ -77,7 +78,7 @@ fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
             svtype = "bnd".to_string();
         }
 
-        return svtype;
+        return Some(svtype);
     }
 
     let alt_type = alt
@@ -86,14 +87,14 @@ fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
         .to_lowercase();
 
     if SV_TYPES.contains(&alt_type.as_str()) {
-        return alt_type;
+        return Some(alt_type);
     }
 
     if alt.contains('.') && alt_len > 1 {
-        return "bnd".to_string();
+        return Some("bnd".to_string());
     }
 
-    unreachable!("Unable to determine SV type")
+    None
 }
 
 /// Determines the end position of a structural variant.
@@ -211,7 +212,9 @@ pub fn parse_coordinates(
         VariantCategory::Sv | VariantCategory::CancerSv | VariantCategory::Fusion => {
             let svtype = get_svtype(record, &alternative, alt_len);
 
-            sub_category = svtype.clone();
+            if let Some(svtype) = svtype {
+                sub_category = svtype;
+            }
 
             if sub_category == "bnd" {
                 end_chrom = get_end_chrom(&alternative, &chrom);
