@@ -8,6 +8,8 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - Support custom image matching for both STR repetitions (REPID) and tandem repeat IDs (TRID), allowing images to be automatically discovered and associated with the corresponding variants (#228)
 - Parse AlphaMissense predictions from VEP annotations (#230)
+- Parse phase set (FORMAT PS) into the `phase_set` genotype field for phased variants, as in Scout (#231)
+- AGENTS.md and CLAUDE.md with guidance for AI coding agents, including how to port features from Scout (#232)
 - Tests for coordinate, caller, VEP transcript, conservation, INFO, region and rank score parsing (partly ported from scout) and VCF line counting, and a shared VCF record test helper (#238)
 ### Fixed
 - Ignore empty COSMIC identifiers when parsing VEP annotations (#222)
@@ -23,7 +25,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Fix CHRA INFO byte-to-string conversion when parsing fusion variants (#212)
 - Fix missing `fusion_genes` key in saved documents for fusion variants (#213)
 - Do not include a gene in the `genes` array if it doesn't have a valid `hgnc_id` (#217) 
-- Save correctlt genotypes for tumor/normal cancer cases, when available (#219)
+- Save correctly genotypes for tumor/normal cancer cases, when available (#219)
 
 ## [0.2]
 ### Added
