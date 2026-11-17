@@ -1,4 +1,5 @@
 use crate::parse::vep::transcripts::VepFields;
+use crate::parse::vep::utils::get_highest_float_score_in_string;
 use mongodb::bson::{Bson, Document};
 
 /// Extract a prediction from VEP transcript annotations.
@@ -104,5 +105,19 @@ pub fn parse_transcripts_alphamissense(transcript: &mut Document, entry: &VepFie
         .and_then(|value| value.parse::<f64>().ok())
     {
         transcript.insert("am_pathogenicity", Bson::Double(score));
+    }
+}
+
+// Extracts AVI scores from the AVI VEP plugin from VEP CSQ fields and stores them in the transcript document.
+// The AVI score fields are:
+// ##AVI_PHRED=PHRED-scaled quantile (0 to approximately 80)
+// ##AVI_RAW=Raw score (approximately -1.3 to +4.0)
+pub fn parse_transcripts_avi(transcript: &mut Document, entry: &VepFields<'_>) {
+    for (csq_key, transcript_key) in [("AVI_PHRED", "avi_phred"), ("AVI_RAW", "avi_raw")] {
+        if let Some(value) = entry.get(csq_key).filter(|v| !v.is_empty())
+            && let Some(score) = get_highest_float_score_in_string(value)
+        {
+            transcript.insert(transcript_key, Bson::Double(score));
+        }
     }
 }

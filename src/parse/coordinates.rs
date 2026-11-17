@@ -35,7 +35,7 @@ pub fn get_cytoband_coordinates(
 ///
 /// The prefix is removed in a case-insensitive manner (e.g. "chr1",
 /// "CHR1", and "Chr1" are all normalized to "1").
-fn normalize_chromosome(chromosome: &str) -> String {
+pub fn normalize_chromosome(chromosome: &str) -> String {
     if chromosome.len() >= 3 && chromosome[..3].eq_ignore_ascii_case("chr") {
         chromosome[3..].to_string()
     } else {
@@ -48,7 +48,7 @@ fn normalize_chromosome(chromosome: &str) -> String {
 /// BND variants can represent translocations between different chromosomes.
 /// The chromosome of the mate breakpoint is extracted from the ALT allele.
 /// If no chromosome can be extracted, the original chromosome is returned.
-fn get_end_chrom(alt: &str, chrom: &str) -> String {
+pub fn get_end_chrom(alt: &str, chrom: &str) -> String {
     if !alt.contains(':') {
         return chrom.to_string();
     }
@@ -103,7 +103,7 @@ fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
 /// - For symbolic alleles containing `.`, use the variant position.
 /// - Otherwise, use `SVLEN` relative to the variant position when available.
 /// - Fall back to the variant position if no end position can be determined.
-fn sv_end(pos: i32, alt: &str, svend: Option<i32>, svlen: Option<i32>) -> i32 {
+pub fn sv_end(pos: i32, alt: &str, svend: Option<i32>, svlen: Option<i32>) -> i32 {
     let mut end = svend;
 
     if alt.contains(':') {
@@ -129,7 +129,8 @@ fn sv_end(pos: i32, alt: &str, svend: Option<i32>, svlen: Option<i32>) -> i32 {
 ///
 /// Returns a very large value for variants spanning different molecules.
 /// Uses SVLEN when available. If no length can be determined, returns -1.
-fn sv_length(pos: i32, end: i32, chrom: &str, end_chrom: &str, svlen: Option<i32>) -> i32 {
+/// A translocation (var with different start and end chr) returns i32::MAX.
+pub fn sv_length(pos: i32, end: i32, chrom: &str, end_chrom: &str, svlen: Option<i32>) -> i32 {
     if chrom != end_chrom {
         return i32::MAX;
     }
