@@ -228,6 +228,18 @@ fn test_parse_coordinates_sgl_bnd_without_svtype() {
 }
 
 #[test]
+fn test_parse_coordinates_unknown_svtype() {
+    // GIVEN an SV without SVTYPE that cannot be inferred from ALT
+    let record = sv_record("N", "N[1:200[", "END=200");
+
+    // WHEN parsing the coordinates
+    let coordinates = coordinates(&record, VariantCategory::Sv);
+
+    // THEN the sub-category is None
+    assert_eq!(coordinates.sub_category, None);
+}
+
+#[test]
 fn test_parse_coordinates_cnvnator_deletion() {
     // GIVEN a CNVnator-style deletion with a negative SVLEN
     let record = sv_record("N", "<DEL>", "SVTYPE=DEL;END=734778;SVLEN=-10000");
