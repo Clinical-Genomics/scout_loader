@@ -114,3 +114,75 @@ pub fn parse_custom_data(custom_str: Option<String>) -> Option<Bson> {
 
     Some(Bson::Array(pairs))
 }
+
+/// Decode percent-encoded characters in an INFO value, e.g. `%20` and `%2C`.
+///
+/// VCF 4.3 allows characters that are not permitted in INFO values (such as
+/// spaces, commas and semicolons) to be percent-encoded. Invalid escape
+/// sequences are kept as they are.
+pub fn percent_decode(value: &str) -> String {
+    let bytes = value.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+
+    while index < bytes.len() {
+        if bytes[index] == b'%'
+            && let Some(hex) = bytes.get(index + 1..index + 3)
+            && let Ok(hex) = std::str::from_utf8(hex)
+            && let Ok(byte) = u8::from_str_radix(hex, 16)
+        {
+            decoded.push(byte);
+            index += 3;
+            continue;
+        }
+
+        decoded.push(bytes[index]);
+        index += 1;
+    }
+
+    String::from_utf8_lossy(&decoded).into_owned()
+}
+
+/// Insert a percent-decoded string INFO field into a MongoDB document if the field exists.
+pub fn insert_info_string_decoded(
+    record: &Record,
+    doc: &mut Document,
+    vcf_key: &[u8],
+    mongo_key: &str,
+) {
+    if let Some(value) = parse_info_string(record, vcf_key) {
+        doc.insert(mongo_key, bson::Bson::String(percent_decode(&value)));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::percent_decode;
+
+    #[test]
+    fn test_percent_decode() {
+        assert_eq!(
+            percent_decode("GeneReviews%20Internet%202019-11-07"),
+            "GeneReviews Internet 2019-11-07"
+        );
+        assert_eq!(
+            percent_decode("Paucar%2C%20Nilsson%2C%20Engvall%20et%20al"),
+            "Paucar, Nilsson, Engvall et al"
+        );
+        assert_eq!(percent_decode("a%3Bb%3Dc%25d"), "a;b=c%d");
+        assert_eq!(percent_decode("%2c"), ",");
+    }
+
+    #[test]
+    fn test_percent_decode_keeps_plain_and_invalid_values() {
+        assert_eq!(percent_decode("AD"), "AD");
+        assert_eq!(
+            percent_decode("Spinocerebellar ataxia"),
+            "Spinocerebellar ataxia"
+        );
+        assert_eq!(percent_decode("100%"), "100%");
+        assert_eq!(percent_decode("%2"), "%2");
+        assert_eq!(percent_decode("%zz"), "%zz");
+        assert_eq!(percent_decode("%C3%A9"), "é");
+    }
+}

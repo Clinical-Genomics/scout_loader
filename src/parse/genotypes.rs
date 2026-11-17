@@ -386,20 +386,45 @@ fn get_str_so(record: &Record, pos: usize) -> Option<String> {
 ///
 /// Returns the motif indexes contributing to pathological size.
 /// Returns None when the INFO field is missing or cannot be parsed.
-fn get_pathologic_struc(record: &Record) -> Option<Vec<usize>> {
+///
+/// Two formats are supported:
+/// - `Number=.,Type=Integer`, e.g. `PathologicStruc=0,1,2,6` (stranger#124).
+/// - `Number=1,Type=String` with a Python list, e.g. `PathologicStruc=[0, 1, 2, 6]`,
+///   written by older stranger versions. Old cases keep this format.
+///
+/// rust-htslib splits String values on commas, so the parts are joined
+/// again before parsing.
+pub(crate) fn get_pathologic_struc(record: &Record) -> Option<Vec<usize>> {
+    let info = record.info(b"PathologicStruc");
+
+    if let Ok(Some(values)) = info.integer() {
+        return Some(
+            values
+                .iter()
+                .filter_map(|value| usize::try_from(*value).ok())
+                .collect(),
+        );
+    }
+
     let values = record.info(b"PathologicStruc").string().ok()??;
 
-    let value = values.first()?;
+    let value = values
+        .iter()
+        .map(|value| String::from_utf8_lossy(value))
+        .collect::<Vec<_>>()
+        .join(",");
 
-    let value = String::from_utf8_lossy(value);
+    Some(parse_pathologic_struc(&value))
+}
 
-    Some(
-        value
-            .trim_matches(|c| c == '[' || c == ']')
-            .split(',')
-            .filter_map(|x| x.trim().parse::<usize>().ok())
-            .collect(),
-    )
+/// Parse motif indexes from a PathologicStruc string such as `[0, 1, 2, 6]` or `0,1,2,6`.
+fn parse_pathologic_struc(value: &str) -> Vec<usize> {
+    value
+        .trim()
+        .trim_matches(|c| c == '[' || c == ']')
+        .split(',')
+        .filter_map(|x| x.trim().parse::<usize>().ok())
+        .collect()
 }
 
 /// Parse TRGT MC FORMAT entry.
@@ -902,4 +927,133 @@ pub fn get_phase_set(record: &Record, pos: usize) -> Option<i32> {
         .parse::<i32>()
         .ok()
         .filter(|value| *value >= 0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rust_htslib::bcf::{Read, Reader};
+    use std::io::Write;
+
+    /// Build a TRGT-like single sample record with the given PathologicStruc header and INFO.
+    fn trgt_record(pathologic_struc_header: &str, info: &str, gt: &str, mc: &str) -> Record {
+        let vcf = format!(
+            "##fileformat=VCFv4.2\n\
+             ##contig=<ID=1,length=249250621>\n\
+             {pathologic_struc_header}\n\
+             ##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n\
+             ##FORMAT=<ID=MC,Number=.,Type=String,Description=\"Motif counts\">\n\
+             #CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE\n\
+             1\t100\t.\tA\t<STR>\t.\tPASS\t{info}\tGT:MC\t{gt}:{mc}\n"
+        );
+
+        let mut file = tempfile::NamedTempFile::new().unwrap();
+        file.write_all(vcf.as_bytes()).unwrap();
+
+        let mut reader = Reader::from_path(file.path()).unwrap();
+        reader.records().next().unwrap().unwrap()
+    }
+
+    const OLD_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=1,Type=String,Description=\"Struc components counting towards pathogenicity as list of motif numbers\">";
+    const NEW_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=.,Type=Integer,Description=\"Struc components counting towards pathogenicity\">";
+    const STRING_LIST_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=.,Type=String,Description=\"Struc components counting towards pathogenicity\">";
+
+    #[test]
+    fn test_parse_pathologic_struc() {
+        assert_eq!(parse_pathologic_struc("[0, 1, 2, 6]"), vec![0, 1, 2, 6]);
+        assert_eq!(parse_pathologic_struc("[0]"), vec![0]);
+        assert_eq!(parse_pathologic_struc("0,1,2,6"), vec![0, 1, 2, 6]);
+        assert_eq!(parse_pathologic_struc("[]"), Vec::<usize>::new());
+    }
+
+    #[test]
+    fn test_get_pathologic_struc_old_string_format() {
+        // GIVEN the Python list format written by older stranger versions
+        let record = trgt_record(
+            OLD_HEADER,
+            "PathologicStruc=[0, 1, 2, 6]",
+            "0/1",
+            "1_1_1_1_1,1_1_1_1_1",
+        );
+
+        // THEN all indexes are parsed, not only the part before the first comma
+        assert_eq!(get_pathologic_struc(&record), Some(vec![0, 1, 2, 6]));
+
+        let record = trgt_record(OLD_HEADER, "PathologicStruc=[0]", "0/1", "1_1,1_1");
+        assert_eq!(get_pathologic_struc(&record), Some(vec![0]));
+    }
+
+    #[test]
+    fn test_get_pathologic_struc_new_integer_format() {
+        // GIVEN the Number=.,Type=Integer format from stranger#124
+        let record = trgt_record(
+            NEW_HEADER,
+            "PathologicStruc=0,1,2,6",
+            "0/1",
+            "1_1_1_1_1,1_1_1_1_1",
+        );
+        assert_eq!(get_pathologic_struc(&record), Some(vec![0, 1, 2, 6]));
+
+        // AND a single index, including index 0
+        let record = trgt_record(NEW_HEADER, "PathologicStruc=0", "0/1", "1_1,1_1");
+        assert_eq!(get_pathologic_struc(&record), Some(vec![0]));
+    }
+
+    #[test]
+    fn test_get_pathologic_struc_string_list_format() {
+        // GIVEN a comma-separated list declared as String
+        let record = trgt_record(
+            STRING_LIST_HEADER,
+            "PathologicStruc=1,2",
+            "0/1",
+            "1_1_1,1_1_1",
+        );
+        assert_eq!(get_pathologic_struc(&record), Some(vec![1, 2]));
+    }
+
+    #[test]
+    fn test_get_pathologic_struc_missing() {
+        let record = trgt_record(NEW_HEADER, ".", "0/1", "1_1,1_1");
+        assert_eq!(get_pathologic_struc(&record), None);
+    }
+
+    #[test]
+    fn test_parse_format_entry_trgt_mc_pathologic_struc() {
+        // GIVEN motif counts for five motifs, where motifs 0, 1, 2 and 6 (if present) count
+        // towards the pathologic size, in both the old and the new format
+        for (header, info) in [
+            (OLD_HEADER, "PathologicStruc=[0, 1, 2, 6]"),
+            (NEW_HEADER, "PathologicStruc=0,1,2,6"),
+        ] {
+            let record = trgt_record(header, info, "0/1", "1_2_3_100_200,10_20_30_100_200");
+
+            // THEN only the pathologic motifs are summed
+            assert_eq!(
+                parse_format_entry_trgt_mc(&record, 0),
+                (Some(1 + 2 + 3), Some(10 + 20 + 30)),
+                "{info}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_parse_format_entry_trgt_mc_single_index_zero() {
+        // GIVEN only motif 0 counts, in the new format with a single value 0
+        let record = trgt_record(NEW_HEADER, "PathologicStruc=0", "0/1", "5_100,7_100");
+
+        // THEN the other motifs are not counted
+        assert_eq!(parse_format_entry_trgt_mc(&record, 0), (Some(5), Some(7)));
+    }
+
+    #[test]
+    fn test_parse_format_entry_trgt_mc_without_pathologic_struc() {
+        // GIVEN no PathologicStruc
+        let record = trgt_record(NEW_HEADER, ".", "0/1", "5_100,7_100");
+
+        // THEN all motifs are counted
+        assert_eq!(
+            parse_format_entry_trgt_mc(&record, 0),
+            (Some(105), Some(107))
+        );
+    }
 }
