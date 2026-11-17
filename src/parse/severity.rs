@@ -42,14 +42,17 @@ fn parse_cadd(record: &Record, transcripts: &[Document]) -> f64 {
 ///
 /// Adds the CADD and SPIDEX scores from the VCF INFO fields. When parsed
 /// transcripts are available, also adds the highest REVEL rank score,
-/// highest REVEL raw score, and AlphaMissense pathogenicity score and
-/// classification across all transcripts.
+/// highest REVEL raw score, highest AVI PHRED and raw scores, and
+/// AlphaMissense pathogenicity score and classification across all
+/// transcripts.
 ///
 /// The following fields are added when values are available:
 /// - `cadd_score`
 /// - `spidex`
 /// - `revel_score`
 /// - `revel`
+/// - `avi_phred`
+/// - `avi_raw`
 /// - `am_pathogenicity`
 /// - `am_class`
 pub fn set_severity_predictions(
@@ -70,6 +73,14 @@ pub fn set_severity_predictions(
 
         if let Some(value) = get_highest_transcript_score(parsed_transcripts, "revel_raw_score") {
             variant.insert("revel", value);
+        }
+
+        if let Some(value) = get_highest_transcript_score(parsed_transcripts, "avi_phred") {
+            variant.insert("avi_phred", value);
+        }
+
+        if let Some(value) = get_highest_transcript_score(parsed_transcripts, "avi_raw") {
+            variant.insert("avi_raw", value);
         }
     }
 

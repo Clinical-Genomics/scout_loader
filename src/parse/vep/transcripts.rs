@@ -6,7 +6,8 @@ use crate::parse::vep::annotations::{
 use crate::parse::vep::domains::parse_domains;
 use crate::parse::vep::frequencies::{parse_mt_frequencies, parse_variant_frequencies};
 use crate::parse::vep::predictors::{
-    get_prediction, parse_transcripts_alphamissense, parse_transcripts_spliceai,
+    get_prediction, parse_transcripts_alphamissense, parse_transcripts_avi,
+    parse_transcripts_spliceai,
 };
 use crate::parse::vep::scores::parse_cadd;
 use crate::parse::vep::utils::{get_highest_float_score_in_string, get_sequence_aux};
@@ -192,6 +193,7 @@ pub fn parse_vep_transcript(entry: &VepFields<'_>) -> Option<Document> {
         transcript.insert("revel_raw_score", Bson::Double(score));
     }
 
+    parse_transcripts_avi(&mut transcript, entry);
     parse_transcripts_spliceai(&mut transcript, entry);
     parse_transcripts_alphamissense(&mut transcript, entry);
 
