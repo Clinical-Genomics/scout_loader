@@ -1,16 +1,6 @@
+use crate::vcf_record::record_from_vcf as parse_test_record;
 use mongodb::bson::doc;
-use rust_htslib::bcf::{Read, Reader};
 use scout_loader::parse::vep::clnsig::parse_clnsig;
-use std::io::Write;
-use tempfile::NamedTempFile;
-
-fn parse_test_record(vcf: &str) -> rust_htslib::bcf::Record {
-    let mut file = NamedTempFile::new().unwrap();
-    file.write_all(vcf.as_bytes()).unwrap();
-
-    let mut reader = Reader::from_path(file.path()).unwrap();
-    reader.records().next().unwrap().unwrap()
-}
 
 #[test]
 fn test_parse_clnsig_from_info() {
