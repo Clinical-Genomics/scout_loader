@@ -13,6 +13,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse AVI scores (`AVI_PHRED`, `AVI_RAW`) from VEP annotations (#233)
 - Tests for coordinate, caller, VEP transcript, conservation, INFO, region and rank score parsing (partly ported from scout) and VCF line counting, and a shared VCF record test helper (#238)
 ### Fixed
+- String INFO values containing commas were cut off after the first comma, e.g. ClinVar review status, oncogenicity review status, SCOUT_CUSTOM, STR MOTIFS/SourceDisplay and Mivmir explanations (#242)
 - Ignore empty COSMIC identifiers when parsing VEP annotations (#222)
 - Parsing of ClinVar oncogenicity significance, when containing underscore. Replace ONCREVSTAT and ONCDN separator with comma (#226)
 - Fix germline ClinVar significance parsing to correctly retrieve VEP transcript annotations when INFO significance is missing (#227)

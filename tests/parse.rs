@@ -22,6 +22,9 @@ mod genotypes;
 #[path = "parse/ids.rs"]
 mod ids;
 
+#[path = "parse/info_commas.rs"]
+mod info_commas;
+
 #[path = "parse/info.rs"]
 mod info;
 
