@@ -12,7 +12,7 @@ debug
 **/mutants.out*/
 
 # RustRover / JetBrains
-#.idea/
+.idea/
 
 # macOS
 .DS_Store
