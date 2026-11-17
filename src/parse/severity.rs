@@ -41,14 +41,17 @@ fn parse_cadd(record: &Record, transcripts: &[Document]) -> f64 {
 /// Set severity prediction scores on a parsed variant.
 ///
 /// Adds the CADD and SPIDEX scores from the VCF INFO fields. When parsed
-/// transcripts are available, also adds the highest REVEL rank score and
-/// highest REVEL raw score found across all transcripts.
+/// transcripts are available, also adds the highest REVEL rank score,
+/// highest REVEL raw score, and AlphaMissense pathogenicity score and
+/// classification across all transcripts.
 ///
 /// The following fields are added when values are available:
 /// - `cadd_score`
 /// - `spidex`
 /// - `revel_score`
 /// - `revel`
+/// - `am_pathogenicity`
+/// - `am_class`
 pub fn set_severity_predictions(
     variant: &mut Document,
     record: &Record,
@@ -67,6 +70,28 @@ pub fn set_severity_predictions(
 
         if let Some(value) = get_highest_transcript_score(parsed_transcripts, "revel_raw_score") {
             variant.insert("revel", value);
+        }
+    }
+
+    set_alphamissense_severity(variant, parsed_transcripts);
+}
+
+/// Set AlphaMissense predictions on a parsed variant.
+///
+/// Adds the highest pathogenicity score and the highest-priority
+/// classification found across all parsed transcripts.
+pub fn set_alphamissense_severity(variant: &mut Document, transcripts: &[Document]) {
+    if let Some(score) = get_highest_transcript_score(transcripts, "am_pathogenicity") {
+        variant.insert("am_pathogenicity", score);
+    }
+
+    for class in ["likely_pathogenic", "ambiguous", "likely_benign"] {
+        if transcripts
+            .iter()
+            .any(|tx| tx.get_str("am_class").ok() == Some(class))
+        {
+            variant.insert("am_class", class);
+            break;
         }
     }
 }

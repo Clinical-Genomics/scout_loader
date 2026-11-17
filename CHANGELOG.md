@@ -7,6 +7,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 ## [unreleased]
 ### Added
 - Support custom image matching for both STR repetitions (REPID) and tandem repeat IDs (TRID), allowing images to be automatically discovered and associated with the corresponding variants (#228)
+- Parse AlphaMissense predictions from VEP annotations (#230)
 - Parse phase set (FORMAT PS) into the `phase_set` genotype field for phased variants, as in Scout (#231)
 ### Fixed
 - Ignore empty COSMIC identifiers when parsing VEP annotations (#222)

@@ -91,3 +91,18 @@ pub fn parse_transcripts_spliceai(transcript: &mut Document, entry: &VepFields<'
         },
     );
 }
+
+/// Extracts AlphaMissense classification and pathogenicity score from VEP CSQ fields.
+pub fn parse_transcripts_alphamissense(transcript: &mut Document, entry: &VepFields<'_>) {
+    if let Some(class) = entry.get("AM_CLASS").filter(|value| !value.is_empty()) {
+        transcript.insert("am_class", Bson::String(class.to_string()));
+    }
+
+    if let Some(score) = entry
+        .get("AM_PATHOGENICITY")
+        .filter(|value| !value.is_empty())
+        .and_then(|value| value.parse::<f64>().ok())
+    {
+        transcript.insert("am_pathogenicity", Bson::Double(score));
+    }
+}
