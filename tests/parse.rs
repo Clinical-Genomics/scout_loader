@@ -1,3 +1,9 @@
+#[path = "parse/callers.rs"]
+mod callers;
+
+#[path = "parse/conservations.rs"]
+mod conservations;
+
 #[path = "parse/clinvar_pathogenic.rs"]
 mod clinvar_pathogenic;
 
@@ -16,6 +22,9 @@ mod genotypes;
 #[path = "parse/ids.rs"]
 mod ids;
 
+#[path = "parse/info.rs"]
+mod info;
+
 #[path = "parse/vcf.rs"]
 mod vcf;
 
@@ -25,11 +34,23 @@ mod vep_clnsig;
 #[path = "parse/vep/predictors.rs"]
 mod vep_predictors;
 
+#[path = "parse/vep/transcripts.rs"]
+mod vep_transcripts;
+
 #[path = "parse/onco_clnsig.rs"]
 mod clinvar_oncogenicity;
 
 #[path = "parse/rank_scores.rs"]
 mod rank_scores;
 
+#[path = "parse/regions.rs"]
+mod regions;
+
 #[path = "fixtures/case.rs"]
 mod case;
+
+#[path = "parse/coordinates.rs"]
+mod coordinates;
+
+#[path = "fixtures/vcf_record.rs"]
+mod vcf_record;
