@@ -35,7 +35,7 @@ pub fn get_cytoband_coordinates(
 ///
 /// The prefix is removed in a case-insensitive manner (e.g. "chr1",
 /// "CHR1", and "Chr1" are all normalized to "1").
-fn normalize_chromosome(chromosome: &str) -> String {
+pub fn normalize_chromosome(chromosome: &str) -> String {
     if chromosome.len() >= 3 && chromosome[..3].eq_ignore_ascii_case("chr") {
         chromosome[3..].to_string()
     } else {
@@ -48,7 +48,7 @@ fn normalize_chromosome(chromosome: &str) -> String {
 /// BND variants can represent translocations between different chromosomes.
 /// The chromosome of the mate breakpoint is extracted from the ALT allele.
 /// If no chromosome can be extracted, the original chromosome is returned.
-fn get_end_chrom(alt: &str, chrom: &str) -> String {
+pub fn get_end_chrom(alt: &str, chrom: &str) -> String {
     if !alt.contains(':') {
         return chrom.to_string();
     }
@@ -103,7 +103,7 @@ fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
 /// - For symbolic alleles containing `.`, use the variant position.
 /// - Otherwise, use `SVLEN` relative to the variant position when available.
 /// - Fall back to the variant position if no end position can be determined.
-fn sv_end(pos: i32, alt: &str, svend: Option<i32>, svlen: Option<i32>) -> i32 {
+pub fn sv_end(pos: i32, alt: &str, svend: Option<i32>, svlen: Option<i32>) -> i32 {
     let mut end = svend;
 
     if alt.contains(':') {
@@ -129,7 +129,8 @@ fn sv_end(pos: i32, alt: &str, svend: Option<i32>, svlen: Option<i32>) -> i32 {
 ///
 /// Returns a very large value for variants spanning different molecules.
 /// Uses SVLEN when available. If no length can be determined, returns -1.
-fn sv_length(pos: i32, end: i32, chrom: &str, end_chrom: &str, svlen: Option<i32>) -> i32 {
+/// A translocation (var with different start and end chr) returns i32::MAX.
+pub fn sv_length(pos: i32, end: i32, chrom: &str, end_chrom: &str, svlen: Option<i32>) -> i32 {
     if chrom != end_chrom {
         return i32::MAX;
     }
@@ -285,103 +286,5 @@ pub fn parse_coordinates(
         mate_id,
         cytoband_start,
         cytoband_end,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    // Ported from scout's `tests/parse/test_parse_coordinates.py`.
-
-    #[test]
-    fn test_get_sv_length_small_ins() {
-        // GIVEN an insertion with the whole sequence in ALT (POS == END)
-        assert_eq!(sv_length(144343218, 144343218, "1", "1", Some(296)), 296);
-    }
-
-    #[test]
-    fn test_get_sv_length_large_ins_no_length() {
-        // GIVEN an imprecise insertion without SVLEN
-        assert_eq!(sv_length(133920667, 133920667, "1", "1", None), -1);
-    }
-
-    #[test]
-    fn test_get_sv_length_translocation() {
-        // GIVEN a translocation between different chromosomes
-        assert_eq!(sv_length(726044, 0, "1", "10", None), i32::MAX);
-    }
-
-    #[test]
-    fn test_get_sv_length_translocation_same_chrom() {
-        assert_eq!(
-            sv_length(726044, 16457990, "1", "1", None),
-            16457990 - 726044
-        );
-    }
-
-    #[test]
-    fn test_get_sv_length_cnvnator_del() {
-        // GIVEN a CNVnator deletion with negative SVLEN
-        assert_eq!(sv_length(1, 10000, "1", "1", Some(-10000)), 10000);
-    }
-
-    #[test]
-    fn test_get_sv_length_del_no_length() {
-        assert_eq!(sv_length(869314, 870246, "1", "1", None), 870246 - 869314);
-    }
-
-    #[test]
-    fn test_get_sv_length_end_zero() {
-        assert_eq!(sv_length(869314, 0, "1", "1", None), -1);
-    }
-
-    #[test]
-    fn test_get_end_tiddit_translocation() {
-        // GIVEN a TIDDIT translocation, END comes from the ALT field
-        assert_eq!(sv_end(724779, "N[hs37d5:12060532[", None, None), 12060532);
-    }
-
-    #[test]
-    fn test_get_end_bnd_alt_overrides_svend() {
-        assert_eq!(sv_end(724779, "]1:5000]N", Some(1), None), 5000);
-    }
-
-    #[test]
-    fn test_get_end_deletion() {
-        assert_eq!(sv_end(869314, "<DEL>", Some(870246), None), 870246);
-    }
-
-    #[test]
-    fn test_get_end_sgl_bnd() {
-        // GIVEN a single-end BND, END is set to POS
-        assert_eq!(sv_end(123455, "GTCA.", None, None), 123455);
-    }
-
-    #[test]
-    fn test_get_end_from_svlen() {
-        assert_eq!(sv_end(1000, "<DUP>", None, Some(250)), 1250);
-    }
-
-    #[test]
-    fn test_get_end_fallback_to_pos() {
-        assert_eq!(sv_end(1000, "<INS>", None, None), 1000);
-    }
-
-    #[test]
-    fn test_get_end_chrom() {
-        assert_eq!(get_end_chrom("N[hs37d5:12060532[", "1"), "hs37d5");
-        assert_eq!(get_end_chrom("]CHR2:100]N", "1"), "2");
-        assert_eq!(get_end_chrom("<DEL>", "1"), "1");
-        assert_eq!(get_end_chrom("N:", "1"), "1");
-    }
-
-    #[test]
-    fn test_normalize_chromosome() {
-        assert_eq!(normalize_chromosome("chr1"), "1");
-        assert_eq!(normalize_chromosome("Chr1"), "1");
-        assert_eq!(normalize_chromosome("CHRX"), "X");
-        assert_eq!(normalize_chromosome("MT"), "MT");
-        assert_eq!(normalize_chromosome("ch"), "ch");
     }
 }
