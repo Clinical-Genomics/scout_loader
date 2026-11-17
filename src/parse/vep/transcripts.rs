@@ -6,7 +6,8 @@ use crate::parse::vep::annotations::{
 use crate::parse::vep::domains::parse_domains;
 use crate::parse::vep::frequencies::{parse_mt_frequencies, parse_variant_frequencies};
 use crate::parse::vep::predictors::{
-    get_prediction, parse_transcripts_alphamissense, parse_transcripts_spliceai,
+    get_prediction, parse_transcripts_alphamissense, parse_transcripts_avi,
+    parse_transcripts_spliceai,
 };
 use crate::parse::vep::scores::parse_cadd;
 use crate::parse::vep::utils::{get_highest_float_score_in_string, get_sequence_aux};
@@ -192,17 +193,7 @@ pub fn parse_vep_transcript(entry: &VepFields<'_>) -> Option<Document> {
         transcript.insert("revel_raw_score", Bson::Double(score));
     }
 
-    // AVI scores from the AVI VEP plugin:
-    // ##AVI_PHRED=PHRED-scaled quantile (0 to approximately 80)
-    // ##AVI_RAW=Raw score (approximately -1.3 to +4.0)
-    for (csq_key, transcript_key) in [("AVI_PHRED", "avi_phred"), ("AVI_RAW", "avi_raw")] {
-        if let Some(value) = entry.get(csq_key).filter(|v| !v.is_empty())
-            && let Some(score) = get_highest_float_score_in_string(value)
-        {
-            transcript.insert(transcript_key, Bson::Double(score));
-        }
-    }
-
+    parse_transcripts_avi(&mut transcript, entry);
     parse_transcripts_spliceai(&mut transcript, entry);
     parse_transcripts_alphamissense(&mut transcript, entry);
 
