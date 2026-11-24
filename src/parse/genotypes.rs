@@ -386,20 +386,45 @@ fn get_str_so(record: &Record, pos: usize) -> Option<String> {
 ///
 /// Returns the motif indexes contributing to pathological size.
 /// Returns None when the INFO field is missing or cannot be parsed.
-fn get_pathologic_struc(record: &Record) -> Option<Vec<usize>> {
+///
+/// Two formats are supported:
+/// - `Number=.,Type=Integer`, e.g. `PathologicStruc=0,1,2,6` (stranger#124).
+/// - `Number=1,Type=String` with a Python list, e.g. `PathologicStruc=[0, 1, 2, 6]`,
+///   written by older stranger versions. Old cases keep this format.
+///
+/// rust-htslib splits String values on commas, so the parts are joined
+/// again before parsing.
+pub fn get_pathologic_struc(record: &Record) -> Option<Vec<usize>> {
+    let info = record.info(b"PathologicStruc");
+
+    if let Ok(Some(values)) = info.integer() {
+        return Some(
+            values
+                .iter()
+                .filter_map(|value| usize::try_from(*value).ok())
+                .collect(),
+        );
+    }
+
     let values = record.info(b"PathologicStruc").string().ok()??;
 
-    let value = values.first()?;
+    let value = values
+        .iter()
+        .map(|value| String::from_utf8_lossy(value))
+        .collect::<Vec<_>>()
+        .join(",");
 
-    let value = String::from_utf8_lossy(value);
+    Some(parse_pathologic_struc(&value))
+}
 
-    Some(
-        value
-            .trim_matches(|c| c == '[' || c == ']')
-            .split(',')
-            .filter_map(|x| x.trim().parse::<usize>().ok())
-            .collect(),
-    )
+/// Parse motif indexes from a PathologicStruc string such as `[0, 1, 2, 6]` or `0,1,2,6`.
+pub fn parse_pathologic_struc(value: &str) -> Vec<usize> {
+    value
+        .trim()
+        .trim_matches(|c| c == '[' || c == ']')
+        .split(',')
+        .filter_map(|x| x.trim().parse::<usize>().ok())
+        .collect()
 }
 
 /// Parse TRGT MC FORMAT entry.
@@ -419,7 +444,7 @@ fn get_pathologic_struc(record: &Record) -> Option<Vec<usize>> {
 /// A tuple containing:
 /// * reference motif count
 /// * alternative motif count
-fn parse_format_entry_trgt_mc(record: &Record, pos: usize) -> (Option<i32>, Option<i32>) {
+pub fn parse_format_entry_trgt_mc(record: &Record, pos: usize) -> (Option<i32>, Option<i32>) {
     let mut mc_ref = None;
     let mut mc_alt = None;
 

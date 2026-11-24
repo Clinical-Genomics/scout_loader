@@ -153,10 +153,10 @@ fn get_callers_from_set(
                 call_status = FILTERED_STATUS.to_string();
             }
 
-            for (caller, status) in callers.iter_mut() {
-                if call.contains(caller) {
-                    *status = Bson::String(call_status.clone());
-                }
+            let caller = call.trim_start_matches("filterIn");
+
+            if callers.contains_key(caller) {
+                callers.insert(caller, Bson::String(call_status.clone()));
             }
         } else if callers.contains_key(call) {
             callers.insert(call, Bson::String(PASS_STATUS.to_string()));

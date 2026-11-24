@@ -79,6 +79,15 @@ fn test_parse_callers_complex_filter() {
 }
 
 #[test]
+fn test_parse_cancer_callers_filterin_tnscope_umi() {
+    // GIVEN a set where tnscope_umi filtered the variant
+    let callers = callers(VariantCategory::Cancer, "PASS", "set=filterIntnscope_umi");
+
+    // THEN only tnscope_umi is filtered
+    assert_eq!(callers, doc! { "tnscope_umi": "Filtered" });
+}
+
+#[test]
 fn test_parse_callers_intersection() {
     // GIVEN information that all callers agree on Pass
     let callers = callers(VariantCategory::Snv, "PASS", "set=Intersection");
