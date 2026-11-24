@@ -66,7 +66,7 @@ pub fn get_end_chrom(alt: &str, chrom: &str) -> String {
 ///
 /// The SVTYPE INFO tag is deprecated in the VCF standard but may still
 /// be present. If available, it is preferred. Otherwise, the type is
-/// inferred from the ALT allele.
+/// inferred from the ALT allele. Warns and returns None if neither resolves a type.
 fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> Option<String> {
     if let Ok(Some(values)) = record.info(b"SVTYPE").string()
         && let Some(value) = values.first()
@@ -94,6 +94,10 @@ fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> Option<String> {
         return Some("bnd".to_string());
     }
 
+    println!(
+        "WARNING: Unable to determine SV type at position {} with ALT '{alt}'; leaving sub-category unset",
+        record.pos() + 1
+    );
     None
 }
 

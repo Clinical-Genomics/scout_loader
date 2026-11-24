@@ -13,7 +13,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parse AVI scores (`AVI_PHRED`, `AVI_RAW`) from VEP annotations (#233)
 ### Changed
 - Tests for coordinate, caller, VEP transcript, conservation, INFO, region and rank score parsing (partly ported from scout) and VCF line counting, and a shared VCF record test helper (#238)
-- Handle missing SV types gracefully instead of crashing, matching Scout's behaviour (#244)
+- Handle missing SV types gracefully instead of crashing, matching Scout's behaviour, and warn when the type cannot be determined (#244)
 ### Fixed
 - Ignore empty COSMIC identifiers when parsing VEP annotations (#222)
 - Parsing of ClinVar oncogenicity significance, when containing underscore. Replace ONCREVSTAT and ONCDN separator with comma (#226)
