@@ -43,6 +43,9 @@ mod clinvar_oncogenicity;
 #[path = "parse/rank_scores.rs"]
 mod rank_scores;
 
+#[path = "parse/strs.rs"]
+mod strs;
+
 #[path = "parse/regions.rs"]
 mod regions;
 
