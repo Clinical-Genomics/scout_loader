@@ -66,7 +66,7 @@ fn test_parse_coordinates_snv() {
     assert_eq!(coordinates.end, 880086);
     assert_eq!(coordinates.end_chrom, "1");
     assert_eq!(coordinates.length, 1);
-    assert_eq!(coordinates.sub_category, "snv");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("snv"));
     assert_eq!(coordinates.mate_id, None);
     assert_eq!(coordinates.cytoband_start, None);
     assert_eq!(coordinates.cytoband_end, None);
@@ -86,7 +86,7 @@ fn test_parse_coordinates_indel() {
     // THEN it is an indel with length |len(ALT) - len(REF)|
     assert_eq!(coordinates.position, 880086);
     assert_eq!(coordinates.end, 880086);
-    assert_eq!(coordinates.sub_category, "indel");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("indel"));
     assert_eq!(coordinates.length, 3);
 }
 
@@ -103,7 +103,7 @@ fn test_parse_coordinates_deletion_end_from_ref() {
 
     // THEN the end covers the reference allele
     assert_eq!(coordinates.end, 880089);
-    assert_eq!(coordinates.sub_category, "indel");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("indel"));
     assert_eq!(coordinates.length, 3);
 }
 
@@ -136,7 +136,7 @@ fn test_parse_coordinates_translocation() {
     assert_eq!(coordinates.end, 12060532);
     assert_eq!(coordinates.end_chrom, "hs37d5");
     assert_eq!(coordinates.length, 1_000_000_000);
-    assert_eq!(coordinates.sub_category, "bnd");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("bnd"));
 }
 
 #[test]
@@ -152,7 +152,7 @@ fn test_parse_coordinates_translocation_same_chrom() {
     assert_eq!(coordinates.end, 12060532);
     assert_eq!(coordinates.end_chrom, "1");
     assert_eq!(coordinates.length, 12060532 - 724779);
-    assert_eq!(coordinates.sub_category, "bnd");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("bnd"));
 }
 
 #[test]
@@ -167,7 +167,7 @@ fn test_parse_coordinates_translocation_2() {
     assert_eq!(coordinates.end, 25141);
     assert_eq!(coordinates.end_chrom, "GL000232.1");
     assert_eq!(coordinates.length, 1_000_000_000);
-    assert_eq!(coordinates.sub_category, "bnd");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("bnd"));
 }
 
 #[test]
@@ -197,7 +197,7 @@ fn test_parse_coordinates_sgl_bnd() {
     assert_eq!(coordinates.end, 724779);
     assert_eq!(coordinates.end_chrom, "1");
     assert_eq!(coordinates.length, -1);
-    assert_eq!(coordinates.sub_category, "bnd");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("bnd"));
 }
 
 #[test]
@@ -209,7 +209,7 @@ fn test_parse_coordinates_sv_type_from_alt() {
     let coordinates = coordinates(&record, VariantCategory::Sv);
 
     // THEN the sub category is inferred from ALT and END is used
-    assert_eq!(coordinates.sub_category, "del");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("del"));
     assert_eq!(coordinates.end, 725711);
     assert_eq!(coordinates.length, 725711 - 724779);
 }
@@ -223,8 +223,20 @@ fn test_parse_coordinates_sgl_bnd_without_svtype() {
     let coordinates = coordinates(&record, VariantCategory::Sv);
 
     // THEN it is inferred to be a bnd
-    assert_eq!(coordinates.sub_category, "bnd");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("bnd"));
     assert_eq!(coordinates.end, 724779);
+}
+
+#[test]
+fn test_parse_coordinates_unknown_svtype() {
+    // GIVEN an SV without SVTYPE that cannot be inferred from ALT
+    let record = sv_record("N", "N[1:200[", "END=200");
+
+    // WHEN parsing the coordinates
+    let coordinates = coordinates(&record, VariantCategory::Sv);
+
+    // THEN the sub-category is None
+    assert_eq!(coordinates.sub_category, None);
 }
 
 #[test]
@@ -236,7 +248,7 @@ fn test_parse_coordinates_cnvnator_deletion() {
     let coordinates = coordinates(&record, VariantCategory::Sv);
 
     // THEN the length is the absolute SVLEN
-    assert_eq!(coordinates.sub_category, "del");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("del"));
     assert_eq!(coordinates.end, 734778);
     assert_eq!(coordinates.length, 10000);
 }
@@ -250,7 +262,7 @@ fn test_parse_coordinates_dup_end_from_svlen() {
     let coordinates = coordinates(&record, VariantCategory::Sv);
 
     // THEN END is derived from POS + SVLEN
-    assert_eq!(coordinates.sub_category, "dup");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("dup"));
     assert_eq!(coordinates.end, 724779 + 500);
     assert_eq!(coordinates.length, 500);
 }
@@ -264,7 +276,7 @@ fn test_parse_coordinates_imprecise_insertion_without_length() {
     let coordinates = coordinates(&record, VariantCategory::Sv);
 
     // THEN the length is unknown
-    assert_eq!(coordinates.sub_category, "ins");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("ins"));
     assert_eq!(coordinates.length, -1);
 }
 
@@ -280,7 +292,7 @@ fn test_parse_coordinates_mei() {
     let coordinates = coordinates(&record, VariantCategory::Mei);
 
     // THEN the sub category is mei and the length is the inserted length
-    assert_eq!(coordinates.sub_category, "mei");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("mei"));
     assert_eq!(coordinates.length, 6);
 }
 
@@ -296,7 +308,7 @@ fn test_parse_coordinates_mei_same_length_alleles() {
     let coordinates = coordinates(&record, VariantCategory::Mei);
 
     // THEN the length falls back to the ALT length
-    assert_eq!(coordinates.sub_category, "mei");
+    assert_eq!(coordinates.sub_category.as_deref(), Some("mei"));
     assert_eq!(coordinates.length, 1);
 }
 

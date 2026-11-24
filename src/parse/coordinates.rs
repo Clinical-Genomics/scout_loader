@@ -66,10 +66,11 @@ pub fn get_end_chrom(alt: &str, chrom: &str) -> String {
 ///
 /// The SVTYPE INFO tag is deprecated in the VCF standard but may still
 /// be present. If available, it is preferred. Otherwise, the type is
-/// inferred from the ALT allele.
-fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
+/// inferred from the ALT allele. Warns and returns None if neither resolves a type.
+fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> Option<String> {
     if let Ok(Some(values)) = record.info(b"SVTYPE").string()
         && let Some(value) = values.first()
+        && !value.is_empty()
     {
         let mut svtype = String::from_utf8_lossy(value).to_lowercase();
 
@@ -77,7 +78,7 @@ fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
             svtype = "bnd".to_string();
         }
 
-        return svtype;
+        return Some(svtype);
     }
 
     let alt_type = alt
@@ -86,14 +87,18 @@ fn get_svtype(record: &Record, alt: &str, alt_len: usize) -> String {
         .to_lowercase();
 
     if SV_TYPES.contains(&alt_type.as_str()) {
-        return alt_type;
+        return Some(alt_type);
     }
 
     if alt.contains('.') && alt_len > 1 {
-        return "bnd".to_string();
+        return Some("bnd".to_string());
     }
 
-    unreachable!("Unable to determine SV type")
+    println!(
+        "WARNING: Unable to determine SV type at position {} with ALT '{alt}'; leaving sub-category unset",
+        record.pos() + 1
+    );
+    None
 }
 
 /// Determines the end position of a structural variant.
@@ -203,29 +208,24 @@ pub fn parse_coordinates(
     let ref_len = reference.len();
     let alt_len = alternative.len();
 
-    let mut sub_category = "snv".to_string();
-    let mut end = record.end() as i32;
-    let mut end_chrom = chrom.clone();
-    let mut length = alt_len as i32;
-
-    match category {
+    let (sub_category, end, end_chrom, length) = match category {
         VariantCategory::Sv | VariantCategory::CancerSv | VariantCategory::Fusion => {
-            let svtype = get_svtype(record, &alternative, alt_len);
+            let sub_category = get_svtype(record, &alternative, alt_len);
 
-            sub_category = svtype.clone();
+            let end_chrom = if sub_category.as_deref() == Some("bnd") {
+                get_end_chrom(&alternative, &chrom)
+            } else {
+                chrom.clone()
+            };
 
-            if sub_category == "bnd" {
-                end_chrom = get_end_chrom(&alternative, &chrom);
-            }
-
-            end = sv_end(
+            let end = sv_end(
                 position,
                 &alternative,
                 parse_info_int(record, b"END"),
                 parse_info_int(record, b"SVLEN"),
             );
 
-            length = if chrom != end_chrom {
+            let length = if chrom != end_chrom {
                 1_000_000_000
             } else {
                 sv_length(
@@ -241,25 +241,41 @@ pub fn parse_coordinates(
                         .and_then(|values| values.first().copied()),
                 )
             };
+
+            (sub_category, end, end_chrom, length)
         }
 
         VariantCategory::Mei => {
-            sub_category = "mei".to_string();
-
-            length = if ref_len != alt_len {
+            let length = if ref_len != alt_len {
                 (ref_len as i32 - alt_len as i32).abs()
             } else {
                 alt_len as i32
             };
+
+            (
+                Some("mei".to_string()),
+                record.end() as i32,
+                chrom.clone(),
+                length,
+            )
         }
 
         _ => {
-            if ref_len != alt_len {
-                sub_category = "indel".to_string();
-                length = (ref_len as i32 - alt_len as i32).abs();
-            }
+            let is_indel = ref_len != alt_len;
+            let length = if is_indel {
+                (ref_len as i32 - alt_len as i32).abs()
+            } else {
+                alt_len as i32
+            };
+
+            (
+                Some(if is_indel { "indel" } else { "snv" }.to_string()),
+                record.end() as i32,
+                chrom.clone(),
+                length,
+            )
         }
-    }
+    };
 
     let mate_id = record
         .info(b"MATEID")
