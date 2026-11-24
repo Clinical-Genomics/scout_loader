@@ -57,3 +57,15 @@ mod coordinates;
 
 #[path = "fixtures/vcf_record.rs"]
 mod vcf_record;
+
+#[path = "parse/fusions.rs"]
+mod fusions;
+
+#[path = "parse/loqusdb_frequencies.rs"]
+mod loqusdb_frequencies;
+
+#[path = "parse/meis.rs"]
+mod meis;
+
+#[path = "parse/mt_annotations.rs"]
+mod mt_annotations;

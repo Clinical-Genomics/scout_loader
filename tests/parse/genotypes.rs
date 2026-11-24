@@ -1,8 +1,6 @@
 use std::collections::HashMap;
-use std::io::Write;
 
-use rust_htslib::bcf::{Read, Reader, Record};
-use tempfile::NamedTempFile;
+use rust_htslib::bcf::Record;
 
 use scout_loader::models::sample::SampleInfo;
 use scout_loader::models::variant::VariantCategory;
@@ -11,7 +9,7 @@ use scout_loader::parse::genotypes::{
     parse_format_entry_trgt_mc, parse_genotypes, parse_pathologic_struc,
 };
 
-use crate::vcf_record::record;
+use crate::vcf_record::{record, records_from_vcf};
 
 /// PathologicStruc as written by older stranger versions, e.g. `[0, 1, 2, 6]`.
 const OLD_PATHOLOGIC_STRUC_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=1,Type=String,Description=\"Struc components counting towards pathogenicity as list of motif numbers\">";
@@ -19,32 +17,19 @@ const OLD_PATHOLOGIC_STRUC_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=1,T
 const NEW_PATHOLOGIC_STRUC_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=.,Type=Integer,Description=\"Struc components counting towards pathogenicity\">";
 /// PathologicStruc as a comma-separated String list, e.g. `1,2`.
 const STRING_LIST_PATHOLOGIC_STRUC_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=.,Type=String,Description=\"Struc components counting towards pathogenicity\">";
-
-/// Write a VCF string to a temporary file and read all of its records.
-fn read_records(vcf: &str) -> Vec<Record> {
-    let mut file = NamedTempFile::new().unwrap();
-    file.write_all(vcf.as_bytes()).unwrap();
-
-    let mut reader = Reader::from_path(file.path()).unwrap();
-    reader.records().map(|record| record.unwrap()).collect()
-}
+const COPY_NUMBER_HEADER: &str =
+    "##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy number\">";
 
 #[test]
 fn test_parse_format_entry() {
-    let vcf = "\
-##fileformat=VCFv4.2
-##FORMAT=<ID=ADFL,Number=1,Type=String,Description=\"Flanking depth\">
-#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE
-1\t100\t.\tA\t<STR8>\t.\tPASS\t.\tADFL\t33/33
-";
+    // GIVEN a slash-separated String FORMAT entry
+    let record = record(
+        &["##FORMAT=<ID=ADFL,Number=1,Type=String,Description=\"Flanking depth\">"],
+        "1\t100\t.\tA\t<STR8>\t.\tPASS\t.\tADFL\t33/33",
+    );
 
-    let mut file = NamedTempFile::new().unwrap();
-    file.write_all(vcf.as_bytes()).unwrap();
-
-    let mut reader = Reader::from_path(file.path()).unwrap();
-    let mut record = reader.empty_record();
-    reader.read(&mut record).unwrap().unwrap();
-
+    // WHEN parsing the entry for the sample
+    // THEN both alleles are returned
     assert_eq!(
         parse_format_entry(&record, 0, b"ADFL"),
         (Some(33), Some(33))
@@ -53,37 +38,25 @@ fn test_parse_format_entry() {
 
 #[test]
 fn test_get_copy_number() {
-    let vcf = "\
-##fileformat=VCFv4.2
-##FORMAT=<ID=CN,Number=1,Type=Integer,Description=\"Copy number\">
-#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE
-1\t100\t.\tA\t<CNV>\t.\tPASS\t.\tCN\t3
-1\t200\t.\tA\t<CNV>\t.\tPASS\t.\tCN\t.
-1\t300\t.\tA\t<CNV>\t.\tPASS\t.\tCN\t-1
-";
+    // GIVEN a positive, a missing and a negative copy number
+    let copy_number = |value: &str| {
+        let record = record(
+            &[COPY_NUMBER_HEADER],
+            &format!("1\t100\t.\tA\t<CNV>\t.\tPASS\t.\tCN\t{value}"),
+        );
+        get_copy_number(&record, 0)
+    };
 
-    let mut file = NamedTempFile::new().unwrap();
-    file.write_all(vcf.as_bytes()).unwrap();
-
-    let mut reader = Reader::from_path(file.path()).unwrap();
-
-    let mut record = reader.empty_record();
-    reader.read(&mut record).unwrap().unwrap();
-    assert_eq!(get_copy_number(&record, 0), Some(3));
-
-    let mut record = reader.empty_record();
-    reader.read(&mut record).unwrap().unwrap();
-    assert_eq!(get_copy_number(&record, 0), None);
-
-    let mut record = reader.empty_record();
-    reader.read(&mut record).unwrap().unwrap();
-    assert_eq!(get_copy_number(&record, 0), None);
+    // THEN only the positive copy number is returned
+    assert_eq!(copy_number("3"), Some(3));
+    assert_eq!(copy_number("."), None);
+    assert_eq!(copy_number("-1"), None);
 }
 
 #[test]
 fn test_get_phase_set() {
     // GIVEN records with a phase set, a missing phase set and a negative phase set
-    let records = read_records(
+    let records = records_from_vcf(
         "\
 ##fileformat=VCFv4.2
 ##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">
@@ -111,7 +84,7 @@ fn test_get_phase_set() {
 #[test]
 fn test_get_phase_set_without_phase_set() {
     // GIVEN a record without a PS FORMAT field
-    let records = read_records(
+    let records = records_from_vcf(
         "\
 ##fileformat=VCFv4.2
 ##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">
@@ -127,7 +100,7 @@ fn test_get_phase_set_without_phase_set() {
 #[test]
 fn test_get_phase_set_string_type() {
     // GIVEN a PS FORMAT field declared as a String
-    let records = read_records(
+    let records = records_from_vcf(
         "\
 ##fileformat=VCFv4.2
 ##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">
@@ -146,7 +119,7 @@ fn test_get_phase_set_string_type() {
 #[test]
 fn test_parse_genotypes_phase_set() {
     // GIVEN a phased record where only one sample has a phase set
-    let records = read_records(
+    let records = records_from_vcf(
         "\
 ##fileformat=VCFv4.2
 ##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">
