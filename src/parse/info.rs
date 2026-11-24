@@ -154,35 +154,3 @@ pub fn insert_info_string_decoded(
         doc.insert(mongo_key, bson::Bson::String(percent_decode(&value)));
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::percent_decode;
-
-    #[test]
-    fn test_percent_decode() {
-        assert_eq!(
-            percent_decode("GeneReviews%20Internet%202019-11-07"),
-            "GeneReviews Internet 2019-11-07"
-        );
-        assert_eq!(
-            percent_decode("Paucar%2C%20Nilsson%2C%20Engvall%20et%20al"),
-            "Paucar, Nilsson, Engvall et al"
-        );
-        assert_eq!(percent_decode("a%3Bb%3Dc%25d"), "a;b=c%d");
-        assert_eq!(percent_decode("%2c"), ",");
-    }
-
-    #[test]
-    fn test_percent_decode_keeps_plain_and_invalid_values() {
-        assert_eq!(percent_decode("AD"), "AD");
-        assert_eq!(
-            percent_decode("Spinocerebellar ataxia"),
-            "Spinocerebellar ataxia"
-        );
-        assert_eq!(percent_decode("100%"), "100%");
-        assert_eq!(percent_decode("%2"), "%2");
-        assert_eq!(percent_decode("%zz"), "%zz");
-        assert_eq!(percent_decode("%C3%A9"), "é");
-    }
-}

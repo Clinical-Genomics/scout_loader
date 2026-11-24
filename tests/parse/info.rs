@@ -3,7 +3,7 @@ use mongodb::bson::{Bson, Document, doc};
 use rust_htslib::bcf::Record;
 use scout_loader::parse::info::{
     insert_info_float, insert_info_int, insert_info_string, parse_custom_data, parse_info_float,
-    parse_info_int, parse_info_string, parse_info_string_array,
+    parse_info_int, parse_info_string, parse_info_string_array, percent_decode,
 };
 
 fn info_record(info: &str) -> Record {
@@ -99,4 +99,31 @@ fn test_parse_custom_data() {
 
     // AND a missing value gives None
     assert_eq!(parse_custom_data(None), None);
+}
+
+#[test]
+fn test_percent_decode() {
+    assert_eq!(
+        percent_decode("GeneReviews%20Internet%202019-11-07"),
+        "GeneReviews Internet 2019-11-07"
+    );
+    assert_eq!(
+        percent_decode("Paucar%2C%20Nilsson%2C%20Engvall%20et%20al"),
+        "Paucar, Nilsson, Engvall et al"
+    );
+    assert_eq!(percent_decode("a%3Bb%3Dc%25d"), "a;b=c%d");
+    assert_eq!(percent_decode("%2c"), ",");
+}
+
+#[test]
+fn test_percent_decode_keeps_plain_and_invalid_values() {
+    assert_eq!(percent_decode("AD"), "AD");
+    assert_eq!(
+        percent_decode("Spinocerebellar ataxia"),
+        "Spinocerebellar ataxia"
+    );
+    assert_eq!(percent_decode("100%"), "100%");
+    assert_eq!(percent_decode("%2"), "%2");
+    assert_eq!(percent_decode("%zz"), "%zz");
+    assert_eq!(percent_decode("%C3%A9"), "é");
 }

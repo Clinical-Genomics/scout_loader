@@ -5,33 +5,29 @@
 //! Newer versions write `PathologicStruc` as an Integer list and percent-encode
 //! free text. Both must give the same variant document.
 
+use crate::vcf_record::record;
 use mongodb::bson::{Document, doc};
-use rust_htslib::bcf::{Read, Reader, Record};
+use rust_htslib::bcf::Record;
 use scout_loader::parse::strs::set_str_info;
-use std::io::Write;
-use tempfile::NamedTempFile;
 
+const OLD_STRUC_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=1,Type=String,Description=\"Struc components counting towards pathogenicity as list of motif numbers\">";
+const NEW_STRUC_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=.,Type=Integer,Description=\"Struc components counting towards pathogenicity as list of motif numbers\">";
+
+/// Build a stranger-annotated STR record with the given PathologicStruc header and INFO.
 fn str_record(pathologic_struc_header: &str, info: &str) -> Record {
-    let vcf = format!(
-        "##fileformat=VCFv4.2
-##contig=<ID=X,length=156040895>
-{pathologic_struc_header}
-##INFO=<ID=SourceDisplay,Number=1,Type=String,Description=\"Source for variant definition, display\">
-##INFO=<ID=Source,Number=1,Type=String,Description=\"Source collection for variant definition\">
-##INFO=<ID=SourceId,Number=1,Type=String,Description=\"Source id for variant definition\">
-##INFO=<ID=Disease,Number=1,Type=String,Description=\"Associated disorder\">
-##INFO=<ID=InheritanceMode,Number=1,Type=String,Description=\"Main mode of inheritance for disorder\">
-##INFO=<ID=DisplayRU,Number=1,Type=String,Description=\"Display repeat unit familiar to clinician\">
-#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO
-X\t147912051\t.\tC\t<STR>\t.\tPASS\t{info}
-"
-    );
-
-    let mut file = NamedTempFile::new().unwrap();
-    file.write_all(vcf.as_bytes()).unwrap();
-
-    let mut reader = Reader::from_path(file.path()).unwrap();
-    reader.records().next().unwrap().unwrap()
+    record(
+        &[
+            "##contig=<ID=X,length=156040895>",
+            pathologic_struc_header,
+            "##INFO=<ID=SourceDisplay,Number=1,Type=String,Description=\"Source for variant definition, display\">",
+            "##INFO=<ID=Source,Number=1,Type=String,Description=\"Source collection for variant definition\">",
+            "##INFO=<ID=SourceId,Number=1,Type=String,Description=\"Source id for variant definition\">",
+            "##INFO=<ID=Disease,Number=1,Type=String,Description=\"Associated disorder\">",
+            "##INFO=<ID=InheritanceMode,Number=1,Type=String,Description=\"Main mode of inheritance for disorder\">",
+            "##INFO=<ID=DisplayRU,Number=1,Type=String,Description=\"Display repeat unit familiar to clinician\">",
+        ],
+        &format!("X\t147912051\t.\tC\t<STR>\t.\tPASS\t{info}"),
+    )
 }
 
 fn str_info(record: &Record) -> Document {
@@ -39,9 +35,6 @@ fn str_info(record: &Record) -> Document {
     set_str_info(record, &mut variant);
     variant
 }
-
-const OLD_STRUC_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=1,Type=String,Description=\"Struc components counting towards pathogenicity as list of motif numbers\">";
-const NEW_STRUC_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=.,Type=Integer,Description=\"Struc components counting towards pathogenicity as list of motif numbers\">";
 
 fn expected() -> Document {
     doc! {

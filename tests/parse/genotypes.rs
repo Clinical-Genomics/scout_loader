@@ -7,8 +7,18 @@ use tempfile::NamedTempFile;
 use scout_loader::models::sample::SampleInfo;
 use scout_loader::models::variant::VariantCategory;
 use scout_loader::parse::genotypes::{
-    get_copy_number, get_phase_set, parse_format_entry, parse_genotypes,
+    get_copy_number, get_pathologic_struc, get_phase_set, parse_format_entry,
+    parse_format_entry_trgt_mc, parse_genotypes, parse_pathologic_struc,
 };
+
+use crate::vcf_record::record;
+
+/// PathologicStruc as written by older stranger versions, e.g. `[0, 1, 2, 6]`.
+const OLD_PATHOLOGIC_STRUC_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=1,Type=String,Description=\"Struc components counting towards pathogenicity as list of motif numbers\">";
+/// PathologicStruc as an Integer list, e.g. `0,1,2,6` (stranger#124).
+const NEW_PATHOLOGIC_STRUC_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=.,Type=Integer,Description=\"Struc components counting towards pathogenicity\">";
+/// PathologicStruc as a comma-separated String list, e.g. `1,2`.
+const STRING_LIST_PATHOLOGIC_STRUC_HEADER: &str = "##INFO=<ID=PathologicStruc,Number=.,Type=String,Description=\"Struc components counting towards pathogenicity\">";
 
 /// Write a VCF string to a temporary file and read all of its records.
 fn read_records(vcf: &str) -> Vec<Record> {
@@ -184,4 +194,131 @@ fn test_parse_genotypes_phase_set() {
     let unphased = genotype("UNPHASED");
     assert_eq!(unphased.get_str("genotype_call").unwrap(), "0/1");
     assert!(!unphased.contains_key("phase_set"));
+}
+
+/// Build a TRGT-like single sample record with the given PathologicStruc header and INFO.
+fn trgt_record(pathologic_struc_header: &str, info: &str, gt: &str, mc: &str) -> Record {
+    record(
+        &[
+            "##contig=<ID=1,length=249250621>",
+            pathologic_struc_header,
+            "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">",
+            "##FORMAT=<ID=MC,Number=.,Type=String,Description=\"Motif counts\">",
+        ],
+        &format!("1\t100\t.\tA\t<STR>\t.\tPASS\t{info}\tGT:MC\t{gt}:{mc}"),
+    )
+}
+
+#[test]
+fn test_parse_pathologic_struc() {
+    assert_eq!(parse_pathologic_struc("[0, 1, 2, 6]"), vec![0, 1, 2, 6]);
+    assert_eq!(parse_pathologic_struc("[0]"), vec![0]);
+    assert_eq!(parse_pathologic_struc("0,1,2,6"), vec![0, 1, 2, 6]);
+    assert_eq!(parse_pathologic_struc("[]"), Vec::<usize>::new());
+}
+
+#[test]
+fn test_get_pathologic_struc_old_string_format() {
+    // GIVEN the Python list format written by older stranger versions
+    let record = trgt_record(
+        OLD_PATHOLOGIC_STRUC_HEADER,
+        "PathologicStruc=[0, 1, 2, 6]",
+        "0/1",
+        "1_1_1_1_1,1_1_1_1_1",
+    );
+
+    // THEN all indexes are parsed, not only the part before the first comma
+    assert_eq!(get_pathologic_struc(&record), Some(vec![0, 1, 2, 6]));
+
+    let record = trgt_record(
+        OLD_PATHOLOGIC_STRUC_HEADER,
+        "PathologicStruc=[0]",
+        "0/1",
+        "1_1,1_1",
+    );
+    assert_eq!(get_pathologic_struc(&record), Some(vec![0]));
+}
+
+#[test]
+fn test_get_pathologic_struc_new_integer_format() {
+    // GIVEN the Number=.,Type=Integer format from stranger#124
+    let record = trgt_record(
+        NEW_PATHOLOGIC_STRUC_HEADER,
+        "PathologicStruc=0,1,2,6",
+        "0/1",
+        "1_1_1_1_1,1_1_1_1_1",
+    );
+    assert_eq!(get_pathologic_struc(&record), Some(vec![0, 1, 2, 6]));
+
+    // AND a single index, including index 0
+    let record = trgt_record(
+        NEW_PATHOLOGIC_STRUC_HEADER,
+        "PathologicStruc=0",
+        "0/1",
+        "1_1,1_1",
+    );
+    assert_eq!(get_pathologic_struc(&record), Some(vec![0]));
+}
+
+#[test]
+fn test_get_pathologic_struc_string_list_format() {
+    // GIVEN a comma-separated list declared as String
+    let record = trgt_record(
+        STRING_LIST_PATHOLOGIC_STRUC_HEADER,
+        "PathologicStruc=1,2",
+        "0/1",
+        "1_1_1,1_1_1",
+    );
+    assert_eq!(get_pathologic_struc(&record), Some(vec![1, 2]));
+}
+
+#[test]
+fn test_get_pathologic_struc_missing() {
+    let record = trgt_record(NEW_PATHOLOGIC_STRUC_HEADER, ".", "0/1", "1_1,1_1");
+    assert_eq!(get_pathologic_struc(&record), None);
+}
+
+#[test]
+fn test_parse_format_entry_trgt_mc_pathologic_struc() {
+    // GIVEN motif counts for five motifs, where motifs 0, 1, 2 and 6 (if present) count
+    // towards the pathologic size, in both the old and the new format
+    for (header, info) in [
+        (OLD_PATHOLOGIC_STRUC_HEADER, "PathologicStruc=[0, 1, 2, 6]"),
+        (NEW_PATHOLOGIC_STRUC_HEADER, "PathologicStruc=0,1,2,6"),
+    ] {
+        let record = trgt_record(header, info, "0/1", "1_2_3_100_200,10_20_30_100_200");
+
+        // THEN only the pathologic motifs are summed
+        assert_eq!(
+            parse_format_entry_trgt_mc(&record, 0),
+            (Some(1 + 2 + 3), Some(10 + 20 + 30)),
+            "{info}"
+        );
+    }
+}
+
+#[test]
+fn test_parse_format_entry_trgt_mc_single_index_zero() {
+    // GIVEN only motif 0 counts, in the new format with a single value 0
+    let record = trgt_record(
+        NEW_PATHOLOGIC_STRUC_HEADER,
+        "PathologicStruc=0",
+        "0/1",
+        "5_100,7_100",
+    );
+
+    // THEN the other motifs are not counted
+    assert_eq!(parse_format_entry_trgt_mc(&record, 0), (Some(5), Some(7)));
+}
+
+#[test]
+fn test_parse_format_entry_trgt_mc_without_pathologic_struc() {
+    // GIVEN no PathologicStruc
+    let record = trgt_record(NEW_PATHOLOGIC_STRUC_HEADER, ".", "0/1", "5_100,7_100");
+
+    // THEN all motifs are counted
+    assert_eq!(
+        parse_format_entry_trgt_mc(&record, 0),
+        (Some(105), Some(107))
+    );
 }
