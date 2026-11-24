@@ -77,7 +77,9 @@ pub fn parse_clnsig_onc(record: &Record) -> Vec<Document> {
     )
     .join(",");
 
-    let onc_dn_groups = split_groups(&parse_info_string(record, b"ONCDN").unwrap_or_default());
+    let onc_dn = parse_info_string(record, b"ONCDN")
+        .unwrap_or_default()
+        .replace('|', ",");
 
     let mut onc_clnsig_accessions = Vec::new();
 
@@ -91,16 +93,11 @@ pub fn parse_clnsig_onc(record: &Record) -> Vec<Document> {
             continue;
         }
 
-        let dn = onc_dn_groups
-            .get(i)
-            .map(|value| value.replace('|', ","))
-            .unwrap_or_default();
-
         onc_clnsig_accessions.push(doc! {
             "accession": acc,
             "value": onc_sig,
             "revstat": onc_revstat.clone(),
-            "dn": dn,
+            "dn": onc_dn.clone(),
         });
     }
 
