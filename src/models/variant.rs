@@ -12,7 +12,7 @@ pub struct Coordinates {
     pub end: i32,
     pub end_chrom: String,
     pub length: i32,
-    pub sub_category: String,
+    pub sub_category: Option<String>,
     pub mate_id: Option<String>,
     pub cytoband_start: Option<String>,
     pub cytoband_end: Option<String>,

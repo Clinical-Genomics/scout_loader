@@ -10,6 +10,9 @@ mod clinvar_pathogenic;
 #[path = "parse/compounds.rs"]
 mod compounds;
 
+#[path = "parse/coordinates.rs"]
+mod coordinates;
+
 #[path = "parse/frequencies.rs"]
 mod frequencies;
 
@@ -51,9 +54,6 @@ mod regions;
 
 #[path = "fixtures/case.rs"]
 mod case;
-
-#[path = "parse/coordinates.rs"]
-mod coordinates;
 
 #[path = "fixtures/vcf_record.rs"]
 mod vcf_record;
