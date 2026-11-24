@@ -78,8 +78,14 @@ Rough mapping from Scout modules to loader modules:
   (`insert_info_*`, `parse_info_*`) before writing new ones.
 - Add doc comments to public parse functions. Include the VCF header line
   (`##FORMAT=<ID=…>`) for any new tag you handle.
-- Tests use given/when/then comments and build small in-memory VCFs with
-  `tempfile::NamedTempFile`; see `tests/parse/genotypes.rs`. htslib prints
+- Put tests under `tests/`, not in `#[cfg(test)]` modules in `src/`, so they
+  are easy to find. Make a function `pub` (with a doc comment) when a test
+  needs it. Keep test-only constants in the test file, at the top after the
+  imports.
+- Tests use given/when/then comments. Build records from inline VCF text with
+  the shared fixtures in `tests/fixtures/vcf_record.rs` (`record`,
+  `records_from_vcf`, `vep_record`) instead of writing temp files in each
+  test; see `trgt_record` in `tests/parse/genotypes.rs`. htslib prints
   "Contig not defined" warnings for header-less test VCFs. These are harmless.
 - Rust edition 2024. Let-chains (`if let … && let …`) are used throughout.
 
