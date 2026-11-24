@@ -101,6 +101,23 @@ fn test_parse_rank_score_mivmir_gicam() {
 }
 
 #[test]
+fn test_parse_mivmir_explanation_with_several_entries() {
+    // GIVEN a Mivmir explanation with several comma-separated entries
+    let record = rank_record(
+        "MivmirScore=0.0045;MivmirExplanation=[CSQ_CLINVAR_CLNSIG=0.48,CSQ_CLINVAR_CLNREVSTAT=0.24,]",
+    );
+
+    // WHEN parsing other rank scores
+    let parsed = parse_rank_score_other(&record).unwrap();
+
+    // THEN all entries are part of the description
+    assert_eq!(
+        parsed.get_document("Mivmir").unwrap().get_document("desc"),
+        Ok(&doc! { "CSQ_CLINVAR_CLNSIG": 0.48, "CSQ_CLINVAR_CLNREVSTAT": 0.24 })
+    );
+}
+
+#[test]
 fn test_parse_rank_score_other_missing() {
     // GIVEN a variant without other rank scores
     // THEN None is returned

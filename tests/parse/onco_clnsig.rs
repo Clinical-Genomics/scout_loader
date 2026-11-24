@@ -35,3 +35,27 @@ fn test_parse_clnsig_onc() {
         }]
     );
 }
+
+#[test]
+fn test_parse_clnsig_onc_review_status_with_commas() {
+    // GIVEN an oncogenicity review status with literal commas
+    let record = crate::vcf_record::record(
+        &[
+            "##contig=<ID=1,length=249250621>",
+            "##INFO=<ID=CLNVID,Number=1,Type=String,Description=\"ClinVar Variation ID\">",
+            "##INFO=<ID=ONC,Number=.,Type=String,Description=\"Oncogenicity classification\">",
+            "##INFO=<ID=ONCREVSTAT,Number=.,Type=String,Description=\"Oncogenicity review status\">",
+        ],
+        "1\t100\t.\tA\tG\t.\tPASS\tCLNVID=376460;ONC=Likely_oncogenic;ONCREVSTAT=criteria_provided,_single_submitter",
+    );
+
+    // WHEN parsing the oncogenicity classification
+    let onc = parse_clnsig_onc(&record);
+
+    // THEN the full review status is kept
+    assert_eq!(onc.len(), 1);
+    assert_eq!(
+        onc[0].get_str("revstat"),
+        Ok("criteria_provided,single_submitter")
+    );
+}
