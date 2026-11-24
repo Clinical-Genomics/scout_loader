@@ -83,7 +83,7 @@ pub fn parse_clnsig_onc(record: &Record) -> Vec<Document> {
 
     let mut onc_clnsig_accessions = Vec::new();
 
-    for (i, onc_sig) in onc_sig_groups.iter().enumerate() {
+    for onc_sig in &onc_sig_groups {
         // Equivalent to:
         // if onc_sig.capitalize() not in ONC_CLNSIG:
         let normalized = capitalize(onc_sig);
