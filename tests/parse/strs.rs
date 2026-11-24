@@ -19,6 +19,7 @@ fn str_record(pathologic_struc_header: &str, info: &str) -> Record {
         &[
             "##contig=<ID=X,length=156040895>",
             pathologic_struc_header,
+            "##INFO=<ID=MOTIFS,Number=.,Type=String,Description=\"Motifs that the tandem repeat is composed of\">",
             "##INFO=<ID=SourceDisplay,Number=1,Type=String,Description=\"Source for variant definition, display\">",
             "##INFO=<ID=Source,Number=1,Type=String,Description=\"Source collection for variant definition\">",
             "##INFO=<ID=SourceId,Number=1,Type=String,Description=\"Source id for variant definition\">",
@@ -97,6 +98,30 @@ fn test_set_str_info_percent_encoded_comma() {
     // THEN it is decoded for display
     assert_eq!(
         str_info(&record)
+            .get_document("str_source")
+            .unwrap()
+            .get_str("display"),
+        Ok("Paucar, Nilsson, Engvall et al medRxiv 2023-10-03")
+    );
+}
+
+#[test]
+fn test_set_str_info_with_commas() {
+    // GIVEN STR annotations with literal commas, as written by older stranger versions
+    // (from scout's NIST.trgt.stranger.vcf.gz)
+    let record = str_record(
+        OLD_STRUC_HEADER,
+        "MOTIFS=AAAAT,GAAAT;PathologicStruc=[0, 1, 2, 6];SourceDisplay=Paucar, Nilsson, Engvall et al medRxiv 2023-10-03",
+    );
+
+    // WHEN setting the STR info
+    let variant = str_info(&record);
+
+    // THEN the full values are stored, as scout stores them
+    assert_eq!(variant.get_str("str_motifs"), Ok("AAAAT,GAAAT"));
+    assert_eq!(variant.get_str("str_pathologic_struc"), Ok("[0, 1, 2, 6]"));
+    assert_eq!(
+        variant
             .get_document("str_source")
             .unwrap()
             .get_str("display"),

@@ -13,6 +13,8 @@ fn info_record(info: &str) -> Record {
             "##INFO=<ID=FLOAT,Number=.,Type=Float,Description=\"Float\">",
             "##INFO=<ID=INT,Number=.,Type=Integer,Description=\"Integer\">",
             "##INFO=<ID=STR,Number=1,Type=String,Description=\"String\">",
+            "##INFO=<ID=STR_DOT,Number=.,Type=String,Description=\"String\">",
+            "##INFO=<ID=SCOUT_CUSTOM,Number=.,Type=String,Description=\"Custom annotations\">",
             "##INFO=<ID=MEINFO,Number=4,Type=String,Description=\"NAME,START,END,POLARITY\">",
         ],
         &format!("1\t100\t.\tA\tG\t.\tPASS\t{info}"),
@@ -45,6 +47,20 @@ fn test_parse_info_missing_or_wrong_type() {
     let record = info_record("STR=abc");
     assert_eq!(parse_info_float(&record, b"STR"), None);
     assert_eq!(parse_info_int(&record, b"STR"), None);
+}
+
+#[test]
+fn test_parse_info_string_commas() {
+    // GIVEN String INFO fields with literal commas, declared with Number=1 and Number=.
+    // (rust-htslib splits String values on commas whatever Number is declared)
+    let record = info_record("STR=a,b,c;STR_DOT=x,,y");
+
+    // THEN the full value is returned, like cyvcf2 does in scout, including empty parts
+    assert_eq!(parse_info_string(&record, b"STR").as_deref(), Some("a,b,c"));
+    assert_eq!(
+        parse_info_string(&record, b"STR_DOT").as_deref(),
+        Some("x,,y")
+    );
 }
 
 #[test]
@@ -99,6 +115,25 @@ fn test_parse_custom_data() {
 
     // AND a missing value gives None
     assert_eq!(parse_custom_data(None), None);
+}
+
+#[test]
+fn test_parse_custom_data_from_record() {
+    // GIVEN a SCOUT_CUSTOM annotation with two key/value pairs
+    // (from scout's customannotations_one.vcf.gz)
+    let record = info_record("SCOUT_CUSTOM=key1|val1,key2|val2");
+
+    // WHEN parsing it as the loader does
+    let custom = parse_custom_data(parse_info_string(&record, b"SCOUT_CUSTOM"));
+
+    // THEN both pairs are kept
+    assert_eq!(
+        custom,
+        Some(Bson::Array(vec![
+            Bson::Array(vec!["key1".into(), "val1".into()]),
+            Bson::Array(vec!["key2".into(), "val2".into()]),
+        ]))
+    );
 }
 
 #[test]

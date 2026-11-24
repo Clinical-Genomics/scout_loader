@@ -50,12 +50,22 @@ pub fn insert_info_int(record: &Record, doc: &mut Document, vcf_key: &[u8], mong
 
 /// Parse a String INFO field from a VCF record.
 ///
-/// Returns the first value if the field exists, otherwise None.
+/// Returns the full field value if the field exists, otherwise None.
+///
+/// rust-htslib splits String INFO values on commas, whatever the `Number`
+/// in the header. The values are joined back with commas so the raw string
+/// is returned, as cyvcf2 does for scout. Many annotations rely on this,
+/// e.g. ClinVar `CLNREVSTAT=criteria_provided,_multiple_submitters,_no_conflicts`.
+/// Use `parse_info_string_array` to get the separate values.
 pub fn parse_info_string(record: &Record, key: &[u8]) -> Option<String> {
     match record.info(key).string() {
-        Ok(Some(values)) => values
-            .first()
-            .map(|value| String::from_utf8_lossy(value).to_string()),
+        Ok(Some(values)) if !values.is_empty() => Some(
+            values
+                .iter()
+                .map(|value| String::from_utf8_lossy(value))
+                .collect::<Vec<_>>()
+                .join(","),
+        ),
         _ => None,
     }
 }
