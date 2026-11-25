@@ -1,8 +1,5 @@
 //! Conservation parsing tests, ported from scout's
 //! `tests/parse/test_parse_conservation.py`.
-//!
-//! Note: scout formats scores with Python's `round(score, 2)` ("Conserved (3.7)"),
-//! while scout_loader always uses two decimals ("Conserved (3.70)").
 
 use crate::vcf_record::record;
 use mongodb::bson::{Bson, Document, doc};
@@ -36,7 +33,7 @@ fn test_parse_conservation() {
     // THEN it is conserved
     assert_eq!(
         variant.get("gerp_conservation"),
-        Some(&strings(&["Conserved (3.70)"]))
+        Some(&strings(&["Conserved (3.7)"]))
     );
 }
 
@@ -48,7 +45,7 @@ fn test_parse_conservation_multiple_terms() {
     // THEN all terms are returned
     assert_eq!(
         variant.get("gerp_conservation"),
-        Some(&strings(&["Conserved (3.70)", "NotConserved (-0.34)"]))
+        Some(&strings(&["Conserved (3.7)", "NotConserved (-0.34)"]))
     );
 }
 
@@ -65,9 +62,9 @@ fn test_parse_conservations() {
     assert_eq!(
         variant,
         doc! {
-            "gerp_conservation": ["Conserved (4.60)", "NotConserved (0.00)"],
-            "phast_conservation": ["Conserved (0.80)"],
-            "phylop_conservation": ["NotConserved (2.40)"],
+            "gerp_conservation": ["Conserved (4.6)", "NotConserved (0.0)"],
+            "phast_conservation": ["Conserved (0.8)"],
+            "phylop_conservation": ["NotConserved (2.4)"],
         }
     );
 }
@@ -83,9 +80,9 @@ fn test_parse_conservation_csq() {
     assert_eq!(
         variant,
         doc! {
-            "gerp_conservation": ["NotConserved (0.00)", "Conserved (4.60)"],
-            "phast_conservation": ["Conserved (0.80)"],
-            "phylop_conservation": ["NotConserved (2.40)"],
+            "gerp_conservation": ["NotConserved (0.0)", "Conserved (4.6)"],
+            "phast_conservation": ["Conserved (0.8)"],
+            "phylop_conservation": ["NotConserved (2.4)"],
         }
     );
 }
@@ -102,8 +99,8 @@ fn test_parse_conservation_info_takes_precedence() {
     assert_eq!(
         variant,
         doc! {
-            "gerp_conservation": ["Conserved (5.00)"],
-            "phast_conservation": ["Conserved (0.90)"],
+            "gerp_conservation": ["Conserved (5.0)"],
+            "phast_conservation": ["Conserved (0.9)"],
             "phylop_conservation": [],
         }
     );
