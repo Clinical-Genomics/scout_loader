@@ -182,6 +182,21 @@ fn test_parse_vep_freq_gnomad_vep107() {
 }
 
 #[test]
+fn test_parse_vep_freq_gnomad_keys() {
+    // GIVEN each supported gnomAD overall frequency field
+    for key in ["GNOMAD_AF", "GNOMADG_AF", "GNOMAD_EXOMES_AF"] {
+        let transcripts = transcripts(
+            &format!("Allele|Consequence|Feature|{key}"),
+            "C|missense_variant|ENST1|0.01",
+        );
+
+        // THEN it is the overall frequency, not a population-specific maximum
+        assert_eq!(transcripts[0].get_f64("gnomad_maf"), Ok(0.01), "{key}");
+        assert!(!transcripts[0].contains_key("gnomad_max"), "{key}");
+    }
+}
+
+#[test]
 fn test_parse_vep_freq_exac() {
     // GIVEN a transcript with EXAC_MAX_AF
     let transcripts = transcripts(

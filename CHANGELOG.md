@@ -22,6 +22,7 @@ About changelog [here](https://keepachangelog.com/en/1.0.0/)
 - Parsing of ClinVar oncogenicity significance, when containing underscore. Replace ONCREVSTAT and ONCDN separator with comma (#226)
 - Fix germline ClinVar significance parsing to correctly retrieve VEP transcript annotations when INFO significance is missing (#227)
 - Fix substring matching in filterIn caller parsing (#245)
+- Remove the duplicate `GNOMAD_EXOMES_AF` entry from the gnomAD CSQ frequency keys without changing supported annotations (#250)
 
 ## [0.2.1]
 ### Changed

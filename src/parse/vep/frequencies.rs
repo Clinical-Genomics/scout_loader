@@ -29,12 +29,7 @@ pub fn parse_mt_frequencies(transcript: &mut Document, entry: &VepFields<'_>) {
 /// and ExAC frequencies. Stores specific allele frequencies and calculates
 /// maximum frequencies across population-specific annotations.
 pub fn parse_variant_frequencies(transcript: &mut Document, entry: &VepFields<'_>) {
-    let gnomad_csq_keys = [
-        "GNOMAD_AF",
-        "GNOMADG_AF",
-        "GNOMAD_EXOMES_AF",
-        "GNOMAD_EXOMES_AF",
-    ];
+    let gnomad_csq_keys = ["GNOMAD_AF", "GNOMADG_AF", "GNOMAD_EXOMES_AF"];
 
     let thousand_genomes_csq_keys = ["AF", "1000GAF", "1000GP3_AF"];
 
