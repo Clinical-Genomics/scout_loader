@@ -117,7 +117,6 @@ fn test_parse_conservation_only_first_transcript_is_used() {
     assert_eq!(variant.get("gerp_conservation"), Some(&Bson::Array(vec![])));
 }
 
-
 #[test]
 fn test_parse_conservation_missing() {
     // GIVEN no conservation information at all
