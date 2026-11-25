@@ -39,6 +39,49 @@ fn assert_f64(doc: &Document, key: &str, expected: f64) {
 }
 
 #[test]
+fn test_missing_frequency_uses_transcript_fallback() {
+    // GIVEN a missing frequency in either a Float or String INFO field
+    for field_type in ["Float", "String"] {
+        for value in [".", "NaN", "0", "-1"] {
+            let header = format!(
+                "##INFO=<ID=GNOMADAF,Number=1,Type={field_type},Description=\"Frequency\">"
+            );
+            let record = record(
+                &["##contig=<ID=1,length=249250621>", &header],
+                &format!("1\t100\t.\tA\tG\t.\tPASS\tGNOMADAF={value}"),
+            );
+
+            // WHEN parsing with a transcript frequency
+            let frequencies = parse_frequencies(&record, &[doc! { "gnomad_maf": 0.02 }]);
+
+            // THEN placeholders do not block the transcript fallback
+            assert_eq!(
+                frequencies,
+                doc! { "gnomad": 0.02 },
+                "{field_type}: {value}"
+            );
+            assert!(parse_frequencies(&record, &[]).is_empty());
+        }
+    }
+}
+
+#[test]
+fn test_missing_frequency_uses_next_info_key() {
+    // GIVEN a missing primary frequency and a valid alternative INFO key
+    let record = record(
+        &[
+            "##contig=<ID=1,length=249250621>",
+            "##INFO=<ID=GNOMADAF,Number=1,Type=Float,Description=\"Frequency\">",
+            "##INFO=<ID=GNOMAD_AF,Number=1,Type=Float,Description=\"Alternative frequency\">",
+        ],
+        "1\t100\t.\tA\tG\t.\tPASS\tGNOMADAF=.;GNOMAD_AF=0.25",
+    );
+
+    // WHEN parsing frequencies THEN the next INFO key is used
+    assert_eq!(parse_frequencies(&record, &[]), doc! { "gnomad": 0.25 });
+}
+
+#[test]
 fn test_parse_gnomad_popmax() {
     for key in GNOMAD_INFO_MAX_KEYS {
         // GIVEN a record with a gnomAD popmax frequency under one of the known keys

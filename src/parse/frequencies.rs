@@ -1,4 +1,4 @@
-use crate::parse::info::parse_info_int;
+use crate::parse::info::{parse_info_float, parse_info_int};
 use mongodb::bson::{Bson, Document};
 use rust_htslib::bcf::Record;
 
@@ -79,33 +79,21 @@ pub const THOUSAND_GENOMES_MAX_KEYS: &[&str] = &["1000G_MAX_AF"];
 /// Parse a frequency value from a VCF INFO field.
 ///
 /// Returns None if the field is missing, contains a placeholder value
-/// (., 0, -1), or cannot be parsed as a frequency.
+/// (., NaN, 0, -1), or cannot be parsed as a frequency.
 ///
 /// Supports both numeric INFO fields and string fields containing numeric
 /// frequency values. Returns the first frequency value as f64.
 fn parse_frequency(record: &Record, key: &[u8]) -> Option<f64> {
-    record
-        .info(key)
-        .float()
-        .ok()
-        .flatten()
-        .and_then(|values| values.first().copied())
-        .filter(|v| *v != 0.0 && *v != -1.0)
-        .map(|v| v as f64)
+    parse_info_float(record, key)
         .or_else(|| {
-            record
-                .info(key)
-                .string()
-                .ok()
-                .flatten()
-                .and_then(|values| {
-                    values
-                        .first()
-                        .and_then(|value| std::str::from_utf8(value).ok())
-                        .and_then(|value| value.parse::<f64>().ok())
-                })
-                .filter(|v| *v != 0.0 && *v != -1.0)
+            record.info(key).string().ok().flatten().and_then(|values| {
+                values
+                    .first()
+                    .and_then(|value| std::str::from_utf8(value).ok())
+                    .and_then(|value| value.parse::<f64>().ok())
+            })
         })
+        .filter(|v| !v.is_nan() && *v != 0.0 && *v != -1.0)
 }
 
 /// Update frequency document from VCF INFO fields.

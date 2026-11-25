@@ -5,6 +5,30 @@ use scout_loader::parse::info::{
     insert_info_float, insert_info_int, insert_info_string, parse_custom_data, parse_info_float,
     parse_info_int, parse_info_string, parse_info_string_array, percent_decode,
 };
+use scout_loader::parse::{
+    fusions::set_fusion_info, loqusdb_frequencies::add_loqus_archive_frequencies,
+    rank_scores::parse_rank_score_other, severity::set_severity_predictions, strs::set_str_info,
+};
+
+const FLOAT_ANNOTATION_META: &[&str] = &[
+    "##contig=<ID=1,length=249250621>",
+    "##INFO=<ID=CADD,Number=1,Type=Float,Description=\"CADD\">",
+    "##INFO=<ID=CADD_PHRED,Number=1,Type=Float,Description=\"CADD PHRED\">",
+    "##INFO=<ID=SPIDEX,Number=1,Type=Float,Description=\"SPIDEX\">",
+    "##INFO=<ID=clinical_genomics_loqusFrq,Number=1,Type=Float,Description=\"Loqus frequency\">",
+    "##INFO=<ID=Frq,Number=1,Type=Float,Description=\"Archive frequency\">",
+    "##INFO=<ID=Cancer_Germline_Frq,Number=1,Type=Float,Description=\"Cancer germline frequency\">",
+    "##INFO=<ID=Cancer_Somatic_Frq,Number=1,Type=Float,Description=\"Cancer somatic frequency\">",
+    "##INFO=<ID=Cancer_Somatic_Panel_Frq,Number=1,Type=Float,Description=\"Cancer panel frequency\">",
+    "##INFO=<ID=SCORE,Number=1,Type=Float,Description=\"Fusion score\">",
+    "##INFO=<ID=HGNC_ID_A,Number=1,Type=Float,Description=\"HGNC ID\">",
+    "##INFO=<ID=TRANSCRIPT_ID_A,Number=1,Type=String,Description=\"Transcript ID\">",
+    "##INFO=<ID=EXON_NUMBER_A,Number=1,Type=Float,Description=\"Exon\">",
+    "##INFO=<ID=MivmirScore,Number=1,Type=Float,Description=\"Mivmir score\">",
+    "##INFO=<ID=GicamScore,Number=1,Type=Float,Description=\"Gicam score\">",
+    "##INFO=<ID=SweGenMean,Number=1,Type=Float,Description=\"SweGen mean\">",
+    "##INFO=<ID=SweGenStd,Number=1,Type=Float,Description=\"SweGen standard deviation\">",
+];
 
 fn info_record(info: &str) -> Record {
     record(
@@ -47,6 +71,103 @@ fn test_parse_info_missing_or_wrong_type() {
     let record = info_record("STR=abc");
     assert_eq!(parse_info_float(&record, b"STR"), None);
     assert_eq!(parse_info_int(&record, b"STR"), None);
+}
+
+#[test]
+fn test_parse_info_float_missing_values() {
+    // GIVEN missing floats, including the first element of a multi-valued field
+    for info in ["FLOAT=.", "FLOAT=.,0.5", "FLOAT=NaN"] {
+        let record = info_record(info);
+        let mut document = Document::new();
+
+        // WHEN parsing and inserting the missing value
+        let value = parse_info_float(&record, b"FLOAT");
+        insert_info_float(&record, &mut document, b"FLOAT", "float");
+
+        // THEN it is absent, rather than NaN or a later array element
+        assert_eq!(value, None, "{info}");
+        assert!(document.is_empty(), "{info}");
+    }
+}
+
+#[test]
+fn test_missing_float_annotations_are_omitted() {
+    // GIVEN explicitly missing Float annotations and a fusion transcript
+    let record = record(
+        FLOAT_ANNOTATION_META,
+        "1\t100\t.\tA\tG\t.\tPASS\tCADD=.;CADD_PHRED=.;SPIDEX=.;clinical_genomics_loqusFrq=.;Frq=.;Cancer_Germline_Frq=.;Cancer_Somatic_Frq=.;Cancer_Somatic_Panel_Frq=.;SCORE=.;HGNC_ID_A=1316;TRANSCRIPT_ID_A=ENST000001;EXON_NUMBER_A=.;MivmirScore=.;GicamScore=.;SweGenMean=.;SweGenStd=.",
+    );
+    let mut severity = Document::new();
+    let mut archive = Document::new();
+    let mut fusion = Document::new();
+    let mut str_info = Document::new();
+
+    // WHEN building the annotation documents
+    set_severity_predictions(&mut severity, &record, &[]);
+    add_loqus_archive_frequencies(&record, &mut archive, None);
+    set_fusion_info(&record, &mut fusion);
+    set_str_info(&record, &mut str_info);
+
+    // THEN missing annotations are not stored as NaN or the string "NaN"
+    assert_eq!(severity, doc! { "cadd_score": 0.0 });
+    assert!(archive.is_empty());
+    assert_eq!(parse_rank_score_other(&record), None);
+    assert!(!str_info.contains_key("str_swegen_mean"));
+    assert!(!str_info.contains_key("str_swegen_std"));
+    assert!(!fusion.contains_key("rank_score"));
+    assert!(!fusion.contains_key("fusion_score"));
+    let gene = fusion.get_array("genes").unwrap()[0].as_document().unwrap();
+    let transcript = gene.get_array("transcripts").unwrap()[0]
+        .as_document()
+        .unwrap();
+    assert_eq!(
+        transcript,
+        &doc! {
+            "transcript_id": "ENST000001",
+            "hgnc_id": 1316_i32,
+            "is_canonical": false,
+        }
+    );
+}
+
+#[test]
+fn test_missing_float_annotations_preserve_fallbacks() {
+    // GIVEN missing primary scores and frequencies with valid alternatives
+    for (cadd_info, expected_cadd) in [
+        ("CADD=.;CADD_PHRED=.", 24.0),
+        ("CADD=.;CADD_PHRED=30", 30.0),
+    ] {
+        let record = record(
+            FLOAT_ANNOTATION_META,
+            &format!(
+                "1\t100\t.\tA\tG\t.\tPASS\t{cadd_info};SPIDEX=-2.5;clinical_genomics_loqusFrq=.;Frq=0.25"
+            ),
+        );
+        let mut severity = Document::new();
+        let mut archive = Document::new();
+
+        // WHEN parsing severity and archive frequencies
+        set_severity_predictions(&mut severity, &record, &[doc! { "cadd": 24.0 }]);
+        add_loqus_archive_frequencies(&record, &mut archive, None);
+
+        // THEN the next INFO key or transcript is used and negative scores survive
+        assert_eq!(
+            severity,
+            doc! { "cadd_score": expected_cadd, "spidex": -2.5 }
+        );
+        assert_eq!(archive, doc! { "local_obs_old_freq": 0.25 });
+    }
+}
+
+#[test]
+fn test_parse_info_float_preserves_zero_and_negative_values() {
+    // GIVEN valid scores, which need not be positive
+    for value in [0.0, -1.0, -2.5] {
+        let record = info_record(&format!("FLOAT={value}"));
+
+        // WHEN parsing the float THEN the original value is preserved
+        assert_eq!(parse_info_float(&record, b"FLOAT"), Some(value));
+    }
 }
 
 #[test]
