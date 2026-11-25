@@ -13,6 +13,20 @@ fn conserved_min(field_key: &str) -> f64 {
         .unwrap_or(0.0)
 }
 
+/// Format a prediction with Scout's rounded score representation.
+fn format_conservation(score: f64, field_key: &str) -> Bson {
+    let prediction = if score >= conserved_min(field_key) {
+        "Conserved"
+    } else {
+        "NotConserved"
+    };
+    let rounded = format!("{score:.2}");
+    // Python's round(score, 2) retains at least one decimal for floats.
+    let rounded = rounded.strip_suffix('0').unwrap_or(&rounded);
+
+    Bson::String(format!("{prediction} ({rounded})"))
+}
+
 /// Parse and add conservation predictions to a variant.
 ///
 /// Conservation scores are read from variant INFO fields when available,
@@ -58,15 +72,7 @@ fn parse_conservation_info(record: &Record, info_key: &[u8], field_key: &str) ->
 
     scores
         .iter()
-        .map(|&score| {
-            let score = f64::from(score);
-
-            if score >= conserved_min(field_key) {
-                Bson::String(format!("Conserved ({score:.2})"))
-            } else {
-                Bson::String(format!("NotConserved ({score:.2})"))
-            }
-        })
+        .map(|&score| format_conservation(f64::from(score), field_key))
         .collect()
 }
 
@@ -85,12 +91,6 @@ fn parse_conservation_csq(transcript: &Document, field_key: &str) -> Vec<Bson> {
     value
         .split('&')
         .filter_map(|score| score.parse::<f64>().ok())
-        .map(|score| {
-            if score >= conserved_min(field_key) {
-                Bson::String(format!("Conserved ({score:.2})"))
-            } else {
-                Bson::String(format!("NotConserved ({score:.2})"))
-            }
-        })
+        .map(|score| format_conservation(score, field_key))
         .collect()
 }
