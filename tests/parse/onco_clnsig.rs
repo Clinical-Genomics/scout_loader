@@ -55,3 +55,39 @@ fn test_parse_clnsig_onc_review_status_with_commas() {
         Ok("criteria_provided,single_submitter")
     );
 }
+
+#[test]
+fn test_parse_clnsig_onc_repeats_full_disease_list_for_each_classification() {
+    // GIVEN multiple oncogenicity classifications and diseases
+    let record = crate::vcf_record::record(
+        &[
+            "##contig=<ID=1,length=249250621>",
+            "##INFO=<ID=CLNVID,Number=1,Type=String,Description=\"ClinVar Variation ID\">",
+            "##INFO=<ID=ONC,Number=.,Type=String,Description=\"Oncogenicity classification\">",
+            "##INFO=<ID=ONCDN,Number=1,Type=String,Description=\"Oncogenicity description\">",
+        ],
+        "1\t100\t.\tA\tG\t.\tPASS\tCLNVID=376460;ONC=Oncogenic/Likely_oncogenic;ONCDN=Neoplasm|Lymphoma/leukemia",
+    );
+
+    // WHEN parsing the oncogenicity classifications
+    let onc = parse_clnsig_onc(&record);
+
+    // THEN each classification has the complete disease list
+    assert_eq!(
+        onc,
+        vec![
+            doc! {
+                "accession": 376460_i64,
+                "value": "oncogenic",
+                "revstat": "",
+                "dn": "Neoplasm,Lymphoma/leukemia",
+            },
+            doc! {
+                "accession": 376460_i64,
+                "value": "likely_oncogenic",
+                "revstat": "",
+                "dn": "Neoplasm,Lymphoma/leukemia",
+            },
+        ]
+    );
+}
