@@ -107,6 +107,7 @@ MongoDB, for example `docker run -d -p 27017:27017 mongo:7`. CLI tests set
 
 - `cargo fmt`, clippy with `-D warnings`, and the full test suite all pass.
 - Add an entry under `## [unreleased]` in `CHANGELOG.md` (Added / Changed /
-  Fixed) with the PR number. CI checks for this.
+  Fixed) with the PR number. Append new entries at the end of the relevant
+  subsection, not at the top. CI checks for the changelog entry.
 - Don't bump the version in `Cargo.toml`. That happens at release time
   (`RELEASE.md`).
