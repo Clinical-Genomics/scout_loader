@@ -50,7 +50,7 @@ pub fn parse_conservations(
 /// Converts each score into a `Conserved` or `NotConserved` annotation
 /// based on the minimum conservation threshold for the specified field.
 ///
-/// Returns an empty vector if the INFO field is missing or contains no scores.
+/// Missing (NaN) scores are ignored. Returns an empty vector if no scores remain.
 fn parse_conservation_info(record: &Record, info_key: &[u8], field_key: &str) -> Vec<Bson> {
     let Some(scores) = record.info(info_key).float().ok().flatten() else {
         return Vec::new();
@@ -58,6 +58,7 @@ fn parse_conservation_info(record: &Record, info_key: &[u8], field_key: &str) ->
 
     scores
         .iter()
+        .filter(|score| !score.is_nan())
         .map(|&score| {
             let score = f64::from(score);
 
@@ -85,6 +86,7 @@ fn parse_conservation_csq(transcript: &Document, field_key: &str) -> Vec<Bson> {
     value
         .split('&')
         .filter_map(|score| score.parse::<f64>().ok())
+        .filter(|score| !score.is_nan())
         .map(|score| {
             if score >= conserved_min(field_key) {
                 Bson::String(format!("Conserved ({score:.2})"))

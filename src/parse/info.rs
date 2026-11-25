@@ -4,7 +4,7 @@ use rust_htslib::bcf::Record;
 
 /// Parse a Float INFO field from a VCF record.
 ///
-/// Returns the first value if the field exists, otherwise None.
+/// Returns the first value if the field exists and is not NaN, otherwise None.
 /// INFO fields can be arrays in VCF, so only the first value is used.
 pub fn parse_info_float(record: &Record, key: &[u8]) -> Option<f64> {
     record
@@ -13,6 +13,7 @@ pub fn parse_info_float(record: &Record, key: &[u8]) -> Option<f64> {
         .ok()
         .flatten()
         .and_then(|values| values.iter().next().copied())
+        .filter(|value| !value.is_nan())
         .map(|value| value as f64)
 }
 

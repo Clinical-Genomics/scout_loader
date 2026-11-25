@@ -121,6 +121,38 @@ fn test_parse_conservation_only_first_transcript_is_used() {
 }
 
 #[test]
+fn test_missing_conservation_info_uses_transcript_fallback() {
+    // GIVEN missing INFO scores and a transcript conservation score
+    let transcript = doc! { "gerp": "4.6" };
+
+    // WHEN parsing conservation predictions
+    let variant = conservations("dbNSFP_GERP___RS=.", &[transcript]);
+
+    // THEN missing scores do not become NaN predictions or block the fallback
+    assert_eq!(
+        variant,
+        doc! {
+            "gerp_conservation": ["Conserved (4.60)"],
+            "phast_conservation": [],
+            "phylop_conservation": [],
+        }
+    );
+}
+
+#[test]
+fn test_missing_conservation_scores_are_skipped() {
+    // GIVEN missing scores mixed with valid scores
+    // WHEN parsing conservation predictions
+    let variant = conservations("dbNSFP_GERP___RS=.,3.7,.", &[]);
+
+    // THEN only valid scores are returned
+    assert_eq!(
+        variant.get("gerp_conservation"),
+        Some(&strings(&["Conserved (3.70)"]))
+    );
+}
+
+#[test]
 fn test_parse_conservation_missing() {
     // GIVEN no conservation information at all
     let variant = conservations(".", &[]);
