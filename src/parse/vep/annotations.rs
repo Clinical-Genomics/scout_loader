@@ -105,7 +105,7 @@ pub fn parse_clinvar_annotations(transcript: &mut Document, entry: &VepFields<'_
 
     let clnsig = entry
         .get("CLIN_SIG")
-        .or_else(|| entry.get("ClinVar_CLNSIG"));
+        .or_else(|| entry.get("CLINVAR_CLNSIG"));
 
     if let Some(clnsig) = clnsig.filter(|value| !value.is_empty()) {
         transcript.insert(
