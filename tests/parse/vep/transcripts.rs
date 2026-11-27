@@ -114,6 +114,21 @@ fn test_parse_transcripts() {
 }
 
 #[test]
+fn test_parse_clinvar_clnsig_fallback() {
+    // GIVEN a transcript with ClinVar_CLNSIG but no CLIN_SIG field
+    let transcripts = transcripts(
+        "Feature|ClinVar_CLNSIG",
+        "ENST00000370449|Conflicting_classifications_of_pathogenicity",
+    );
+
+    // THEN ClinVar significance is parsed as clnsig
+    assert_eq!(
+        transcripts[0].get("clnsig"),
+        Some(&strings(&["Conflicting_classifications_of_pathogenicity"]))
+    );
+}
+
+#[test]
 fn test_parse_functional_annotation_and_hgnc() {
     // GIVEN the scout vep_csq fixture (HGNC id with "HGNC:" prefix)
     let transcripts = transcripts(SCN5A_CSQ_FORMAT, SCN5A_CSQ);
